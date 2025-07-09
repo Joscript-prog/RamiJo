@@ -12,7 +12,7 @@ const endTurnBtn = document.getElementById('endTurn');
 
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
-let gameInitialized = false; // <== IMPORTANT
+let gameInitialized = false;
 
 // --- Création deck 104 cartes ---
 function createDeck() {
@@ -158,3 +158,7 @@ async function startGame(roomCode, players) {
   const firstPlayer = players[Math.floor(Math.random() * players.length)];
   await set(ref(db, `rooms/${roomCode}/currentTurn`), firstPlayer);
 }
+
+// ✅ Rendre dispo dans la console pour debug manuel
+window.dealCards = dealCards;
+window.startGame = startGame;
