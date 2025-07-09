@@ -6,15 +6,10 @@
   <meta name="description" content="Jouez au Rami en ligne avec vos amis" />
   <title>Rami en ligne - Jeu de cartes multijoueur</title>
 
-  <!-- Préchargement des ressources avec crossorigin pour modules -->
-  <link rel="preload" href="style.css" as="style">
-  <link rel="preload" href="firebase.js" as="script" crossorigin="anonymous">
-  <link rel="preload" href="game.js" as="script" crossorigin="anonymous">
-
   <!-- Fichier CSS -->
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 
-  <!-- Scripts Firebase & game avec module + crossorigin -->
+  <!-- Scripts Firebase & game avec defer et crossorigin pour les modules ES -->
   <script type="module" src="firebase.js" defer crossorigin="anonymous"></script>
   <script type="module" src="game.js" defer crossorigin="anonymous"></script>
 </head>
