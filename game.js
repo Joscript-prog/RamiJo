@@ -114,29 +114,6 @@ function showJoker(jokerCard) {
   `;
 }
 
-// --- DOM & État ---
-// Define player-specific variables FIRST
-
-// Now, it's safe to use playerId for DOM element selection if needed
-const createRoomBtn = document.getElementById('createRoom');
-const joinRoomBtn = document.getElementById('joinRoom');
-const roomInput = document.getElementById('roomCodeInput');
-const status = document.getElementById('status');
-const playersDiv = document.getElementById('players');
-const playerHandDiv = document.getElementById('hand');
-const jokerDiv = document.getElementById('joker');
-const drawCardBtn = document.getElementById('drawCard');
-const endTurnBtn = document.getElementById('endTurn');
-const declare7NBtn = document.getElementById('declare7N');
-const declareWinBtn = document.getElementById('declareWin');
-const menuDiv = document.getElementById('menu');
-const gameDiv = document.getElementById('game');
-
-// Removed playerDiscardPileDiv constant here as it's not universally needed
-// The clickability is handled by iterating through all player discard piles
-// in `enableDiscardPileInteraction` and `listenTurn`.
-
-
 // --- UI Helpers ---
 function showPopup(content) {
   const modal = document.createElement('div');
