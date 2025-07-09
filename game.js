@@ -192,7 +192,7 @@ function listenTurn(room) {
     endTurnBtn.disabled = !myTurn;
     declare7NBtn.disabled = !myTurn;
     declareWinBtn.disabled = !myTurn;
-    status.textContent = myTurn ? '⭐ C'est votre tour !' : 'En attente...';
+    status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente...";
   });
 }
 
@@ -227,6 +227,10 @@ function listenHand(room) {
 }
 
 function renderHand(hand) {
+    if (!Array.isArray(hand)) {
+    console.error("La main doit être un tableau", hand);
+    return;
+  }
   console.log('Rendering hand:', hand);
   playerHandDiv.innerHTML = '';
   hand.forEach(c => {
@@ -249,7 +253,11 @@ async function drawCard(room) {
     if (state.drawCount >= 1) {
       alert('Une seule pioche par tour');
       return;
-    }
+    } catch (error) {
+    console.error("Erreur lors de la pioche:", error);
+    alert("Une erreur est survenue lors de la pioche");
+  }
+}
     
     const [deckSnap, handSnap, jokerSetSnap, playersSnap] = await Promise.all([
       get(ref(db, `rooms/${room}/deck`)),
@@ -463,6 +471,16 @@ async function declareWin(room) {
 // --- Initialisation ---
 function init() {
   console.log('Initializing game...');
+
+    // Vérification des éléments DOM
+  if (!createRoomBtn || !joinRoomBtn) {
+    console.error("Boutons introuvables dans le DOM");
+    return;
+  }
+
+  // Initialisation des écouteurs
+  createRoomBtn.addEventListener("click", createRoom);
+  joinRoomBtn.addEventListener("click", joinRoom);
   
   // Activation des fonctionnalités
   enableDragDrop();
