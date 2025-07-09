@@ -1,68 +1,70 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Jouez au Rami en ligne avec vos amis" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rami en ligne - Jeu de cartes multijoueur</title>
-
-  <!-- Fichier CSS -->
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- Scripts Firebase & game avec defer et crossorigin pour les modules ES -->
-  <script type="module" src="firebase.js" defer crossorigin="anonymous"></script>
-  <script type="module" src="game.js" defer crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="game.js"></script>
 </head>
 <body>
-  <div id="app">
-    <header>
-      <h1>Jeu de Rami en ligne</h1>
-      <p class="subtitle">Jouez avec vos amis en temps réel</p>
+  <div class="game-container">
+    <!-- En-tête -->
+    <header class="game-header">
+      <h1>Rami en ligne</h1>
+      <div id="status" class="game-status">Prêt à jouer</div>
     </header>
 
-    <!-- Menu principal -->
-    <section id="menu" aria-labelledby="menu-heading">
-      <h2 id="menu-heading" class="sr-only">Menu principal</h2>
+    <!-- Zone des joueurs -->
+    <section id="players" class="players-section"></section>
 
-      <div class="form-group">
-        <button id="createRoom" class="btn btn-primary">Créer une partie</button>
-        <p class="help-text">Créez une nouvelle partie et invitez vos amis</p>
-      </div>
-
-      <div class="form-group">
-        <label for="roomCodeInput" class="sr-only">Code de partie</label>
-        <input type="text" id="roomCodeInput" placeholder="Code de partie" aria-label="Entrez le code de la partie à rejoindre">
-        <button id="joinRoom" class="btn btn-secondary">Rejoindre</button>
-        <p class="help-text">Entrez le code fourni par l'organisateur</p>
-      </div>
-    </section>
-
-    <!-- Zone de jeu -->
-    <main id="game" style="display: none" aria-labelledby="game-heading">
-      <h2 id="game-heading" class="sr-only">Zone de jeu</h2>
-
-      <div id="status" aria-live="polite"></div>
-
-      <section id="players" aria-labelledby="players-heading">
-        <h3 id="players-heading" class="sr-only">Joueurs</h3>
-      </section>
-
-      <section id="hand" class="hand" aria-label="Votre main de cartes"></section>
-
-      <section id="dropZone" class="drop-zone" aria-label="Zone de dépôt des combinaisons">
-        <h3 class="sr-only">Combinaisons déposées</h3>
-      </section>
-
-      <section class="game-controls" aria-labelledby="controls-heading">
-        <h3 id="controls-heading" class="sr-only">Actions de jeu</h3>
-        <div class="controls-grid">
-          <button id="drawCard" class="btn btn-action">Piocher une carte</button>
-          <button id="endTurn" class="btn btn-action" disabled>Fin de tour</button>
-          <button id="declare7N" class="btn btn-special">Déclarer 7 naturel</button>
-          <button id="declareWin" class="btn btn-special">Déclarer fin de manche</button>
+    <!-- Zone de jeu principale -->
+    <main class="game-main">
+      <!-- Zone de défausse et pioche -->
+      <div class="deck-area">
+        <div class="deck-pile" id="deck">
+          <div class="card-back"></div>
         </div>
-      </section>
+        <div class="discard-pile" id="discardPile"></div>
+      </div>
+
+      <!-- Zone de combinaisons -->
+      <div id="combinations" class="combinations-area"></div>
+
+      <!-- Main du joueur -->
+      <div id="hand" class="player-hand"></div>
     </main>
+
+    <!-- Contrôles de jeu -->
+    <div class="game-controls">
+      <div class="controls-row">
+        <button id="drawCard" class="btn btn-draw">Piocher</button>
+        <button id="takeDiscard" class="btn btn-take">Prendre défausse</button>
+      </div>
+      <div class="controls-row">
+        <button id="endTurn" class="btn btn-end">Fin de tour</button>
+        <button id="declare7N" class="btn btn-special">7 Naturel</button>
+        <button id="declareWin" class="btn btn-special">Déclarer victoire</button>
+      </div>
+    </div>
+
+    <!-- Menu principal -->
+    <div id="menu" class="menu-overlay">
+      <div class="menu-content">
+        <h2>Nouvelle partie</h2>
+        <button id="createRoom" class="btn btn-primary">Créer une partie</button>
+        
+        <div class="separator">ou</div>
+        
+        <h2>Rejoindre une partie</h2>
+        <div class="join-form">
+          <input type="text" id="roomCodeInput" placeholder="Code de partie" class="room-input">
+          <button id="joinRoom" class="btn btn-secondary">Rejoindre</button>
+        </div>
+      </div>
+    </div>
   </div>
 </body>
 </html>
