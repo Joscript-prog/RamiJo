@@ -162,3 +162,4 @@ async function startGame(roomCode, players) {
 // ✅ Rendre dispo dans la console pour debug manuel
 window.dealCards = dealCards;
 window.startGame = startGame;
+
