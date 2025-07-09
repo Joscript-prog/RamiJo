@@ -19,11 +19,14 @@ const Rules = {
       byColor[c.suit].push(c.value);
     });
     for (let suit in byColor) {
-      const vals = byColor[suit].sort((a,b) => a - b);
+      const vals = byColor[suit].sort((a, b) => a - b);
       for (let i = 0; i <= vals.length - len; i++) {
         let ok = true;
         for (let j = 1; j < len; j++) {
-          if (vals[i+j] !== vals[i] + j) { ok = false; break; }
+          if (vals[i + j] !== vals[i] + j) {
+            ok = false;
+            break;
+          }
         }
         if (ok) return true;
       }
@@ -31,38 +34,38 @@ const Rules = {
     return false;
   },
   has7Naturel(hand) {
-    return (this.isQuadri(hand) && this.isEscalier(hand,3)) || (this.isEscalier(hand,4) && this.isTri(hand));
+    return (this.isQuadri(hand) && this.isEscalier(hand, 3)) || (this.isEscalier(hand, 4) && this.isTri(hand));
   },
   validateWinHand(hand) {
-    const f1 = this.isQuadri(hand) && this.isEscalier(hand,3);
-    const f2 = this.isEscalier(hand,4) && this.isTri(hand);
-    const rest = this.isTri(hand) || this.isEscalier(hand,3);
-    return (f1||f2) && rest && rest;
+    const f1 = this.isQuadri(hand) && this.isEscalier(hand, 3);
+    const f2 = this.isEscalier(hand, 4) && this.isTri(hand);
+    const rest = this.isTri(hand) || this.isEscalier(hand, 3);
+    return (f1 || f2) && rest; // Simplified the last part from rest && rest
   }
 };
 
 // --- Deck / Joker Helpers ---
 function createDeck() {
   const suits = [
-    { suit:'Coeurs', symbol:'♥', color:'red' },
-    { suit:'Carreaux', symbol:'♦', color:'red' },
-    { suit:'Trèfles', symbol:'♣', color:'black' },
-    { suit:'Piques', symbol:'♠', color:'black' }
+    { suit: 'Coeurs', symbol: '♥', color: 'red' },
+    { suit: 'Carreaux', symbol: '♦', color: 'red' },
+    { suit: 'Trèfles', symbol: '♣', color: 'black' },
+    { suit: 'Piques', symbol: '♠', color: 'black' }
   ];
   const ranks = [
-    'A','2','3','4','5','6','7','8','9','10','J','Q','K'
+    'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'
   ];
   let deck = [];
   for (let d = 0; d < 2; d++) {
     suits.forEach(s => ranks.forEach(r => {
       const value = r === 'A' ? 1 : r === 'J' ? 11 : r === 'Q' ? 12 : r === 'K' ? 13 : parseInt(r);
-      deck.push({ 
-        suit: s.suit, 
-        symbol: s.symbol, 
-        color: s.color, 
-        rank: r, 
-        value, 
-        id:`${r}${s.symbol}${d}` 
+      deck.push({
+        suit: s.suit,
+        symbol: s.symbol,
+        color: s.color,
+        rank: r,
+        value,
+        id: `${r}${s.symbol}${d}`
       });
     }));
   }
@@ -82,12 +85,14 @@ async function dealCards(room, players) {
   let deck = shuffle(createDeck());
   const jokerCard = deck.splice(Math.floor(Math.random() * deck.length), 1)[0];
   const jokerSet = deck.filter(c => c.value === jokerCard.value && c.color !== jokerCard.color).map(c => c.id);
-  
+
   await Promise.all([
-    set(ref(db, `rooms/${room}/jokerSet`), { jokerSet }),
+    set(ref(db, `rooms/${room}/jokerSet`), {
+      jokerSet
+    }),
     set(ref(db, `rooms/${room}/jokerCard`), jokerCard)
   ]);
-  
+
   let idx = 0;
   for (const p of players) {
     const hand = deck.slice(idx, idx + 13);
@@ -129,6 +134,7 @@ const gameDiv = document.getElementById('game');
 const pseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
+let hasDiscarded = false; // Moved here and initialized
 
 // --- UI Helpers ---
 function showPopup(content) {
@@ -145,11 +151,13 @@ function showPopup(content) {
 }
 
 function enableDragDrop() {
-  new Sortable(playerHandDiv, { 
+  new Sortable(playerHandDiv, {
     animation: 150,
     ghostClass: 'sortable-ghost',
     onEnd: (evt) => {
       console.log('Card moved from', evt.oldIndex, 'to', evt.newIndex);
+      // In a real game, you would update the hand order in the database here
+      // For now, this just logs the client-side reordering
     }
   });
 }
@@ -171,10 +179,13 @@ function renderPlayers(players) {
 
 function listenPlayers(room) {
   onValue(ref(db, `rooms/${room}/players`), snap => {
-    const players = Object.entries(snap.val()||{}).map(([id,o]) => ({ id, pseudo: o.pseudo }));
+    const players = Object.entries(snap.val() || {}).map(([id, o]) => ({
+      id,
+      pseudo: o.pseudo
+    }));
     renderPlayers(players);
   });
-  
+
   onValue(ref(db, `rooms/${room}/scores`), snap => {
     const scores = snap.val() || {};
     Object.entries(scores).forEach(([id, score]) => {
@@ -188,21 +199,31 @@ function listenTurn(room) {
   onValue(ref(db, `rooms/${room}/turn`), snap => {
     const turn = snap.val();
     const myTurn = turn === playerId;
-    drawCardBtn.disabled = !myTurn;
-    endTurnBtn.disabled = !myTurn;
+    drawCardBtn.disabled = !myTurn || hasDiscarded; // Cannot draw after discarding
+    endTurnBtn.disabled = !myTurn || !hasDiscarded; // Can only end turn after discarding
     declare7NBtn.disabled = !myTurn;
     declareWinBtn.disabled = !myTurn;
+    if (myTurn) {
+      // Reset discard flag at the start of the turn
+      hasDiscarded = false;
+      drawCardBtn.disabled = false; // Enable draw at the start of the turn
+    }
     status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente...";
   });
 }
 
 async function endTurn(room) {
+  if (!hasDiscarded) {
+    alert("Vous devez défausser une carte pour terminer votre tour.");
+    return;
+  }
   const playersSnap = await get(ref(db, `rooms/${room}/players`));
-  const ids = Object.keys(playersSnap.val()||{});
+  const ids = Object.keys(playersSnap.val() || {});
   const turnSnap = await get(ref(db, `rooms/${room}/turn`));
   const idx = ids.indexOf(turnSnap.val());
   const next = ids[(idx + 1) % ids.length];
   await set(ref(db, `rooms/${room}/turn`), next);
+  await update(ref(db, `rooms/${room}/state`), { drawCount: 0 }); // Reset draw count for next player
 }
 
 function listenDiscard(room) {
@@ -222,12 +243,12 @@ function listenDiscard(room) {
 function listenHand(room) {
   onValue(ref(db, `rooms/${room}/hands/${playerId}`), snap => {
     console.log('Hand updated:', snap.val());
-    renderHand(snap.val()||[]);
+    renderHand(snap.val() || []);
   });
 }
 
 function renderHand(hand) {
-    if (!Array.isArray(hand)) {
+  if (!Array.isArray(hand)) {
     console.error("La main doit être un tableau", hand);
     return;
   }
@@ -248,7 +269,9 @@ async function drawCard(room) {
   try {
     const stateRef = ref(db, `rooms/${room}/state`);
     const stateSnapshot = await get(stateRef);
-    const state = stateSnapshot.val() || { drawCount: 0 };
+    const state = stateSnapshot.val() || {
+      drawCount: 0
+    };
 
     if (state.drawCount >= 1) {
       alert('Une seule pioche par tour');
@@ -295,7 +318,7 @@ async function drawCard(room) {
       set(ref(db, `rooms/${room}/hands/${playerId}`), hand),
       set(stateRef, state)
     ]);
-
+    drawCardBtn.disabled = true; // Disable draw button after drawing
   } catch (error) {
     console.error('Erreur lors de la pioche :', error);
     alert("Une erreur est survenue lors de la pioche");
@@ -308,45 +331,51 @@ function enableCardDiscard() {
   playerHandDiv.addEventListener('click', async e => {
     console.log('Click event on hand');
     const cardEl = e.target.closest('.card');
-    
+
     if (!cardEl) {
       console.log('No card element clicked');
       return;
     }
-    
-    if (endTurnBtn.disabled) {
-      console.log('Not your turn, cannot discard');
+
+    // Check if it's the current player's turn and if a card has already been discarded
+    const turnSnapshot = await get(ref(db, `rooms/${currentRoom}/turn`));
+    const currentTurnPlayerId = turnSnapshot.val();
+
+    if (currentTurnPlayerId !== playerId || hasDiscarded) {
+      console.log('Not your turn or already discarded, cannot discard');
       return;
     }
-    
+
     const cardId = cardEl.dataset.cardId;
     console.log('Attempting to discard card:', cardId);
-    
+
     try {
       const handRef = ref(db, `rooms/${currentRoom}/hands/${playerId}`);
       const hand = (await get(handRef)).val() || [];
       const cardIndex = hand.findIndex(c => c.id === cardId);
-      
+
       if (cardIndex === -1) {
         console.log('Card not found in hand');
         return;
       }
-      
+
       const card = hand[cardIndex];
       const newHand = hand.filter(c => c.id !== cardId);
-      
+
       const discardRef = ref(db, `rooms/${currentRoom}/discard/${playerId}`);
       const discardPile = (await get(discardRef)).val() || [];
       discardPile.push(card);
-      
+
       await Promise.all([
         set(handRef, newHand),
         set(discardRef, discardPile)
       ]);
-      
+
       console.log('Card discarded successfully');
-      await endTurn(currentRoom);
-      
+      hasDiscarded = true; // Set flag after successful discard
+      endTurnBtn.disabled = false; // Enable end turn button
+      drawCardBtn.disabled = true; // Ensure draw button is disabled after discarding
+
     } catch (error) {
       console.error('Error discarding card:', error);
       alert('Erreur lors de la défausse');
@@ -357,36 +386,41 @@ function enableCardDiscard() {
 // --- Création / Rejoindre partie ---
 async function createRoom() {
   try {
-    currentRoom = 'RAMI'+Math.floor(Math.random()*1000);
+    currentRoom = 'RAMI' + Math.floor(Math.random() * 1000);
     console.log('Creating room:', currentRoom);
-    
+
     await Promise.all([
-      set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo }),
+      set(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
+        pseudo
+      }),
       set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0),
-      set(ref(db, `rooms/${currentRoom}/state`), { started: false, drawCount: 0 }),
+      set(ref(db, `rooms/${currentRoom}/state`), {
+        started: false,
+        drawCount: 0
+      }),
       set(ref(db, `rooms/${currentRoom}/turn`), playerId)
     ]);
-    
+
     await dealCards(currentRoom, [playerId]);
-    
+
     menuDiv.style.display = 'none';
     gameDiv.style.display = 'block';
     status.textContent = `Salle: ${currentRoom} | Vous: ${pseudo}`;
-    
+
     showPopup(`<h3>Salle créée</h3><p>Code: <b>${currentRoom}</b></p>`);
-    
+
     // Initialisation des écouteurs
     listenPlayers(currentRoom);
     listenDiscard(currentRoom);
     listenHand(currentRoom);
     listenTurn(currentRoom);
-    
+
     // Écoute du joker
     onValue(ref(db, `rooms/${currentRoom}/jokerCard`), snap => {
       console.log('Joker updated:', snap.val());
       showJoker(snap.val());
     });
-    
+
   } catch (error) {
     console.error('Error creating room:', error);
     alert('Erreur lors de la création de la salle');
@@ -400,32 +434,36 @@ async function joinRoom() {
       alert('Code invalide');
       return;
     }
-    
+
     currentRoom = code;
     console.log('Joining room:', currentRoom);
-    
+
     await Promise.all([
-      set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo }),
+      set(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
+        pseudo
+      }),
       set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0),
-      update(ref(db, `rooms/${currentRoom}/state`), { drawCount: 0 })
+      update(ref(db, `rooms/${currentRoom}/state`), {
+        drawCount: 0
+      })
     ]);
-    
+
     menuDiv.style.display = 'none';
     gameDiv.style.display = 'block';
     status.textContent = `Salle: ${currentRoom} | Vous: ${pseudo}`;
-    
+
     // Initialisation des écouteurs
     listenPlayers(currentRoom);
     listenDiscard(currentRoom);
     listenHand(currentRoom);
     listenTurn(currentRoom);
-    
+
     // Écoute du joker
     onValue(ref(db, `rooms/${currentRoom}/jokerCard`), snap => {
       console.log('Joker updated:', snap.val());
       showJoker(snap.val());
     });
-    
+
   } catch (error) {
     console.error('Error joining room:', error);
     alert('Erreur lors de la connexion à la salle');
@@ -437,15 +475,20 @@ async function declare7N(room) {
   try {
     const handSnap = await get(ref(db, `rooms/${room}/hands/${playerId}`));
     const hand = handSnap.val() || [];
-    
+
     if (Rules.has7Naturel(hand)) {
-      await update(ref(db, `rooms/${room}/scores/${playerId}`), { $inc: 7 });
+      // Use transaction or a better update method for score increment
+      const scoreRef = ref(db, `rooms/${room}/scores/${playerId}`);
+      const currentScoreSnap = await get(scoreRef);
+      const currentScore = currentScoreSnap.val() || 0;
+      await set(scoreRef, currentScore + 7);
       alert('7 Naturel validé ! +7 points');
     } else {
       alert('Combinaison invalide pour 7 Naturel');
     }
   } catch (error) {
     console.error('Error declaring 7N:', error);
+    alert('Erreur lors de la déclaration du 7 Naturel');
   }
 }
 
@@ -453,15 +496,20 @@ async function declareWin(room) {
   try {
     const handSnap = await get(ref(db, `rooms/${room}/hands/${playerId}`));
     const hand = handSnap.val() || [];
-    
+
     if (Rules.validateWinHand(hand)) {
-      await update(ref(db, `rooms/${room}/scores/${playerId}`), { $inc: 10 });
+      // Use transaction or a better update method for score increment
+      const scoreRef = ref(db, `rooms/${room}/scores/${playerId}`);
+      const currentScoreSnap = await get(scoreRef);
+      const currentScore = currentScoreSnap.val() || 0;
+      await set(scoreRef, currentScore + 10);
       alert('Victoire validée ! +10 points');
     } else {
       alert('Combinaison invalide pour victoire');
     }
   } catch (error) {
     console.error('Error declaring win:', error);
+    alert('Erreur lors de la déclaration de victoire');
   }
 }
 
@@ -469,28 +517,24 @@ async function declareWin(room) {
 function init() {
   console.log('Initializing game...');
 
-    // Vérification des éléments DOM
-  if (!createRoomBtn || !joinRoomBtn) {
-    console.error("Boutons introuvables dans le DOM");
+  // Vérification des éléments DOM
+  if (!createRoomBtn || !joinRoomBtn || !drawCardBtn || !endTurnBtn || !declare7NBtn || !declareWinBtn) {
+    console.error("Un ou plusieurs boutons sont introuvables dans le DOM");
     return;
   }
 
-  // Initialisation des écouteurs
+  // Initialisation des écouteurs d'événements
   createRoomBtn.addEventListener("click", createRoom);
   joinRoomBtn.addEventListener("click", joinRoom);
-  
+  drawCardBtn.addEventListener("click", () => drawCard(currentRoom));
+  endTurnBtn.addEventListener("click", () => endTurn(currentRoom));
+  declare7NBtn.addEventListener("click", () => declare7N(currentRoom));
+  declareWinBtn.addEventListener("click", () => declareWin(currentRoom));
+
   // Activation des fonctionnalités
   enableDragDrop();
   enableCardDiscard();
-  
-  // Gestion des événements
-  createRoomBtn.onclick = createRoom;
-  joinRoomBtn.onclick = joinRoom;
-  drawCardBtn.onclick = () => drawCard(currentRoom);
-  endTurnBtn.onclick = () => endTurn(currentRoom);
-  declare7NBtn.onclick = () => declare7N(currentRoom);
-  declareWinBtn.onclick = () => declareWin(currentRoom);
-  
+
   console.log('Game initialized');
 }
 
