@@ -1,5 +1,7 @@
-import { db, ref, set, get, onValue } from './firebase.js';
+// game.js (version enrichie avec zone de dépôt + actions manuelles)
+import { db, ref, set, get, onValue, onDisconnect, push } from './firebase.js';
 
+// Références DOM
 const createRoomBtn = document.getElementById('createRoom');
 const joinRoomBtn = document.getElementById('joinRoom');
 const roomInput = document.getElementById('roomCodeInput');
@@ -9,12 +11,16 @@ const menuDiv = document.getElementById('menu');
 const playersDiv = document.getElementById('players');
 const drawCardBtn = document.getElementById('drawCard');
 const endTurnBtn = document.getElementById('endTurn');
+const handDiv = document.getElementById('hand');
+const declare7NBtn = document.getElementById('declare7N');
+const declareWinBtn = document.getElementById('declareWin');
+const dropZone = document.getElementById('dropZone');
 
+const pseudo = prompt("Entrez votre pseudo :") || 'Anonyme';
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
 let gameInitialized = false;
 
-// --- Création deck 104 cartes ---
 function createDeck() {
   const suits = ['Coeurs', 'Carreaux', 'Trèfles', 'Piques'];
   const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -39,127 +45,175 @@ function shuffleDeck(deck) {
 
 createRoomBtn.onclick = async () => {
   currentRoom = 'RAMI' + Math.floor(Math.random() * 1000);
-  await set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { ready: false });
-  launchGame(currentRoom);
+  await joinRoom(currentRoom);
+  initGameListeners(currentRoom);
 };
 
 joinRoomBtn.onclick = async () => {
-  currentRoom = roomInput.value.trim();
-  if (!currentRoom) return alert('Veuillez entrer un code de salle.');
-
-  await set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { ready: false });
-  launchGame(currentRoom);
+  const code = roomInput.value.trim();
+  if (!code) return alert('Veuillez entrer un code de salle.');
+  currentRoom = code;
+  await joinRoom(currentRoom);
+  initGameListeners(currentRoom);
 };
 
-function launchGame(roomCode) {
+async function joinRoom(roomCode) {
+  const playerRef = ref(db, `rooms/${roomCode}/players/${playerId}`);
+  await set(playerRef, { pseudo, ready: false });
+  onDisconnect(playerRef).remove();
+
   menuDiv.style.display = 'none';
   gameDiv.style.display = 'block';
-  status.innerText = `Connecté à la salle ${roomCode} en tant que ${playerId}`;
+  status.innerText = `Salle : ${roomCode} | Vous : ${pseudo}`;
+}
 
+function initGameListeners(roomCode) {
+  listenToPlayers(roomCode);
+  listenToTurn(roomCode);
+  listenToHand(roomCode);
+  setupActions(roomCode);
+}
+
+function listenToPlayers(roomCode) {
   const playersRef = ref(db, `rooms/${roomCode}/players`);
   onValue(playersRef, async snapshot => {
     const players = snapshot.val() || {};
-    playersDiv.innerHTML = '<h3>Joueurs dans la salle :</h3>';
-    for (let id in players) {
-      const p = document.createElement('p');
-      p.innerText = id === playerId ? id + ' (Moi)' : id;
-      playersDiv.appendChild(p);
-    }
+    playersDiv.innerHTML = '<h3>Joueurs :</h3>';
+    const playerOrder = Object.entries(players).map(([id, info]) => `${info.pseudo}${id === playerId ? ' (Moi)' : ''}`);
+    playersDiv.innerHTML += '<p>' + playerOrder.join(' → ') + '</p>';
 
-    // Distribution des cartes une seule fois
     if (!gameInitialized && Object.keys(players).length >= 2) {
       const handsSnap = await get(ref(db, `rooms/${roomCode}/hands`));
       if (!handsSnap.exists()) {
-        gameInitialized = true;
-        await dealCards(roomCode, Object.keys(players));
-        await startGame(roomCode, Object.keys(players));
+        const success = await dealCards(roomCode, Object.keys(players));
+        if (success) {
+          gameInitialized = true;
+          await startGame(roomCode, Object.keys(players));
+        }
       }
     }
   });
+}
 
+function listenToTurn(roomCode) {
   const currentTurnRef = ref(db, `rooms/${roomCode}/currentTurn`);
   onValue(currentTurnRef, snapshot => {
-    const currentPlayerTurn = snapshot.val();
-    status.innerText = `Connecté à la salle ${roomCode} en tant que ${playerId}\nC'est au tour de ${currentPlayerTurn}${currentPlayerTurn === playerId ? " (Moi)" : ""}`;
+    const currentPlayer = snapshot.val();
+    const turnText = currentPlayer === playerId ? "(Moi) ⭐ ← À vous de jouer !" : `Tour de : ${currentPlayer}`;
+    status.innerText = `Salle : ${roomCode} | Vous : ${pseudo} | ${turnText}`;
   });
+}
 
+function listenToHand(roomCode) {
   const handRef = ref(db, `rooms/${roomCode}/hands/${playerId}`);
   onValue(handRef, snapshot => {
     const hand = snapshot.val() || [];
-    const handDiv = document.getElementById('hand');
     handDiv.innerHTML = '<h3>Votre main :</h3>';
-    hand.forEach(card => {
-      const cardP = document.createElement('p');
-      cardP.innerText = `${card.rank} de ${card.suit}`;
-      handDiv.appendChild(cardP);
+
+    hand.forEach((card, index) => {
+      const cardEl = document.createElement('div');
+      cardEl.className = 'card';
+      cardEl.draggable = true;
+      cardEl.dataset.index = index;
+      cardEl.innerText = `${card.rank} de ${card.suit}`;
+      cardEl.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', index);
+      });
+      handDiv.appendChild(cardEl);
     });
+
+    // Générer les zones de dépôt
+    dropZone.innerHTML = '';
+    for (let i = 0; i < 14; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'drop-slot';
+      slot.dataset.index = i;
+      slot.ondragover = e => e.preventDefault();
+      slot.ondrop = e => {
+        const cardIndex = e.dataTransfer.getData('text/plain');
+        const card = hand[cardIndex];
+        slot.innerText = `${card.rank} de ${card.suit}`;
+      };
+      dropZone.appendChild(slot);
+    }
   });
+}
 
+function setupActions(roomCode) {
   drawCardBtn.onclick = async () => {
-    const turnSnap = await get(ref(db, `rooms/${currentRoom}/currentTurn`));
-    if (turnSnap.val() !== playerId) {
-      alert("Ce n'est pas votre tour !");
-      return;
-    }
+    const turnSnap = await get(ref(db, `rooms/${roomCode}/currentTurn`));
+    if (turnSnap.val() !== playerId) return alert("Ce n'est pas votre tour !");
 
-    const deckSnap = await get(ref(db, `rooms/${currentRoom}/deck`));
+    const deckSnap = await get(ref(db, `rooms/${roomCode}/deck`));
     const deck = deckSnap.val();
-
-    if (!deck || deck.length === 0) {
-      alert("Plus de cartes à piocher !");
-      return;
-    }
+    if (!deck || deck.length === 0) return alert("Plus de cartes disponibles !");
 
     const drawnCard = deck[0];
     const newDeck = deck.slice(1);
-    await set(ref(db, `rooms/${currentRoom}/deck`), newDeck);
+    await set(ref(db, `rooms/${roomCode}/deck`), newDeck);
 
-    const handRef = ref(db, `rooms/${currentRoom}/hands/${playerId}`);
-    const handSnap = await get(handRef);
+    const handSnap = await get(ref(db, `rooms/${roomCode}/hands/${playerId}`));
     const hand = handSnap.val() || [];
     hand.push(drawnCard);
-    await set(handRef, hand);
-
-    alert(`Vous avez pioché : ${drawnCard.rank} de ${drawnCard.suit}`);
+    await set(ref(db, `rooms/${roomCode}/hands/${playerId}`), hand);
   };
 
   endTurnBtn.onclick = async () => {
-    const turnSnap = await get(ref(db, `rooms/${currentRoom}/currentTurn`));
-    if (turnSnap.val() !== playerId) {
-      alert("Ce n'est pas votre tour !");
-      return;
-    }
-    const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
+    const playersSnap = await get(ref(db, `rooms/${roomCode}/players`));
     const players = Object.keys(playersSnap.val() || {});
-    if (players.length === 0) return;
+    if (players.length < 2) return;
 
-    const currentIndex = players.indexOf(playerId);
+    const currentSnap = await get(ref(db, `rooms/${roomCode}/currentTurn`));
+    const currentIndex = players.indexOf(currentSnap.val());
     const nextIndex = (currentIndex + 1) % players.length;
-    await set(ref(db, `rooms/${currentRoom}/currentTurn`), players[nextIndex]);
+    await set(ref(db, `rooms/${roomCode}/currentTurn`), players[nextIndex]);
+  };
+
+  declare7NBtn.onclick = () => {
+    push(ref(db, `rooms/${roomCode}/actions`), {
+      type: '7N_DECLARED',
+      playerId,
+      pseudo,
+      timestamp: Date.now()
+    });
+    alert("Vous avez déclaré un 7 naturel !");
+  };
+
+  declareWinBtn.onclick = () => {
+    push(ref(db, `rooms/${roomCode}/actions`), {
+      type: 'VICTORY_DECLARED',
+      playerId,
+      pseudo,
+      timestamp: Date.now()
+    });
+    alert("Vous avez déclaré la fin de la manche !");
   };
 }
 
-// Distribuer les cartes + créer le deck
 async function dealCards(roomCode, players) {
-  let deck = shuffleDeck(createDeck());
+  const deck = shuffleDeck(createDeck());
+  if (players.length * 13 > deck.length) {
+    alert("Trop de joueurs pour la taille du deck !");
+    return false;
+  }
+
   let index = 0;
   for (const pId of players) {
     const playerCards = deck.slice(index, index + 13);
-    index += 13;
     await set(ref(db, `rooms/${roomCode}/hands/${pId}`), playerCards);
+    index += 13;
   }
+
   const remainingDeck = deck.slice(index);
   await set(ref(db, `rooms/${roomCode}/deck`), remainingDeck);
+  await set(ref(db, `rooms/${roomCode}/discardPile`), []);
+  return true;
 }
 
-// Lancer la partie (donner le tour à un joueur au hasard)
 async function startGame(roomCode, players) {
-  if (players.length === 0) return;
   const firstPlayer = players[Math.floor(Math.random() * players.length)];
   await set(ref(db, `rooms/${roomCode}/currentTurn`), firstPlayer);
 }
 
-// ✅ Rendre dispo dans la console pour debug manuel
 window.dealCards = dealCards;
 window.startGame = startGame;
-
