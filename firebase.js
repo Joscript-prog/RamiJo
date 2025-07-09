@@ -1,5 +1,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, get, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  onValue,
+  onDisconnect
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDnMUxn4llJdeeKWVCt-8Z4YP0rrv5BOZM",
@@ -11,7 +18,9 @@ const firebaseConfig = {
   appId: "1:521757798474:web:db77e704d36990a1d0b6b3"
 };
 
+// Initialise Firebase app et base de données
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+// Export des fonctions nécessaires, dont onDisconnect
 export { db, ref, set, get, onValue, onDisconnect };
