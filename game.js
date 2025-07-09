@@ -56,7 +56,7 @@ function createDeck() {
     'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'
   ];
   let deck = [];
-  for (let d = 0; d < 2; d++) {
+  for (let d = 0; d < 2; d++) { // Two decks
     suits.forEach(s => ranks.forEach(r => {
       const value = r === 'A' ? 1 : r === 'J' ? 11 : r === 'Q' ? 12 : r === 'K' ? 13 : parseInt(r);
       deck.push({
@@ -84,11 +84,12 @@ function shuffle(deck) {
 async function dealCards(room, players) {
   let deck = shuffle(createDeck());
   const jokerCard = deck.splice(Math.floor(Math.random() * deck.length), 1)[0];
+  // Determine joker set (all cards with same value, different colors)
   const jokerSet = deck.filter(c => c.value === jokerCard.value && c.color !== jokerCard.color).map(c => c.id);
 
   await Promise.all([
     set(ref(db, `rooms/${room}/jokerSet`), {
-      jokerSet
+      jokerSet // Store the IDs of the joker cards
     }),
     set(ref(db, `rooms/${room}/jokerCard`), jokerCard)
   ]);
@@ -97,10 +98,10 @@ async function dealCards(room, players) {
   for (const p of players) {
     const hand = deck.slice(idx, idx + 13);
     await set(ref(db, `rooms/${room}/hands/${p}`), hand);
-    await set(ref(db, `rooms/${room}/discard/${p}`), []);
+    await set(ref(db, `rooms/${room}/discard/${p}`), []); // Initialize player's discard pile
     idx += 13;
   }
-  await set(ref(db, `rooms/${room}/deck`), deck.slice(idx));
+  await set(ref(db, `rooms/${room}/deck`), deck.slice(idx)); // Remaining deck
 }
 
 function showJoker(jokerCard) {
@@ -117,6 +118,13 @@ function showJoker(jokerCard) {
 }
 
 // --- DOM & État ---
+// Define player-specific variables FIRST
+const pseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
+const playerId = 'player_' + Math.floor(Math.random() * 10000); // Corrected: playerId is defined here!
+let currentRoom = '';
+let hasDrawnOrPicked = false; // Flag to track if a card has been drawn/picked this turn
+
+// Now, it's safe to use playerId for DOM element selection if needed
 const createRoomBtn = document.getElementById('createRoom');
 const joinRoomBtn = document.getElementById('joinRoom');
 const roomInput = document.getElementById('roomCodeInput');
@@ -130,14 +138,11 @@ const declare7NBtn = document.getElementById('declare7N');
 const declareWinBtn = document.getElementById('declareWin');
 const menuDiv = document.getElementById('menu');
 const gameDiv = document.getElementById('game');
-// New DOM element for the current player's discard pile (for interaction)
-const playerDiscardPileDiv = document.getElementById(`discard-${playerId}`);
 
+// Removed playerDiscardPileDiv constant here as it's not universally needed
+// The clickability is handled by iterating through all player discard piles
+// in `enableDiscardPileInteraction` and `listenTurn`.
 
-const pseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
-const playerId = 'player_' + Math.floor(Math.random() * 10000);
-let currentRoom = '';
-let hasDrawnOrPicked = false; // Renamed from hasDiscarded to better reflect action taken
 
 // --- UI Helpers ---
 function showPopup(content) {
@@ -161,6 +166,8 @@ function enableDragDrop() {
       console.log('Card moved from', evt.oldIndex, 'to', evt.newIndex);
       // For a real game, you'd update the hand order in the database here
       // For now, this just logs the client-side reordering
+      // If you want to save hand order, you'd need to re-read children from playerHandDiv
+      // and then update the 'hands' path in Firebase for this player.
     }
   });
 }
@@ -180,6 +187,7 @@ function renderPlayers(players) {
     playersDiv.append(badge);
   });
   // Re-enable discard pile listener after re-rendering players to ensure clickability
+  // This is called here and in `listenTurn` to ensure it's always active when needed
   enableDiscardPileInteraction();
 }
 
@@ -206,52 +214,61 @@ function listenTurn(room) {
   onValue(ref(db, `rooms/${room}/turn`), snap => {
     const turn = snap.val();
     const myTurn = turn === playerId;
-    // Disable draw/take options until a card is picked or drawn
+
+    // Reset draw/pick state at the start of YOUR turn
+    if (myTurn) {
+      hasDrawnOrPicked = false;
+    }
+
+    // Disable all discard piles by default at the start of any turn update
+    // Then re-enable specifically the relevant one if it's my turn
+    document.querySelectorAll('.mini-discard').forEach(pileDiv => {
+      pileDiv.style.pointerEvents = 'none'; // Disable all by default
+      pileDiv.classList.remove('clickable-discard'); // Remove visual feedback
+    });
+
+    // Control buttons based on turn and action taken
     drawCardBtn.disabled = !myTurn || hasDrawnOrPicked;
-    // End turn button enabled only if it's my turn and a card has been picked/drawn AND discarded
-    endTurnBtn.disabled = !myTurn || !hasDrawnOrPicked;
+    endTurnBtn.disabled = !myTurn || !hasDrawnOrPicked; // End turn enabled only if a card has been picked/drawn AND a discard has occurred (handled by `enablePlayerHandDiscard` which calls `endTurn`).
     declare7NBtn.disabled = !myTurn;
     declareWinBtn.disabled = !myTurn;
 
-    // Logic for enabling discard pile interactions for the current player
-    const allDiscardPiles = document.querySelectorAll('.mini-discard');
-    allDiscardPiles.forEach(pileDiv => {
-      pileDiv.style.pointerEvents = 'none'; // Disable all by default
-    });
 
     if (myTurn) {
-      hasDrawnOrPicked = false; // Reset flag at the start of the turn
-      drawCardBtn.disabled = false; // Enable draw by default
-      endTurnBtn.disabled = true; // Disable end turn until action taken
+      status.textContent = "⭐ C'est votre tour !";
 
-      // Find the previous player's discard pile and enable it
-      onValue(ref(db, `rooms/${room}/state/lastDiscarder`), (discarderSnap) => {
-        const lastDiscarderId = discarderSnap.val();
-        if (lastDiscarderId && lastDiscarderId !== playerId) { // Ensure it's not my own pile
-          const prevPlayerDiscardDiv = document.getElementById(`discard-${lastDiscarderId}`);
-          if (prevPlayerDiscardDiv) {
-            prevPlayerDiscardDiv.style.pointerEvents = 'auto'; // Enable interaction
-            prevPlayerDiscardDiv.classList.add('clickable-discard'); // Add a class for visual feedback
+      // Enable previous player's discard pile if it's my turn and I haven't drawn/picked yet
+      if (!hasDrawnOrPicked) {
+        onValue(ref(db, `rooms/${room}/state/lastDiscarder`), (discarderSnap) => {
+          const lastDiscarderId = discarderSnap.val();
+          // Ensure it's not my own pile and there was actually a last discarder
+          if (lastDiscarderId && lastDiscarderId !== playerId) {
+            const prevPlayerDiscardDiv = document.getElementById(`discard-${lastDiscarderId}`);
+            if (prevPlayerDiscardDiv) {
+              prevPlayerDiscardDiv.style.pointerEvents = 'auto'; // Enable interaction
+              prevPlayerDiscardDiv.classList.add('clickable-discard'); // Add a class for visual feedback
+            }
           }
-        }
-      }, { onlyOnce: true }); // Listen once to get the last discarder
+        }, { onlyOnce: true }); // Listen once to get the last discarder
+      }
+
     } else {
-      // If it's not my turn, ensure my discard pile is not clickable
+      status.textContent = "En attente...";
+      // If it's not my turn, ensure my discard pile is not clickable for picking
       const myDiscardPileDiv = document.getElementById(`discard-${playerId}`);
       if (myDiscardPileDiv) {
         myDiscardPileDiv.style.pointerEvents = 'none';
         myDiscardPileDiv.classList.remove('clickable-discard');
       }
     }
-    status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente...";
   });
 }
 
 async function endTurn(room) {
-  if (!hasDrawnOrPicked) { // hasDrawnOrPicked should be true if a card was drawn or picked
-    alert("Vous devez piocher/prendre une carte ET défausser une carte pour terminer votre tour.");
-    return;
-  }
+  // This check is now mostly handled by button disabled state, but good for backend logic
+  // A discard implies hasDrawnOrPicked is true, and the discard function calls endTurn.
+  // So, if endTurn is manually called, it means a card has been drawn/picked AND discarded.
+  
   const playersSnap = await get(ref(db, `rooms/${room}/players`));
   const ids = Object.keys(playersSnap.val() || {});
   const turnSnap = await get(ref(db, `rooms/${room}/turn`));
@@ -263,7 +280,8 @@ async function endTurn(room) {
     set(ref(db, `rooms/${room}/turn`), next),
     update(ref(db, `rooms/${room}/state`), { drawCount: 0, lastDiscarder: currentTurnPlayerId }) // Store who discarded last
   ]);
-  hasDrawnOrPicked = false; // Reset for the next turn
+  // hasDrawnOrPicked will be reset at the start of the *next* player's turn in listenTurn
+  // No need to reset here, as this function completes the *current* player's turn.
 }
 
 function listenDiscard(room) {
@@ -278,7 +296,9 @@ function listenDiscard(room) {
             ${pile[pile.length - 1].rank}
           </div>
         ` : '';
-        // If it's another player's discard pile, ensure it's not clickable unless it's their turn to be picked from
+
+        // If it's another player's discard pile, ensure it's not clickable by default
+        // unless explicitly enabled by the turn logic (see `listenTurn` and `handleDiscardPileClick`).
         if (pid !== playerId) {
           z.style.pointerEvents = 'none';
           z.classList.remove('clickable-discard');
@@ -305,7 +325,18 @@ function renderHand(hand) {
   hand.forEach(c => {
     const div = document.createElement('div');
     div.className = `card ${c.color}`;
-    div.textContent = c.rank + c.symbol;
+    // Improved card display with rank and suit symbol, and proper HTML structure
+    div.innerHTML = `
+      <div class="corner top">
+        <span class="rank">${c.rank}</span>
+        <span class="suit">${c.symbol}</span>
+      </div>
+      <div class="suit main">${c.symbol}</div>
+      <div class="corner bottom">
+        <span class="rank">${c.rank}</span>
+        <span class="suit">${c.symbol}</span>
+      </div>
+    `;
     div.dataset.cardId = c.id;
     div.title = `${c.rank} de ${c.suit}`; // Tooltip
     playerHandDiv.append(div);
@@ -315,11 +346,16 @@ function renderHand(hand) {
 // --- Pioche du talon ---
 async function drawCard(room) {
   try {
+    const turnSnapshot = await get(ref(db, `rooms/${room}/turn`));
+    const currentTurnPlayerId = turnSnapshot.val();
+    if (currentTurnPlayerId !== playerId) {
+      alert("Ce n'est pas votre tour de piocher.");
+      return;
+    }
+
     const stateRef = ref(db, `rooms/${room}/state`);
     const stateSnapshot = await get(stateRef);
-    const state = stateSnapshot.val() || {
-      drawCount: 0
-    };
+    const state = stateSnapshot.val() || { drawCount: 0 };
 
     if (state.drawCount >= 1) {
       alert('Vous avez déjà pioché ou pris une carte ce tour.');
@@ -343,10 +379,10 @@ async function drawCard(room) {
       return;
     }
 
-    const card = deck.shift();
+    const card = deck.shift(); // Take card from top of the deck
     hand.push(card);
 
-    // Vérifie et défausse automatiquement le joker si nécessaire
+    // Vérifie et défausse automatiquement le joker si nécessaire (rare edge case)
     if (deck.length <= players.length && hand.some(c => jokerSet.includes(c.id))) {
       const idx = hand.findIndex(c => jokerSet.includes(c.id));
       if (idx !== -1) {
@@ -360,14 +396,18 @@ async function drawCard(room) {
     }
 
     state.drawCount = (state.drawCount || 0) + 1;
-    hasDrawnOrPicked = true; // Mark that a card has been drawn/picked
+    hasDrawnOrPicked = true; // Mark that a card has been drawn
 
     await Promise.all([
       set(ref(db, `rooms/${room}/deck`), deck),
       set(ref(db, `rooms/${room}/hands/${playerId}`), hand),
       set(stateRef, state)
     ]);
-    drawCardBtn.disabled = true; // Disable draw button after drawing/picking
+
+    drawCardBtn.disabled = true; // Disable draw button after drawing
+    // Enable other player's discard piles for potential picking if they are the last discarder
+    enableDiscardPileInteraction();
+
   } catch (error) {
     console.error('Erreur lors de la pioche :', error);
     alert("Une erreur est survenue lors de la pioche");
@@ -375,26 +415,31 @@ async function drawCard(room) {
 }
 
 // --- Prendre la carte de la défausse ---
-async function takeDiscardedCard(targetDiscardPileId) {
+async function takeDiscardedCard(targetDiscardPileOwnerId) {
   try {
     const turnSnapshot = await get(ref(db, `rooms/${currentRoom}/turn`));
     const currentTurnPlayerId = turnSnapshot.val();
 
-    if (currentTurnPlayerId !== playerId || hasDrawnOrPicked) {
-      console.log('Not your turn or already drawn/picked, cannot take from discard.');
+    if (currentTurnPlayerId !== playerId) {
+      alert("Ce n'est pas votre tour de prendre de la défausse.");
       return;
     }
 
-    const stateRef = ref(db, `rooms/${currentRoom}/state`);
-    const stateSnapshot = await get(stateRef);
-    const state = stateSnapshot.val() || { drawCount: 0 };
-
-    if (state.drawCount >= 1) {
+    if (hasDrawnOrPicked) {
       alert('Vous avez déjà pioché ou pris une carte ce tour.');
       return;
     }
 
-    const discardRef = ref(db, `rooms/${currentRoom}/discard/${targetDiscardPileId}`);
+    // Only allow picking from the last discarder's pile
+    const lastDiscarderSnapshot = await get(ref(db, `rooms/${currentRoom}/state/lastDiscarder`));
+    const lastDiscarder = lastDiscarderSnapshot.val();
+    if (targetDiscardPileOwnerId !== lastDiscarder) {
+      alert("Vous ne pouvez prendre une carte que de la dernière défausse.");
+      return;
+    }
+
+
+    const discardRef = ref(db, `rooms/${currentRoom}/discard/${targetDiscardPileOwnerId}`);
     const discardPileSnap = await get(discardRef);
     const discardPile = discardPileSnap.val() || [];
 
@@ -410,18 +455,22 @@ async function takeDiscardedCard(targetDiscardPileId) {
     const hand = handSnap.val() || [];
     hand.push(cardToTake);
 
-    state.drawCount = (state.drawCount || 0) + 1;
-    hasDrawnOrPicked = true; // Mark that a card has been drawn/picked
+    const stateRef = ref(db, `rooms/${currentRoom}/state`);
+    const stateSnapshot = await get(stateRef);
+    const state = stateSnapshot.val() || { drawCount: 0 };
+    state.drawCount = (state.drawCount || 0) + 1; // Increment drawCount for taking from discard
+
+    hasDrawnOrPicked = true; // Mark that a card has been picked
 
     await Promise.all([
-      set(discardRef, discardPile), // Update the discard pile
+      set(discardRef, discardPile), // Update the source discard pile
       set(handRef, hand), // Add card to hand
-      set(stateRef, state)
+      set(stateRef, state) // Update game state
     ]);
 
-    alert(`Vous avez pris le ${cardToTake.rank}${cardToTake.symbol} de la défausse !`);
+    alert(`Vous avez pris le ${cardToTake.rank}${cardToTake.symbol} de la défausse de ${targetDiscardPileOwnerId}!`);
     drawCardBtn.disabled = true; // Disable draw button after drawing/picking
-    // Disable the clickable state on all discard piles
+    // Disable all clickable discard piles after taking a card
     document.querySelectorAll('.clickable-discard').forEach(pile => {
       pile.classList.remove('clickable-discard');
       pile.style.pointerEvents = 'none';
@@ -434,7 +483,8 @@ async function takeDiscardedCard(targetDiscardPileId) {
 }
 
 // --- Défausse manuelle ---
-function enablePlayerHandDiscard() {
+// Renamed function for clarity
+function setupPlayerHandDiscardListener() {
   playerHandDiv.addEventListener('click', async e => {
     console.log('Click event on hand');
     const cardEl = e.target.closest('.card');
@@ -452,12 +502,11 @@ function enablePlayerHandDiscard() {
       return;
     }
     
-    // Allow discard only if a card has been drawn or picked this turn AND not yet discarded
+    // Allow discard only if a card has been drawn or picked this turn
     if (!hasDrawnOrPicked) {
         alert("Vous devez piocher une carte ou prendre de la défausse avant de défausser.");
         return;
     }
-
 
     const cardId = cardEl.dataset.cardId;
     console.log('Attempting to discard card:', cardId);
@@ -473,11 +522,11 @@ function enablePlayerHandDiscard() {
       }
 
       const card = hand[cardIndex];
-      const newHand = hand.filter(c => c.id !== cardId);
+      const newHand = hand.filter(c => c.id !== cardId); // Remove card from hand
 
       const discardRef = ref(db, `rooms/${currentRoom}/discard/${playerId}`);
       const discardPile = (await get(discardRef)).val() || [];
-      discardPile.push(card);
+      discardPile.push(card); // Add card to *my* discard pile
 
       await Promise.all([
         set(handRef, newHand),
@@ -485,10 +534,11 @@ function enablePlayerHandDiscard() {
       ]);
 
       console.log('Card discarded successfully');
-      hasDrawnOrPicked = true; // Still true, but implies the discard happened
-      endTurnBtn.disabled = false; // Enable end turn button
-      drawCardBtn.disabled = true; // Ensure draw button is disabled after discarding
-      // After discarding, it's now time to end the turn, not to allow more actions.
+      // After successfully discarding, it's the end of the turn
+      endTurnBtn.disabled = false; // Make sure the button is enabled for visual feedback, though it will be clicked immediately
+      drawCardBtn.disabled = true; // Ensure draw button remains disabled
+      
+      // Automatically end turn after a successful discard
       await endTurn(currentRoom);
 
     } catch (error) {
@@ -500,6 +550,8 @@ function enablePlayerHandDiscard() {
 
 // Enable interaction for all player discard piles (except current player's own)
 function enableDiscardPileInteraction() {
+    // This function sets up click listeners for the *other* players' discard piles.
+    // It is called whenever players are rendered or turn state changes.
     onValue(ref(db, `rooms/${currentRoom}/players`), (playersSnap) => {
         const players = playersSnap.val() || {};
         Object.keys(players).forEach(pId => {
@@ -518,21 +570,25 @@ async function handleDiscardPileClick(e) {
   const discardPileEl = e.currentTarget;
   const discardPileOwnerId = discardPileEl.id.replace('discard-', '');
 
-  // Only allow picking if it's the previous player's discard pile and it's my turn
   const turnSnapshot = await get(ref(db, `rooms/${currentRoom}/turn`));
   const currentTurnPlayerId = turnSnapshot.val();
 
   const lastDiscarderSnapshot = await get(ref(db, `rooms/${currentRoom}/state/lastDiscarder`));
   const lastDiscarder = lastDiscarderSnapshot.val();
 
-  if (currentTurnPlayerId === playerId && !hasDrawnOrPicked && discardPileOwnerId === lastDiscarder) {
-    await takeDiscardedCard(discardPileOwnerId);
-  } else if (currentTurnPlayerId === playerId && hasDrawnOrPicked) {
+  if (currentTurnPlayerId === playerId) {
+    if (!hasDrawnOrPicked) {
+      // Check if the clicked pile belongs to the last discarder
+      if (discardPileOwnerId === lastDiscarder) {
+        await takeDiscardedCard(discardPileOwnerId);
+      } else {
+        alert("Vous ne pouvez prendre une carte que de la dernière défausse.");
+      }
+    } else {
       alert("Vous avez déjà pioché ou pris une carte ce tour. Défaussez une carte de votre main.");
-  } else if (currentTurnPlayerId !== playerId) {
-      alert("Ce n'est pas votre tour.");
+    }
   } else {
-      alert("Vous ne pouvez pas prendre cette carte pour le moment.");
+    alert("Ce n'est pas votre tour.");
   }
 }
 
@@ -556,6 +612,8 @@ async function createRoom() {
       set(ref(db, `rooms/${currentRoom}/turn`), playerId)
     ]);
 
+    // Distribute cards after setting up initial room state
+    // This function will also initialize deck, joker, and player hands/discards in DB
     await dealCards(currentRoom, [playerId]);
 
     menuDiv.style.display = 'none';
@@ -595,13 +653,20 @@ async function joinRoom() {
     currentRoom = code;
     console.log('Joining room:', currentRoom);
 
+    const roomExistsSnap = await get(ref(db, `rooms/${currentRoom}`));
+    if (!roomExistsSnap.exists()) {
+        alert("Cette salle n'existe pas.");
+        return;
+    }
+
     await Promise.all([
       set(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
         pseudo
       }),
       set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0),
-      // Update state, but don't reset drawCount if game is already in progress
-      update(ref(db, `rooms/${currentRoom}/state`), { drawCount: 0 })
+      // Update state, but don't reset drawCount if game is already in progress.
+      // This is for new players joining, not resetting game for existing ones.
+      update(ref(db, `rooms/${currentRoom}/state`), { drawCount: 0 }) // Reset for *this* player's state
     ]);
 
     menuDiv.style.display = 'none';
@@ -631,6 +696,11 @@ async function joinRoom() {
 // --- Déclarations de victoire ---
 async function declare7N(room) {
   try {
+    const turnSnapshot = await get(ref(db, `rooms/${room}/turn`));
+    if (turnSnapshot.val() !== playerId) {
+        alert("Vous ne pouvez déclarer que pendant votre tour.");
+        return;
+    }
     const handSnap = await get(ref(db, `rooms/${room}/hands/${playerId}`));
     const hand = handSnap.val() || [];
 
@@ -651,6 +721,11 @@ async function declare7N(room) {
 
 async function declareWin(room) {
   try {
+    const turnSnapshot = await get(ref(db, `rooms/${room}/turn`));
+    if (turnSnapshot.val() !== playerId) {
+        alert("Vous ne pouvez déclarer que pendant votre tour.");
+        return;
+    }
     const handSnap = await get(ref(db, `rooms/${room}/hands/${playerId}`));
     const hand = handSnap.val() || [];
 
@@ -660,6 +735,7 @@ async function declareWin(room) {
       const currentScore = currentScoreSnap.val() || 0;
       await set(scoreRef, currentScore + 10);
       alert('Victoire validée ! +10 points');
+      // Optionally end game or reset round here
     } else {
       alert('Combinaison invalide pour victoire');
     }
@@ -675,7 +751,7 @@ function init() {
 
   // Vérification des éléments DOM
   if (!createRoomBtn || !joinRoomBtn || !drawCardBtn || !endTurnBtn || !declare7NBtn || !declareWinBtn) {
-    console.error("Un ou plusieurs boutons sont introuvables dans le DOM");
+    console.error("Un ou plusieurs boutons sont introuvables dans le DOM. Vérifiez votre HTML.");
     return;
   }
 
@@ -683,15 +759,17 @@ function init() {
   createRoomBtn.addEventListener("click", createRoom);
   joinRoomBtn.addEventListener("click", joinRoom);
   drawCardBtn.addEventListener("click", () => drawCard(currentRoom));
-  // Note: endTurnBtn.onclick is handled by enablePlayerHandDiscard now
+  // The endTurn button will be clicked by the discard function, so no direct listener needed here for now
+  // If you want a dedicated end turn button, you'd add: endTurnBtn.addEventListener("click", () => endTurn(currentRoom));
   declare7NBtn.addEventListener("click", () => declare7N(currentRoom));
   declareWinBtn.addEventListener("click", () => declareWin(currentRoom));
 
   // Activation des fonctionnalités
   enableDragDrop();
-  enablePlayerHandDiscard(); // Renamed function
+  setupPlayerHandDiscardListener(); // Updated function name for clarity
 
   console.log('Game initialized');
 }
 
+// This ensures init() runs once the entire page (including all DOM elements) has loaded
 window.addEventListener('load', init);
