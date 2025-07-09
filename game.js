@@ -29,6 +29,7 @@ createRoomBtn.onclick = async () => {
   currentRoom = 'RAMI' + Math.floor(Math.random() * 1000);
   await joinRoom(currentRoom);
   initGameListeners(currentRoom);
+  alert(`Code de la salle : ${currentRoom}`);
 };
 
 joinRoomBtn.onclick = async () => {
@@ -44,8 +45,8 @@ async function joinRoom(roomCode) {
   await set(playerRef, { pseudo });
   onDisconnect(playerRef).remove();
 
-  menuDiv.style.display = 'none';
-  gameDiv.style.display = 'block';
+  if (menuDiv) menuDiv.style.display = 'none';
+  if (gameDiv) gameDiv.style.display = 'block';
   status.innerText = `Salle : ${roomCode} | Vous : ${pseudo}`;
 }
 
@@ -127,7 +128,6 @@ function executeUIState(turn) {
     drawCardBtn.disabled = hand.length !== 13;
     takeDiscardBtn.disabled = hand.length !== 13;
 
-    // Fin de tour activée seulement si main = 13 (pioche et défausse faites)
     endTurnBtn.disabled = !(hand.length === 13);
   });
 }
@@ -201,7 +201,6 @@ async function endTurn(room) {
 }
 
 async function declare7N(room) {
-  // Le joueur doit être en son tour
   const turn = (await get(ref(db, `rooms/${room}/currentTurn`))).val();
   if (turn !== playerId) return alert("Ce n'est pas ton tour !");
   await push(ref(db, `rooms/${room}/actions`), { playerId, type: '7N' });
@@ -218,17 +217,12 @@ async function processWin(winner) {
   const room = currentRoom;
   const actions = await get(ref(db, `rooms/${room}/actions`));
   const has7N = Object.values(actions.val() || {}).some(a => a.playerId === winner && a.type === '7N');
-  // Calcul du score
-  let pts = 1;      // Par défaut 1 point au gagnant
-  if (has7N) pts += 0.5; // +0.5 si 7 Naturel déclaré
-
-  // Mise à jour du score
+  let pts = 1;
+  if (has7N) pts += 0.5;
   const scrRef = ref(db, `rooms/${room}/scores/${winner}`);
   const cur = (await get(scrRef)).val() || 0;
   await set(scrRef, cur + pts);
-
   showNotification(`Victoire de ${winner} : +${pts} pt(s)`);
-
   await resetGame(room);
 }
 
@@ -241,13 +235,11 @@ async function resetGame(room) {
   await set(ref(db, `rooms/${room}/deck`), null);
   await set(ref(db, `rooms/${room}/currentTurn`), null);
   await set(ref(db, `rooms/${room}/actions`), null);
-
   showStatus('Partie terminée. Rejoignez ou créez une nouvelle partie.');
   gameInitialized = false;
   jokerCard = null;
 }
 
-// --- Création & Mélange du deck ---
 function createDeck() {
   const suits = [
     { name: 'Coeurs', symbol: '♥', color: 'red' },
@@ -256,33 +248,16 @@ function createDeck() {
     { name: 'Piques', symbol: '♠', color: 'black' }
   ];
   const ranks = [
-    { symbol: 'A', value: 1 },
-    { symbol: '2', value: 2 },
-    { symbol: '3', value: 3 },
-    { symbol: '4', value: 4 },
-    { symbol: '5', value: 5 },
-    { symbol: '6', value: 6 },
-    { symbol: '7', value: 7 },
-    { symbol: '8', value: 8 },
-    { symbol: '9', value: 9 },
-    { symbol: '10', value: 10 },
-    { symbol: 'J', value: 11 },
-    { symbol: 'Q', value: 12 },
-    { symbol: 'K', value: 13 }
+    { symbol: 'A', value: 1 }, { symbol: '2', value: 2 }, { symbol: '3', value: 3 },
+    { symbol: '4', value: 4 }, { symbol: '5', value: 5 }, { symbol: '6', value: 6 },
+    { symbol: '7', value: 7 }, { symbol: '8', value: 8 }, { symbol: '9', value: 9 },
+    { symbol: '10', value: 10 }, { symbol: 'J', value: 11 }, { symbol: 'Q', value: 12 }, { symbol: 'K', value: 13 }
   ];
-
   let deck = [];
   for (let d = 0; d < 2; d++) {
     for (const suit of suits) {
       for (const rank of ranks) {
-        deck.push({
-          suit: suit.name,
-          symbol: suit.symbol,
-          color: suit.color,
-          rank: rank.symbol,
-          value: rank.value,
-          id: `${rank.symbol}${suit.symbol}${d}`
-        });
+        deck.push({ suit: suit.name, symbol: suit.symbol, color: suit.color, rank: rank.symbol, value: rank.value, id: `${rank.symbol}${suit.symbol}${d}` });
       }
     }
   }
@@ -298,26 +273,16 @@ function shuffleDeck(deck) {
   return shuffled;
 }
 
-// --- Tirage aléatoire du joker ---
 function drawJoker(deck) {
-  // Tirer au hasard une carte dans le deck
   const randomIndex = Math.floor(Math.random() * deck.length);
   return deck[randomIndex];
 }
 
-// --- Distribution des cartes ---
 async function dealCards(roomCode, players) {
   let deck = shuffleDeck(createDeck());
-
-  // Tirage joker aléatoire au début de la partie
   jokerCard = drawJoker(deck);
   await set(ref(db, `rooms/${roomCode}/joker`), jokerCard);
-
-  if (players.length * 13 > deck.length) {
-    alert("Trop de joueurs pour la taille du deck !");
-    return false;
-  }
-
+  if (players.length * 13 > deck.length) return alert("Trop de joueurs pour la taille du deck !");
   let index = 0;
   for (const pId of players) {
     const playerCards = deck.slice(index, index + 13);
@@ -325,16 +290,13 @@ async function dealCards(roomCode, players) {
     await set(ref(db, `rooms/${roomCode}/discard/${pId}`), []);
     index += 13;
   }
-
   const remainingDeck = deck.slice(index);
   await set(ref(db, `rooms/${roomCode}/deck`), remainingDeck);
-
   return true;
 }
 
-// --- Messages et notifications ---
 function showStatus(message) {
-  status.innerText = message;
+  if (status) status.innerText = message;
 }
 
 function showNotification(message) {
@@ -342,21 +304,16 @@ function showNotification(message) {
   notification.className = 'notification';
   notification.textContent = message;
   document.body.appendChild(notification);
-
-  setTimeout(() => {
-    notification.classList.add('show');
-  }, 10);
-
+  setTimeout(() => { notification.classList.add('show'); }, 10);
   setTimeout(() => {
     notification.classList.remove('show');
     setTimeout(() => notification.remove(), 500);
   }, 3000);
 }
 
-// --- Initialisation ---
 function init() {
-  menuDiv.style.display = 'block';
-  gameDiv.style.display = 'none';
+  if (menuDiv) menuDiv.style.display = 'block';
+  if (gameDiv) gameDiv.style.display = 'none';
   drawCardBtn.disabled = true;
   takeDiscardBtn.disabled = true;
   endTurnBtn.disabled = true;
