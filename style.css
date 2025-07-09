@@ -196,8 +196,8 @@ body {
 }
 
 /* Notifications */
-.notification { /* on laisse défini dans CSS global */ }
-.notification.show { /* idem */ }
+.notification { /* conservé du global */ }
+.notification.show { /* conservé */ }
 
 /* Responsive basique */
 @media (max-width:768px) {
