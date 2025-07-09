@@ -12,6 +12,7 @@ const endTurnBtn = document.getElementById('endTurn');
 
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
+let gameInitialized = false; // <== IMPORTANT
 
 // --- Création deck 104 cartes ---
 function createDeck() {
@@ -28,7 +29,6 @@ function createDeck() {
   return deck;
 }
 
-// --- Mélange du deck ---
 function shuffleDeck(deck) {
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -66,24 +66,23 @@ function launchGame(roomCode) {
       playersDiv.appendChild(p);
     }
 
-    // Dès qu'il y a au moins 2 joueurs, distribuer les cartes si pas déjà fait
-    if (Object.keys(players).length >= 2) {
+    // Distribution des cartes une seule fois
+    if (!gameInitialized && Object.keys(players).length >= 2) {
       const handsSnap = await get(ref(db, `rooms/${roomCode}/hands`));
       if (!handsSnap.exists()) {
+        gameInitialized = true;
         await dealCards(roomCode, Object.keys(players));
         await startGame(roomCode, Object.keys(players));
       }
     }
   });
 
-  // Afficher à qui c'est le tour
   const currentTurnRef = ref(db, `rooms/${roomCode}/currentTurn`);
   onValue(currentTurnRef, snapshot => {
     const currentPlayerTurn = snapshot.val();
     status.innerText = `Connecté à la salle ${roomCode} en tant que ${playerId}\nC'est au tour de ${currentPlayerTurn}${currentPlayerTurn === playerId ? " (Moi)" : ""}`;
   });
 
-  // Afficher la main du joueur et gérer bouton piocher
   const handRef = ref(db, `rooms/${roomCode}/hands/${playerId}`);
   onValue(handRef, snapshot => {
     const hand = snapshot.val() || [];
@@ -103,7 +102,6 @@ function launchGame(roomCode) {
       return;
     }
 
-    // Récupérer le deck restant
     const deckSnap = await get(ref(db, `rooms/${currentRoom}/deck`));
     const deck = deckSnap.val();
 
@@ -112,14 +110,10 @@ function launchGame(roomCode) {
       return;
     }
 
-    // Prendre la première carte du deck
     const drawnCard = deck[0];
     const newDeck = deck.slice(1);
-
-    // Mettre à jour le deck dans Firebase
     await set(ref(db, `rooms/${currentRoom}/deck`), newDeck);
 
-    // Ajouter la carte à la main du joueur
     const handRef = ref(db, `rooms/${currentRoom}/hands/${playerId}`);
     const handSnap = await get(handRef);
     const hand = handSnap.val() || [];
@@ -139,14 +133,13 @@ function launchGame(roomCode) {
     const players = Object.keys(playersSnap.val() || {});
     if (players.length === 0) return;
 
-    // Passe au joueur suivant dans la liste
     const currentIndex = players.indexOf(playerId);
     const nextIndex = (currentIndex + 1) % players.length;
     await set(ref(db, `rooms/${currentRoom}/currentTurn`), players[nextIndex]);
   };
 }
 
-// Distribue 13 cartes par joueur
+// Distribuer les cartes + créer le deck
 async function dealCards(roomCode, players) {
   let deck = shuffleDeck(createDeck());
   let index = 0;
@@ -155,13 +148,11 @@ async function dealCards(roomCode, players) {
     index += 13;
     await set(ref(db, `rooms/${roomCode}/hands/${pId}`), playerCards);
   }
-
-  // Stocke le reste du deck dans Firebase (cartes restantes)
   const remainingDeck = deck.slice(index);
   await set(ref(db, `rooms/${roomCode}/deck`), remainingDeck);
 }
 
-// Initialise le premier tour avec un joueur aléatoire
+// Lancer la partie (donner le tour à un joueur au hasard)
 async function startGame(roomCode, players) {
   if (players.length === 0) return;
   const firstPlayer = players[Math.floor(Math.random() * players.length)];
