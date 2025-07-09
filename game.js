@@ -2,6 +2,12 @@
 import { db, ref, set, update, get, onValue, push } from './firebase.js';
 import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/modular/sortable.esm.js';
 
+// --- Variables globales définies immédiatement après les imports ---
+const pseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
+const playerId = 'player_' + Math.floor(Math.random() * 10000);
+let currentRoom = '';
+let hasDrawnOrPicked = false;
+
 // --- MODULE Règles ---
 const Rules = {
   isQuadri(hand) {
@@ -56,7 +62,7 @@ function createDeck() {
     'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'
   ];
   let deck = [];
-  for (let d = 0; d < 2; d++) { // Two decks
+  for (let d = 0; d < 2; d++) {
     suits.forEach(s => ranks.forEach(r => {
       const value = r === 'A' ? 1 : r === 'J' ? 11 : r === 'Q' ? 12 : r === 'K' ? 13 : parseInt(r);
       deck.push({
@@ -80,32 +86,23 @@ function shuffle(deck) {
   return deck;
 }
 
-// --- Distribue et initialise jokers + mains ---
-async function dealCards(room, players) {
-  let deck = shuffle(createDeck());
-  const jokerCard = deck.splice(Math.floor(Math.random() * deck.length), 1)[0];
-  // Determine joker set (all cards with same value, different colors)
-  const jokerSet = deck.filter(c => c.value === jokerCard.value && c.color !== jokerCard.color).map(c => c.id);
+// --- DOM Elements ---
+const createRoomBtn = document.getElementById('createRoom');
+const joinRoomBtn = document.getElementById('joinRoom');
+const roomInput = document.getElementById('roomCodeInput');
+const status = document.getElementById('status');
+const playersDiv = document.getElementById('players');
+const playerHandDiv = document.getElementById('hand');
+const jokerDiv = document.getElementById('joker');
+const drawCardBtn = document.getElementById('drawCard');
+const endTurnBtn = document.getElementById('endTurn');
+const declare7NBtn = document.getElementById('declare7N');
+const declareWinBtn = document.getElementById('declareWin');
+const menuDiv = document.getElementById('menu');
+const gameDiv = document.getElementById('game');
 
-  await Promise.all([
-    set(ref(db, `rooms/${room}/jokerSet`), {
-      jokerSet // Store the IDs of the joker cards
-    }),
-    set(ref(db, `rooms/${room}/jokerCard`), jokerCard)
-  ]);
-
-  let idx = 0;
-  for (const p of players) {
-    const hand = deck.slice(idx, idx + 13);
-    await set(ref(db, `rooms/${room}/hands/${p}`), hand);
-    await set(ref(db, `rooms/${room}/discard/${p}`), []); // Initialize player's discard pile
-    idx += 13;
-  }
-  await set(ref(db, `rooms/${room}/deck`), deck.slice(idx)); // Remaining deck
-}
-
+// --- showJoker sécurisé ---
 function showJoker(jokerCard) {
-  const jokerDiv = document.getElementById('joker');
   if (!jokerCard || !jokerCard.rank) {
     jokerDiv.innerHTML = '';
     return;
