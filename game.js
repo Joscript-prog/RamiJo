@@ -38,7 +38,8 @@ async function joinRoom(roomCode) {
   const playerRef = ref(db, `rooms/${roomCode}/players/${playerId}`);
   await set(playerRef, { pseudo });
   onDisconnect(playerRef).remove();
-  showStatus(`Salle : ${roomCode} | Vous : ${pseudo}`);
+  status.innerText = `Salle : ${roomCode} | Vous : ${pseudo}`;
+
 }
 
 // — Listeners et UI de partie —
