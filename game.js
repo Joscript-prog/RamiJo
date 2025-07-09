@@ -53,6 +53,8 @@ const playersDiv    = document.getElementById('players');
 const playerHandDiv = document.getElementById('hand');
 const declare7NBtn  = document.getElementById('declare7N');
 const declareWinBtn = document.getElementById('declareWin');
+const drawCardBtn   = document.getElementById('drawCard');
+const endTurnBtn    = document.getElementById('endTurn');
 const menuDiv       = document.getElementById('menu');
 const gameDiv       = document.getElementById('game');
 
@@ -90,7 +92,8 @@ function renderPlayers(players) {
     badge.id = `badge-${p.id}`;
     badge.innerHTML = `
       <div class="player-name">${p.pseudo}</div>
-      <div class="mini-discard" id="discard-${p.id}"></div>`;
+      <div class="mini-discard" id="discard-${p.id}"></div>
+      <div class="player-score" id="score-${p.id}">Score: 0</div>`;
     playersDiv.append(badge);
   });
 }
@@ -101,8 +104,35 @@ function listenPlayers(room) {
     const list = Object.entries(raw).map(([id, o]) => ({ id, pseudo: o.pseudo }));
     renderPlayers(list);
   });
+  onValue(ref(db, `rooms/${room}/scores`), snap => {
+    const scores = snap.val() || {};
+    for (let id in scores) {
+      const el = document.getElementById(`score-${id}`);
+      if (el) el.textContent = `Score: ${scores[id]}`;
+    }
+  });
 }
 
+function listenTurn(room) {
+  onValue(ref(db, `rooms/${room}/turn`), snap => {
+    const turn = snap.val();
+    const isMyTurn = turn === playerId;
+    drawCardBtn.disabled = !isMyTurn;
+    declare7NBtn.disabled = !isMyTurn;
+    declareWinBtn.disabled = !isMyTurn;
+    endTurnBtn.disabled = !isMyTurn;
+    status.innerText = isMyTurn ? '⭐ C’est votre tour !' : 'En attente du tour des autres...';
+  });
+}
+
+async function endTurn(room) {
+  const playersSnap = await get(ref(db, `rooms/${room}/players`));
+  const playerIds = Object.keys(playersSnap.val() || {});
+  const turnSnap = await get(ref(db, `rooms/${room}/turn`));
+  const currentIdx = playerIds.indexOf(turnSnap.val());
+  const nextId = playerIds[(currentIdx + 1) % playerIds.length];
+  await set(ref(db, `rooms/${room}/turn`), nextId);
+}
 function listenDiscard(room) {
   onValue(ref(db, `rooms/${room}/discard`), snap => {
     const all = snap.val() || {};
@@ -220,7 +250,10 @@ function init() {
   enableDragDrop();
   createRoomBtn.onclick = createRoom;
   joinRoomBtn.onclick = joinRoom;
+  drawCardBtn.onclick = () => alert('Action piocher ici');
+  endTurnBtn.onclick = () => endTurn(currentRoom);
   declare7NBtn.onclick = () => declare7N(currentRoom);
   declareWinBtn.onclick = () => declareWin(currentRoom);
 }
 window.addEventListener('load', init);
+
