@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Rami en ligne</title>
 
   <!-- Fichier CSS pour le style -->
@@ -27,11 +27,18 @@
     <div id="game" style="display: none">
       <div id="status"></div>
       <div id="players"></div>
-      <div id="hand"></div>
+
+      <!-- Main du joueur -->
+      <div id="hand" class="hand"></div>
+
+      <!-- Zone de dépôt des cartes (14 cases) -->
+      <div id="dropZone" class="drop-zone"></div>
 
       <!-- Boutons de jeu -->
       <button id="drawCard">Piocher</button>
       <button id="endTurn">Fin de tour</button>
+      <button id="declare7N">Déclarer 7 naturel</button>
+      <button id="declareWin">Déclarer fin de manche</button>
     </div>
   </div>
 </body>
