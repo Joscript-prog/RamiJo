@@ -1,45 +1,77 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Rami en ligne</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Jouez au Rami en ligne avec vos amis">
+  <title>Rami en ligne - Jeu de cartes multijoueur</title>
+
+  <!-- Préchargement des ressources importantes -->
+  <link rel="preload" href="style.css" as="style">
+  <link rel="preload" href="firebase.js" as="script">
+  <link rel="preload" href="game.js" as="script">
 
   <!-- Fichier CSS pour le style -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 
-  <!-- Modules Firebase et logique du jeu -->
-  <script type="module" src="firebase.js"></script>
-  <script type="module" src="game.js"></script>
+  <!-- Chargement des scripts en mode defer pour ne pas bloquer le rendu -->
+  <script type="module" src="firebase.js" defer></script>
+  <script type="module" src="game.js" defer></script>
 </head>
 <body>
   <div id="app">
-    <h1>Jeu de Rami en ligne</h1>
+    <header>
+      <h1>Jeu de Rami en ligne</h1>
+      <p class="subtitle">Jouez avec vos amis en temps réel</p>
+    </header>
 
     <!-- Menu principal : création ou rejoindre une partie -->
-    <div id="menu">
-      <button id="createRoom">Créer une partie</button>
-      <input type="text" id="roomCodeInput" placeholder="Code de partie" />
-      <button id="joinRoom">Rejoindre</button>
-    </div>
+    <section id="menu" aria-labelledby="menu-heading">
+      <h2 id="menu-heading" class="sr-only">Menu principal</h2>
+      
+      <div class="form-group">
+        <button id="createRoom" class="btn btn-primary">Créer une partie</button>
+        <p class="help-text">Créez une nouvelle partie et invitez vos amis</p>
+      </div>
+
+      <div class="form-group">
+        <label for="roomCodeInput" class="sr-only">Code de partie</label>
+        <input type="text" id="roomCodeInput" placeholder="Code de partie" aria-label="Entrez le code de la partie à rejoindre">
+        <button id="joinRoom" class="btn btn-secondary">Rejoindre</button>
+        <p class="help-text">Entrez le code fourni par l'organisateur</p>
+      </div>
+    </section>
 
     <!-- Zone de jeu (cachée par défaut) -->
-    <div id="game" style="display: none">
-      <div id="status"></div>
-      <div id="players"></div>
+    <main id="game" style="display: none" aria-labelledby="game-heading">
+      <h2 id="game-heading" class="sr-only">Zone de jeu</h2>
+      
+      <div id="status" aria-live="polite"></div>
+      
+      <section id="players" aria-labelledby="players-heading">
+        <h3 id="players-heading" class="sr-only">Joueurs</h3>
+        <!-- Contenu dynamique des joueurs -->
+      </section>
 
       <!-- Main du joueur -->
-      <div id="hand" class="hand"></div>
+      <section id="hand" class="hand" aria-label="Votre main de cartes"></section>
 
       <!-- Zone de dépôt des cartes (14 cases) -->
-      <div id="dropZone" class="drop-zone"></div>
+      <section id="dropZone" class="drop-zone" aria-label="Zone de dépôt des combinaisons">
+        <h3 class="sr-only">Combinaisons déposées</h3>
+      </section>
 
-      <!-- Boutons de jeu -->
-      <button id="drawCard">Piocher</button>
-      <button id="endTurn">Fin de tour</button>
-      <button id="declare7N">Déclarer 7 naturel</button>
-      <button id="declareWin">Déclarer fin de manche</button>
-    </div>
+      <!-- Contrôles de jeu -->
+      <section class="game-controls" aria-labelledby="controls-heading">
+        <h3 id="controls-heading" class="sr-only">Actions de jeu</h3>
+        <div class="controls-grid">
+          <button id="drawCard" class="btn btn-action">Piocher une carte</button>
+          <button id="endTurn" class="btn btn-action" disabled>Fin de tour</button>
+          <button id="declare7N" class="btn btn-special">Déclarer 7 naturel</button>
+          <button id="declareWin" class="btn btn-special">Déclarer fin de manche</button>
+        </div>
+      </section>
+    </main>
   </div>
 </body>
 </html>
