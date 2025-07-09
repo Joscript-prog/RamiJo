@@ -1,39 +1,15 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Rami en ligne - Jeu de cartes multijoueur</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+  <link rel="stylesheet" href="style.css" />
   <script type="module" src="firebase.js"></script>
   <script type="module" src="game.js"></script>
 </head>
 <body>
-  <div class="table">
-    <!-- Cercle de joueurs -->
-    <div id="players" class="players-circle"></div>
-
-    <!-- Tapis vert central -->
-    <div class="tapis-vert">
-      <div id="deck-area" class="deck-area">
-        <div class="deck-pile" id="deck">
-          <div class="card-back"></div>
-        </div>
-      </div>
-      <div id="discard-area" class="discard-area">
-        <div class="discard-pile" id="discardPile"></div>
-      </div>
-      <div class="controls-vert">
-        <button id="declare7N" class="btn-special">7 Naturel</button>
-        <button id="declareWin" class="btn-special">Déclarer victoire</button>
-      </div>
-    </div>
-
-    <!-- Main du joueur -->
-    <div id="hand" class="player-hand"></div>
-  </div>
-
   <!-- Menu principal -->
   <div id="menu" class="menu-overlay">
     <div class="menu-content">
@@ -44,9 +20,38 @@
       
       <h2>Rejoindre une partie</h2>
       <div class="join-form">
-        <input type="text" id="roomCodeInput" placeholder="Code de partie" class="room-input">
+        <input type="text" id="roomCodeInput" placeholder="Code de partie" class="room-input" />
         <button id="joinRoom" class="btn btn-secondary">Rejoindre</button>
       </div>
+    </div>
+  </div>
+
+  <!-- PARTIE JEU - cachée par défaut -->
+  <div id="game" style="display:none;">
+    <div class="table">
+      <!-- Cercle de joueurs -->
+      <div id="players" class="players-circle"></div>
+
+      <!-- Tapis vert central -->
+      <div class="tapis-vert">
+        <div id="deck-area" class="deck-area">
+          <div class="deck-pile" id="deck">
+            <div class="card-back"></div>
+          </div>
+        </div>
+        <div id="discard-area" class="discard-area">
+          <div class="discard-pile" id="discardPile"></div>
+        </div>
+        <div class="controls-vert">
+          <button id="declare7N" class="btn-special">7 Naturel</button>
+          <button id="declareWin" class="btn-special">Déclarer victoire</button>
+          <button id="drawCard" class="btn-action">Piocher</button>
+          <button id="endTurn" class="btn-action">Fin du tour</button>
+        </div>
+      </div>
+
+      <!-- Main du joueur -->
+      <div id="hand" class="player-hand"></div>
     </div>
   </div>
 
