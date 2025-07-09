@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Jouez au Rami en ligne avec vos amis">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Jouez au Rami en ligne avec vos amis" />
   <title>Rami en ligne - Jeu de cartes multijoueur</title>
 
-  <!-- Préchargement des ressources importantes -->
+  <!-- Préchargement des ressources avec crossorigin pour modules -->
   <link rel="preload" href="style.css" as="style">
-  <link rel="preload" href="firebase.js" as="script">
-  <link rel="preload" href="game.js" as="script">
+  <link rel="preload" href="firebase.js" as="script" crossorigin="anonymous">
+  <link rel="preload" href="game.js" as="script" crossorigin="anonymous">
 
-  <!-- Fichier CSS pour le style -->
+  <!-- Fichier CSS -->
   <link rel="stylesheet" href="style.css">
 
-  <!-- Chargement des scripts en mode defer pour ne pas bloquer le rendu -->
-  <script type="module" src="firebase.js" defer></script>
-  <script type="module" src="game.js" defer></script>
+  <!-- Scripts Firebase & game avec module + crossorigin -->
+  <script type="module" src="firebase.js" defer crossorigin="anonymous"></script>
+  <script type="module" src="game.js" defer crossorigin="anonymous"></script>
 </head>
 <body>
   <div id="app">
@@ -25,10 +25,10 @@
       <p class="subtitle">Jouez avec vos amis en temps réel</p>
     </header>
 
-    <!-- Menu principal : création ou rejoindre une partie -->
+    <!-- Menu principal -->
     <section id="menu" aria-labelledby="menu-heading">
       <h2 id="menu-heading" class="sr-only">Menu principal</h2>
-      
+
       <div class="form-group">
         <button id="createRoom" class="btn btn-primary">Créer une partie</button>
         <p class="help-text">Créez une nouvelle partie et invitez vos amis</p>
@@ -42,26 +42,22 @@
       </div>
     </section>
 
-    <!-- Zone de jeu (cachée par défaut) -->
+    <!-- Zone de jeu -->
     <main id="game" style="display: none" aria-labelledby="game-heading">
       <h2 id="game-heading" class="sr-only">Zone de jeu</h2>
-      
+
       <div id="status" aria-live="polite"></div>
-      
+
       <section id="players" aria-labelledby="players-heading">
         <h3 id="players-heading" class="sr-only">Joueurs</h3>
-        <!-- Contenu dynamique des joueurs -->
       </section>
 
-      <!-- Main du joueur -->
       <section id="hand" class="hand" aria-label="Votre main de cartes"></section>
 
-      <!-- Zone de dépôt des cartes (14 cases) -->
       <section id="dropZone" class="drop-zone" aria-label="Zone de dépôt des combinaisons">
         <h3 class="sr-only">Combinaisons déposées</h3>
       </section>
 
-      <!-- Contrôles de jeu -->
       <section class="game-controls" aria-labelledby="controls-heading">
         <h3 id="controls-heading" class="sr-only">Actions de jeu</h3>
         <div class="controls-grid">
