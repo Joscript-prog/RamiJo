@@ -82,7 +82,6 @@ function enableDragDrop() {
   });
 }
 
-// --- Render joueurs & défausse ---
 function renderPlayers(players) {
   playersDiv.innerHTML = '';
   players.forEach(p => {
@@ -135,7 +134,6 @@ function renderHand(hand) {
   });
 }
 
-// --- Déclaration 7N ---
 async function declare7N(room) {
   const handSnap = await get(ref(db, `rooms/${room}/hands/${playerId}`));
   const hand = handSnap.val() || [];
@@ -147,7 +145,6 @@ async function declare7N(room) {
   await push(ref(db, `rooms/${room}/actions`), { playerId, type: '7N' });
 }
 
-// --- Déclaration Victoire ---
 async function declareWin(room) {
   const handSnap = await get(ref(db, `rooms/${room}/hands/${playerId}`));
   const hand = handSnap.val() || [];
@@ -171,14 +168,31 @@ async function declareWin(room) {
     }
     await push(ref(db, `rooms/${room}/actions`), { playerId, type: 'WIN', formations });
     document.querySelector('.modal').remove();
+    await updateScoreAndNext(room);
   };
 }
 
-// --- Création / Rejoindre ---
+async function updateScoreAndNext(room) {
+  const scoreRef = ref(db, `rooms/${room}/scores/${playerId}`);
+  const snap = await get(scoreRef);
+  const current = snap.val() || 0;
+  await set(scoreRef, current + 10);
+  const stateRef = ref(db, `rooms/${room}/state`);
+  await update(stateRef, { started: false, lastWinner: playerId });
+  showPopup(`<h3>Bravo ${pseudo} !</h3><p>+10 points</p>`);
+  setTimeout(() => {
+    showPopup(`<p>Prochaine manche dans 10 secondes...</p>`);
+    setTimeout(() => {
+      update(stateRef, { started: true });
+    }, 10000);
+  }, 1000);
+}
+
 async function createRoom() {
   currentRoom = 'RAMI' + Math.floor(Math.random() * 1000);
   await set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo });
   await set(ref(db, `rooms/${currentRoom}/state`), { started: false });
+  await set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0);
   menuDiv.style.display = 'none';
   gameDiv.style.display = 'block';
   status.innerText = `Salle: ${currentRoom} | Vous: ${pseudo}`;
@@ -193,6 +207,7 @@ async function joinRoom() {
   if (!code) return alert('Entrez un code valide.');
   currentRoom = code;
   await set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo });
+  await set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0);
   menuDiv.style.display = 'none';
   gameDiv.style.display = 'block';
   status.innerText = `Salle: ${currentRoom} | Vous: ${pseudo}`;
@@ -201,7 +216,6 @@ async function joinRoom() {
   listenHand(currentRoom);
 }
 
-// --- Init ---
 function init() {
   enableDragDrop();
   createRoomBtn.onclick = createRoom;
