@@ -223,14 +223,20 @@ async function createRoom() {
   await set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo });
   await set(ref(db, `rooms/${currentRoom}/state`), { started: false });
   await set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0);
+  await set(ref(db, `rooms/${currentRoom}/turn`), playerId); // 👈 initialise le tour
+
   menuDiv.style.display = 'none';
   gameDiv.style.display = 'block';
   status.innerText = `Salle: ${currentRoom} | Vous: ${pseudo}`;
+
   showPopup(`<h3>Salle créée</h3><p>Code: <b>${currentRoom}</b></p>`);
+
   listenPlayers(currentRoom);
   listenDiscard(currentRoom);
   listenHand(currentRoom);
+  listenTurn(currentRoom);
 }
+
 
 async function joinRoom() {
   const code = roomInput.value.trim();
@@ -244,6 +250,7 @@ async function joinRoom() {
   listenPlayers(currentRoom);
   listenDiscard(currentRoom);
   listenHand(currentRoom);
+  listenTurn(currentRoom);
 }
 
 function init() {
