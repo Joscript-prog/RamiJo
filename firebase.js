@@ -1,10 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, set, get, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDnMUxn4llJdeeKWVCt-8Z4YP0rrv5BOZM",
   authDomain: "rami-en-ligne.firebaseapp.com",
-  databaseURL: "https://rami-en-ligne-default-rtdb.firebaseio.com",  // ✅ ajout essentiel
+  databaseURL: "https://rami-en-ligne-default-rtdb.firebaseio.com",
   projectId: "rami-en-ligne",
   storageBucket: "rami-en-ligne.firebasestorage.app",
   messagingSenderId: "521757798474",
@@ -14,4 +14,4 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-export { db, ref, set, get, onValue };
+export { db, ref, set, get, onValue, onDisconnect };
