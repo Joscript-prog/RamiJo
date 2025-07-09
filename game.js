@@ -1,7 +1,7 @@
-// game.js (version améliorée avec drag & drop avancé et animations)
+// game.js (version corrigée)
 import { db, ref, set, get, onValue, onDisconnect, push } from './firebase.js';
 
-// Références DOM
+// --- Références DOM ---
 const createRoomBtn = document.getElementById('createRoom');
 const joinRoomBtn = document.getElementById('joinRoom');
 const roomInput = document.getElementById('roomCodeInput');
@@ -16,7 +16,7 @@ const declare7NBtn = document.getElementById('declare7N');
 const declareWinBtn = document.getElementById('declareWin');
 const dropZone = document.getElementById('dropZone');
 
-// Configuration
+// --- Variables de config ---
 const pseudo = prompt("Entrez votre pseudo :") || 'Anonyme';
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
@@ -24,8 +24,9 @@ let gameInitialized = false;
 let draggedCard = null;
 let draggedCardIndex = null;
 let draggedFromHand = false;
+let draggedFromSlot = null;
 
-// Création du deck avec couleurs et symboles
+// --- Création du deck ---
 function createDeck() {
   const suits = [
     { name: 'Coeurs', symbol: '♥', color: 'red' },
@@ -33,7 +34,6 @@ function createDeck() {
     { name: 'Trèfles', symbol: '♣', color: 'black' },
     { name: 'Piques', symbol: '♠', color: 'black' }
   ];
-  
   const ranks = [
     { symbol: 'A', value: 1 },
     { symbol: '2', value: 2 },
@@ -49,7 +49,6 @@ function createDeck() {
     { symbol: 'Q', value: 12 },
     { symbol: 'K', value: 13 }
   ];
-
   let deck = [];
   for (let d = 0; d < 2; d++) {
     for (const suit of suits) {
@@ -68,7 +67,7 @@ function createDeck() {
   return deck;
 }
 
-// Mélange Fisher-Yates optimisé
+// --- Mélange Fisher-Yates ---
 function shuffleDeck(deck) {
   const shuffled = [...deck];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -78,7 +77,7 @@ function shuffleDeck(deck) {
   return shuffled;
 }
 
-// Gestion des salles
+// --- Gestion des salles ---
 createRoomBtn.onclick = async () => {
   currentRoom = 'RAMI' + Math.floor(Math.random() * 1000);
   await joinRoom(currentRoom);
@@ -103,15 +102,16 @@ async function joinRoom(roomCode) {
   status.innerText = `Salle : ${roomCode} | Vous : ${pseudo}`;
 }
 
-// Initialisation des écouteurs
+// --- Initialisation des écouteurs ---
 function initGameListeners(roomCode) {
   listenToPlayers(roomCode);
   listenToTurn(roomCode);
   listenToHand(roomCode);
+  listenToSlots(roomCode);
   setupActions(roomCode);
 }
 
-// Gestion des joueurs
+// --- Écoute des joueurs ---
 function listenToPlayers(roomCode) {
   const playersRef = ref(db, `rooms/${roomCode}/players`);
   onValue(playersRef, async snapshot => {
@@ -140,7 +140,7 @@ function updatePlayersUI(players) {
   playersDiv.innerHTML += `<div class="players-list">${playerOrder}</div>`;
 }
 
-// Gestion du tour
+// --- Gestion du tour ---
 function listenToTurn(roomCode) {
   const currentTurnRef = ref(db, `rooms/${roomCode}/currentTurn`);
   onValue(currentTurnRef, snapshot => {
@@ -157,17 +157,15 @@ function listenToTurn(roomCode) {
 }
 
 function getPlayerName(playerId) {
-  // À implémenter selon ta structure de données
   return playerId.replace('player_', 'Joueur ');
 }
 
-// Gestion de la main
+// --- Gestion de la main ---
 function listenToHand(roomCode) {
   const handRef = ref(db, `rooms/${roomCode}/hands/${playerId}`);
   onValue(handRef, snapshot => {
     const hand = snapshot.val() || [];
     renderHand(hand);
-    renderDropZone(hand);
   });
 }
 
@@ -185,11 +183,13 @@ function renderHand(hand) {
   setupDragEvents();
 }
 
+// --- Création d'une carte HTML ---
 function createCardElement(card, index) {
   const cardEl = document.createElement('div');
   cardEl.className = `card ${card.color}`;
   cardEl.dataset.index = index;
   cardEl.dataset.cardId = card.id;
+  cardEl.draggable = true;
   cardEl.innerHTML = `
     <div class="card-corner top-left">
       <span>${card.rank}</span>
@@ -204,6 +204,7 @@ function createCardElement(card, index) {
   return cardEl;
 }
 
+// --- Gestion drag & drop main ---
 function setupDragEvents() {
   const cards = document.querySelectorAll('.card');
   
@@ -218,7 +219,8 @@ function handleDragStart(e) {
   draggedCard = this;
   draggedCardIndex = parseInt(this.dataset.index);
   draggedFromHand = true;
-  
+  draggedFromSlot = null;
+
   e.dataTransfer.setData('text/plain', this.dataset.cardId);
   setTimeout(() => {
     this.classList.add('dragging');
@@ -229,39 +231,83 @@ function handleDragEnd() {
   this.classList.remove('dragging');
   draggedCard = null;
   draggedCardIndex = null;
+  draggedFromHand = false;
+  draggedFromSlot = null;
 }
 
 function handleDoubleClick() {
-  // Ajouter la carte à la première zone de dépôt disponible
-  const firstEmptySlot = document.querySelector('.drop-slot:empty');
+  const firstEmptySlot = document.querySelector('.drop-slot.empty');
   if (firstEmptySlot) {
     moveCardToSlot(this, firstEmptySlot);
   }
 }
 
-// Gestion de la zone de dépôt
-function renderDropZone(hand) {
+// --- Gestion de la zone de dépôt (combinaisons) ---
+function listenToSlots(roomCode) {
+  const slotsRef = ref(db, `rooms/${roomCode}/slots/${playerId}`);
+  onValue(slotsRef, snapshot => {
+    const slots = snapshot.val() || {};
+    renderDropZone(slots);
+  });
+}
+
+function renderDropZone(slots) {
   dropZone.innerHTML = '<h3>Combinaisons :</h3>';
   const slotsContainer = document.createElement('div');
-  slotsContainer.className = 'slots-container';
+  slotsContainer.className = 'slots-container-horizontal'; // <-- horizontal layout (voir CSS)
 
+  // 14 slots max
   for (let i = 0; i < 14; i++) {
     const slot = document.createElement('div');
     slot.className = 'drop-slot';
     slot.dataset.index = i;
-    
+
+    // Si slot vide ou pas
+    if (!slots[i]) {
+      slot.classList.add('empty');
+      // Ajouter un bouton + pour ajouter une carte
+      const plusBtn = document.createElement('button');
+      plusBtn.textContent = '+';
+      plusBtn.title = 'Ajouter une carte';
+      plusBtn.className = 'plus-btn';
+      plusBtn.onclick = () => openCardSelector(i);
+      slot.appendChild(plusBtn);
+    } else {
+      // Afficher les cartes dans le slot (on suppose un tableau de cartes dans slots[i])
+      slots[i].forEach(card => {
+        const cardEl = createCardElement(card);
+        cardEl.draggable = true;
+        cardEl.addEventListener('dragstart', e => {
+          draggedCard = cardEl;
+          draggedFromHand = false;
+          draggedFromSlot = i;
+          e.dataTransfer.setData('text/plain', card.id);
+          setTimeout(() => cardEl.classList.add('dragging'), 0);
+        });
+        cardEl.addEventListener('dragend', e => {
+          cardEl.classList.remove('dragging');
+          draggedCard = null;
+          draggedFromSlot = null;
+        });
+        // Clique pour retirer la carte vers la main
+        cardEl.addEventListener('click', () => {
+          returnCardToHandFromSlot(card, i);
+        });
+        slot.appendChild(cardEl);
+      });
+    }
+
     slot.addEventListener('dragover', handleDragOver);
     slot.addEventListener('dragenter', handleDragEnter);
     slot.addEventListener('dragleave', handleDragLeave);
     slot.addEventListener('drop', handleDrop);
-    slot.addEventListener('click', handleSlotClick);
-    
+
+    dropZone.appendChild(slotsContainer);
     slotsContainer.appendChild(slot);
   }
-
-  dropZone.appendChild(slotsContainer);
 }
 
+// --- Gestion drag & drop sur slots ---
 function handleDragOver(e) {
   e.preventDefault();
 }
@@ -275,104 +321,112 @@ function handleDragLeave() {
   this.classList.remove('drop-target');
 }
 
-function handleDrop(e) {
+async function handleDrop(e) {
   e.preventDefault();
   this.classList.remove('drop-target');
-  
+
+  const slotIndex = parseInt(this.dataset.index);
   const cardId = e.dataTransfer.getData('text/plain');
-  const cardElement = draggedCard || document.querySelector(`.card[data-card-id="${cardId}"]`);
-  
-  if (cardElement) {
-    moveCardToSlot(cardElement, this);
+
+  if (!cardId) return;
+
+  if (draggedFromHand) {
+    // Carte venant de la main => ajouter au slot
+    const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+    let hand = handSnap.val() || [];
+    const cardIndex = hand.findIndex(c => c.id === cardId);
+    if (cardIndex === -1) return;
+
+    const card = hand[cardIndex];
+
+    // Supprimer carte de la main
+    hand.splice(cardIndex, 1);
+    await set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand);
+
+    // Ajouter carte au slot
+    const slotsSnap = await get(ref(db, `rooms/${currentRoom}/slots/${playerId}`));
+    let slots = slotsSnap.val() || {};
+    if (!slots[slotIndex]) slots[slotIndex] = [];
+    slots[slotIndex].push(card);
+    await set(ref(db, `rooms/${currentRoom}/slots/${playerId}`), slots);
+
+  } else if (draggedFromSlot !== null) {
+    // Carte venant d'un autre slot => déplacer entre slots
+    if (draggedFromSlot === slotIndex) return; // même slot, rien à faire
+
+    const slotsSnap = await get(ref(db, `rooms/${currentRoom}/slots/${playerId}`));
+    let slots = slotsSnap.val() || {};
+
+    const fromCards = slots[draggedFromSlot] || [];
+    const cardIndex = fromCards.findIndex(c => c.id === cardId);
+    if (cardIndex === -1) return;
+    const card = fromCards[cardIndex];
+
+    // Enlever de l'ancien slot
+    fromCards.splice(cardIndex, 1);
+    slots[draggedFromSlot] = fromCards;
+
+    // Ajouter au nouveau slot
+    if (!slots[slotIndex]) slots[slotIndex] = [];
+    slots[slotIndex].push(card);
+
+    await set(ref(db, `rooms/${currentRoom}/slots/${playerId}`), slots);
+
+  } else {
+    // Peut-être cas non prévu
+    console.warn("Drop card from unknown source");
   }
 }
 
-function handleSlotClick() {
-  if (this.children.length > 0) {
-    // Retourner la carte à la main
-    returnCardToHand(this.firstChild);
+// --- Ouvrir sélecteur de carte pour ajouter dans slot vide ---
+async function openCardSelector(slotIndex) {
+  const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+  const hand = handSnap.val() || [];
+
+  if (hand.length === 0) return alert("Votre main est vide !");
+
+  // Créer un prompt simple pour choisir une carte (améliorable)
+  const cardList = hand.map((c, i) => `${i + 1}: ${c.rank}${c.symbol}`).join('\n');
+  const choice = prompt(`Choisissez une carte à ajouter au slot ${slotIndex + 1}:\n${cardList}\nEntrez un numéro:`);
+
+  const choiceIndex = parseInt(choice) - 1;
+  if (isNaN(choiceIndex) || choiceIndex < 0 || choiceIndex >= hand.length) {
+    alert("Choix invalide.");
+    return;
   }
+
+  // Retirer la carte de la main
+  const card = hand[choiceIndex];
+  hand.splice(choiceIndex, 1);
+  await set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand);
+
+  // Ajouter la carte au slot
+  const slotsSnap = await get(ref(db, `rooms/${currentRoom}/slots/${playerId}`));
+  let slots = slotsSnap.val() || {};
+  if (!slots[slotIndex]) slots[slotIndex] = [];
+  slots[slotIndex].push(card);
+  await set(ref(db, `rooms/${currentRoom}/slots/${playerId}`), slots);
 }
 
-function moveCardToSlot(cardElement, slot) {
-  // Cloner la carte pour l'animation
-  const clonedCard = cardElement.cloneNode(true);
-  clonedCard.classList.add('moving-to-slot');
-  
-  // Positionner la carte clone sur l'originale
-  const rect = cardElement.getBoundingClientRect();
-  clonedCard.style.position = 'fixed';
-  clonedCard.style.left = `${rect.left}px`;
-  clonedCard.style.top = `${rect.top}px`;
-  clonedCard.style.width = `${rect.width}px`;
-  clonedCard.style.height = `${rect.height}px`;
-  clonedCard.style.transition = 'all 0.3s ease';
-  
-  document.body.appendChild(clonedCard);
-  
-  // Calculer la position finale
-  const slotRect = slot.getBoundingClientRect();
-  
-  // Lancer l'animation
-  requestAnimationFrame(() => {
-    clonedCard.style.left = `${slotRect.left}px`;
-    clonedCard.style.top = `${slotRect.top}px`;
-    clonedCard.style.width = `${slotRect.width}px`;
-    clonedCard.style.height = `${slotRect.height}px`;
-    
-    // À la fin de l'animation
-    setTimeout(() => {
-      // Vider la slot et ajouter la carte
-      slot.innerHTML = '';
-      slot.appendChild(cardElement.cloneNode(true));
-      
-      // Nettoyer
-      clonedCard.remove();
-      
-      // Si la carte vient de la main, la supprimer de la main
-      if (draggedFromHand) {
-        removeCardFromHand(draggedCardIndex);
-      }
-    }, 300);
-  });
+// --- Retourner une carte du slot à la main ---
+async function returnCardToHandFromSlot(card, slotIndex) {
+  const slotsSnap = await get(ref(db, `rooms/${currentRoom}/slots/${playerId}`));
+  let slots = slotsSnap.val() || {};
+  if (!slots[slotIndex]) return;
+
+  // Retirer la carte du slot
+  slots[slotIndex] = slots[slotIndex].filter(c => c.id !== card.id);
+  if (slots[slotIndex].length === 0) delete slots[slotIndex];
+  await set(ref(db, `rooms/${currentRoom}/slots/${playerId}`), slots);
+
+  // Ajouter la carte à la main
+  const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+  let hand = handSnap.val() || [];
+  hand.push(card);
+  await set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand);
 }
 
-function returnCardToHand(cardElement) {
-  const handContainer = document.querySelector('.cards-container');
-  const cardClone = cardElement.cloneNode(true);
-  
-  // Position de départ (slot)
-  const startRect = cardElement.getBoundingClientRect();
-  cardClone.style.position = 'fixed';
-  cardClone.style.left = `${startRect.left}px`;
-  cardClone.style.top = `${startRect.top}px`;
-  cardClone.style.width = `${startRect.width}px`;
-  cardClone.style.height = `${startRect.height}px`;
-  cardClone.style.transition = 'all 0.3s ease';
-  
-  document.body.appendChild(cardClone);
-  
-  // Vider la slot
-  cardElement.parentNode.innerHTML = '';
-  
-  // Position finale (main)
-  const endRect = handContainer.getBoundingClientRect();
-  
-  requestAnimationFrame(() => {
-    cardClone.style.left = `${endRect.right - 100}px`;
-    cardClone.style.top = `${endRect.top}px`;
-    cardClone.style.transform = 'scale(0.5)';
-    cardClone.style.opacity = '0';
-    
-    setTimeout(() => {
-      // Ajouter la carte à la main (à implémenter selon ta logique Firebase)
-      addCardToHand(cardElement.dataset.cardId);
-      cardClone.remove();
-    }, 300);
-  });
-}
-
-// Gestion des actions
+// --- Gestion des actions ---
 function setupActions(roomCode) {
   drawCardBtn.onclick = () => handleDrawCard(roomCode);
   endTurnBtn.onclick = () => handleEndTurn(roomCode);
@@ -417,7 +471,6 @@ function showCardDrawAnimation(card) {
     </div>
     <p>Nouvelle carte : ${card.rank} ${card.symbol}</p>
   `;
-  
   document.body.appendChild(animationDiv);
   
   setTimeout(() => {
@@ -477,7 +530,7 @@ function showNotification(message) {
   }, 3000);
 }
 
-// Distribution des cartes
+// --- Distribution des cartes ---
 async function dealCards(roomCode, players) {
   const deck = shuffleDeck(createDeck());
   if (players.length * 13 > deck.length) {
@@ -501,15 +554,4 @@ async function dealCards(roomCode, players) {
 async function startGame(roomCode, players) {
   const firstPlayer = players[Math.floor(Math.random() * players.length)];
   await set(ref(db, `rooms/${roomCode}/currentTurn`), firstPlayer);
-}
-
-// Fonctions utilitaires pour la gestion des cartes
-function removeCardFromHand(index) {
-  // À implémenter avec Firebase
-  console.log(`Retirer la carte à l'index ${index} de la main`);
-}
-
-function addCardToHand(cardId) {
-  // À implémenter avec Firebase
-  console.log(`Ajouter la carte ${cardId} à la main`);
 }
