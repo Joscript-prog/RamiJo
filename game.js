@@ -85,6 +85,28 @@ function shuffle(deck) {
   }
   return deck;
 }
+async function dealCards(roomId, playerIds) {
+  let deck = shuffle(createDeck());
+
+  const jokerCard = deck[Math.floor(Math.random() * deck.length)];
+  const jokerSet = deck.filter(c => c.value === jokerCard.value && c.suit !== jokerCard.suit);
+
+  const hands = {};
+  const discards = {};
+  playerIds.forEach(pid => {
+    hands[pid] = deck.splice(0, 7); // Distribuer 7 cartes
+    discards[pid] = []; // Initialiser les défausses vides
+  });
+
+  await Promise.all([
+    set(ref(db, `rooms/${roomId}/deck`), deck),
+    set(ref(db, `rooms/${roomId}/jokerCard`), jokerCard),
+    set(ref(db, `rooms/${roomId}/jokerSet`), { jokerSet: jokerSet.map(c => c.id) }),
+    set(ref(db, `rooms/${roomId}/hands`), hands),
+    set(ref(db, `rooms/${roomId}/discard`), discards)
+  ]);
+}
+
 
 // --- DOM Elements ---
 const createRoomBtn = document.getElementById('createRoom');
