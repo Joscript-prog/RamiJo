@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rami en ligne - Jeu de cartes multijoueur</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
   <link rel="stylesheet" href="style.css" />
@@ -15,9 +15,7 @@
     <div class="menu-content">
       <h2>Nouvelle partie</h2>
       <button id="createRoom" class="btn btn-primary">Créer une partie</button>
-      
       <div class="separator">ou</div>
-      
       <h2>Rejoindre une partie</h2>
       <div class="join-form">
         <input type="text" id="roomCodeInput" placeholder="Code de partie" class="room-input" />
@@ -26,8 +24,11 @@
     </div>
   </div>
 
-  <!-- PARTIE JEU - cachée par défaut -->
+  <!-- Partie jeu, cachée par défaut -->
   <div id="game" style="display:none;">
+    <!-- Statut / Tour -->
+    <div id="status" class="game-status">En attente de création ou de connexion...</div>
+
     <div class="table">
       <!-- Cercle de joueurs -->
       <div id="players" class="players-circle"></div>
@@ -45,8 +46,8 @@
         <div class="controls-vert">
           <button id="declare7N" class="btn-special">7 Naturel</button>
           <button id="declareWin" class="btn-special">Déclarer victoire</button>
-          <button id="drawCard" class="btn-action">Piocher</button>
-          <button id="endTurn" class="btn-action">Fin du tour</button>
+          <button id="drawCard" class="btn-action" disabled>Piocher</button>
+          <button id="endTurn" class="btn-action" disabled>Fin du tour</button>
         </div>
       </div>
 
