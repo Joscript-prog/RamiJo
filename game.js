@@ -1,6 +1,6 @@
 import { db, ref, set, get, onValue, onDisconnect, push } from './firebase.js';
 
-// DOM
+// --- DOM ---
 const createRoomBtn = document.getElementById('createRoom');
 const joinRoomBtn = document.getElementById('joinRoom');
 const roomInput = document.getElementById('roomCodeInput');
@@ -13,13 +13,18 @@ const endTurnBtn = document.getElementById('endTurn');
 const declare7NBtn = document.getElementById('declare7N');
 const declareWinBtn = document.getElementById('declareWin');
 
+const menuDiv = document.getElementById('menu');
+const gameDiv = document.getElementById('game');
+
+// --- Variables ---
 const pseudo = prompt("Entrez votre pseudo :") || 'Anonyme';
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 
 let currentRoom = '';
 let gameInitialized = false;
+let jokerCard = null; // Carte joker tirée au hasard
 
-// — Création ou rejoindre une partie —
+// --- Création ou rejoindre une partie ---
 createRoomBtn.onclick = async () => {
   currentRoom = 'RAMI' + Math.floor(Math.random() * 1000);
   await joinRoom(currentRoom);
@@ -38,27 +43,33 @@ async function joinRoom(roomCode) {
   const playerRef = ref(db, `rooms/${roomCode}/players/${playerId}`);
   await set(playerRef, { pseudo });
   onDisconnect(playerRef).remove();
+
+  menuDiv.style.display = 'none';
+  gameDiv.style.display = 'block';
   status.innerText = `Salle : ${roomCode} | Vous : ${pseudo}`;
 }
 
-// — Listeners et UI de partie —
+// --- Listeners et UI ---
 function initGameListeners(roomCode) {
   listenPlayers(roomCode);
   listenHand(roomCode);
   listenTurn(roomCode);
-  setupButtons(roomCode);
   listenActions(roomCode);
+  setupButtons(roomCode);
 }
 
 function listenPlayers(room) {
   onValue(ref(db, `rooms/${room}/players`), async snap => {
     const players = snap.val() || {};
     updatePlayersUI(players);
+
+    // Lancer la partie si pas encore initialisée et au moins 2 joueurs
     if (!gameInitialized && Object.keys(players).length >= 2) {
       const hands = await get(ref(db, `rooms/${room}/hands`));
       if (!hands.exists()) {
         gameInitialized = true;
-        await dealCards(room, Object.entries(players).map(([id])=>id));
+        await dealCards(room, Object.keys(players));
+        await set(ref(db, `rooms/${room}/currentTurn`), Object.keys(players)[0]);
       }
     }
   });
@@ -68,7 +79,7 @@ function updatePlayersUI(players) {
   playersDiv.innerHTML = '';
   Object.entries(players).forEach(([id, p]) => {
     const el = document.createElement('div');
-    el.textContent = `${p.pseudo} ${id===playerId?'(Moi)':''}`;
+    el.textContent = `${p.pseudo} ${id === playerId ? '(Moi)' : ''}`;
     playersDiv.append(el);
   });
 }
@@ -97,8 +108,9 @@ function listenTurn(room) {
     const isMe = turn === playerId;
     drawCardBtn.disabled = !isMe;
     takeDiscardBtn.disabled = !isMe;
+    endTurnBtn.disabled = true; // Par défaut désactivé, état sera mis à jour ensuite
     executeUIState(turn);
-    status.innerText = `Tour de : ${isMe ? 'Vous ⭐' : turn}`;
+    showStatus(`Tour de : ${isMe ? 'Vous ⭐' : turn}`);
   });
 }
 
@@ -106,14 +118,31 @@ function executeUIState(turn) {
   get(ref(db, `rooms/${currentRoom}/hands/${turn}`)).then(hs => {
     const hand = hs.val() || [];
     const isMe = turn === playerId;
-    if (!isMe) { drawCardBtn.disabled=true; takeDiscardBtn.disabled=true; endTurnBtn.disabled=true; return; }
+    if (!isMe) {
+      drawCardBtn.disabled = true;
+      takeDiscardBtn.disabled = true;
+      endTurnBtn.disabled = true;
+      return;
+    }
     drawCardBtn.disabled = hand.length !== 13;
     takeDiscardBtn.disabled = hand.length !== 13;
-    endTurnBtn.disabled = hand.length === 14 || hand.length === 13;
+
+    // Fin de tour activée seulement si main = 13 (pioche et défausse faites)
+    endTurnBtn.disabled = !(hand.length === 13);
   });
 }
 
-// — Actions —
+function listenActions(room) {
+  onValue(ref(db, `rooms/${room}/actions`), async snap => {
+    const acts = snap.val() || {};
+    const last = Object.values(acts).pop();
+    if (!last) return;
+    if (last.type === 'WIN') await processWin(last.playerId);
+    if (last.type === '7N') showNotification(`${last.playerId} a déclaré 7 Naturel !`);
+  });
+}
+
+// --- Actions boutons ---
 function setupButtons(room) {
   drawCardBtn.onclick = () => drawCard(room);
   takeDiscardBtn.onclick = () => takeDiscard(room);
@@ -123,11 +152,12 @@ function setupButtons(room) {
 }
 
 async function drawCard(room) {
-  const hs = (await get(ref(db, `rooms/${room}/hands/${playerId}`))).val()||[];
+  const hs = (await get(ref(db, `rooms/${room}/hands/${playerId}`))).val() || [];
   if (hs.length !== 13) return alert('Tu dois avoir 13 cartes.');
   const deck = (await get(ref(db, `rooms/${room}/deck`))).val() || [];
   if (!deck.length) return alert('Deck vide');
-  hs.push(deck.shift());
+  const card = deck.shift();
+  hs.push(card);
   await Promise.all([
     set(ref(db, `rooms/${room}/deck`), deck),
     set(ref(db, `rooms/${room}/hands/${playerId}`), hs)
@@ -136,13 +166,13 @@ async function drawCard(room) {
 
 async function takeDiscard(room) {
   const players = Object.keys((await get(ref(db, `rooms/${room}/players`))).val());
-  const idx = players.findIndex(id=>id===playerId);
-  const prevId = players[(idx+players.length-1)%players.length];
+  const idx = players.findIndex(id => id === playerId);
+  const prevId = players[(idx + players.length - 1) % players.length];
   const pile = (await get(ref(db, `rooms/${room}/discard/${prevId}`))).val() || [];
   if (!pile.length) return alert('Défausse vide');
   const card = pile.pop();
-  const hs = (await get(ref(db, `rooms/${room}/hands/${playerId}`))).val();
-  if (hs.length!==13) return;
+  const hs = (await get(ref(db, `rooms/${room}/hands/${playerId}`))).val() || [];
+  if (hs.length !== 13) return;
   hs.push(card);
   await Promise.all([
     set(ref(db, `rooms/${room}/discard/${prevId}`), pile),
@@ -151,10 +181,11 @@ async function takeDiscard(room) {
 }
 
 async function discardCard(cardId) {
-  const hs = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val();
-  if (hs.length !== 14) return;
-  const idx = hs.findIndex(c=>c.id===cardId);
-  const card = hs.splice(idx,1)[0];
+  const hs = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+  if (hs.length !== 14) return alert("Tu dois avoir 14 cartes pour jeter une carte.");
+  const idx = hs.findIndex(c => c.id === cardId);
+  if (idx === -1) return alert("Carte introuvable dans ta main.");
+  const card = hs.splice(idx, 1)[0];
   const pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
   pile.push(card);
   await Promise.all([
@@ -165,43 +196,44 @@ async function discardCard(cardId) {
 
 async function endTurn(room) {
   const players = Object.keys((await get(ref(db, `rooms/${room}/players`))).val());
-  const idx = players.findIndex(id=>id===playerId);
-  await set(ref(db, `rooms/${room}/currentTurn`), players[(idx+1)%players.length]);
+  const idx = players.findIndex(id => id === playerId);
+  await set(ref(db, `rooms/${room}/currentTurn`), players[(idx + 1) % players.length]);
 }
 
 async function declare7N(room) {
-  await push(ref(db, `rooms/${room}/actions`), { playerId, type:'7N' });
-  alert('7 Naturel déclaré !');
+  // Le joueur doit être en son tour
+  const turn = (await get(ref(db, `rooms/${room}/currentTurn`))).val();
+  if (turn !== playerId) return alert("Ce n'est pas ton tour !");
+  await push(ref(db, `rooms/${room}/actions`), { playerId, type: '7N' });
+  showNotification('7 Naturel déclaré !');
 }
 
 async function declareWin(room) {
-  await push(ref(db, `rooms/${room}/actions`), { playerId, type:'WIN' });
-}
-
-function listenActions(room) {
-  onValue(ref(db, `rooms/${room}/actions`), async snap => {
-    const acts = snap.val() || {};
-    const last = Object.values(acts).pop();
-    if (!last) return;
-    if (last.type==='WIN') await processWin(last.playerId);
-    if (last.type==='7N') alert(`${last.playerId} a déclaré 7N !`);
-  });
+  const turn = (await get(ref(db, `rooms/${room}/currentTurn`))).val();
+  if (turn !== playerId) return alert("Ce n'est pas ton tour !");
+  await push(ref(db, `rooms/${room}/actions`), { playerId, type: 'WIN' });
 }
 
 async function processWin(winner) {
   const room = currentRoom;
   const actions = await get(ref(db, `rooms/${room}/actions`));
-  const has7N = Object.values(actions.val()).find(a=>a.playerId===winner && a.type==='7N');
-  const pts = has7N ? 1.5 : 1;
+  const has7N = Object.values(actions.val() || {}).some(a => a.playerId === winner && a.type === '7N');
+  // Calcul du score
+  let pts = 1;      // Par défaut 1 point au gagnant
+  if (has7N) pts += 0.5; // +0.5 si 7 Naturel déclaré
+
+  // Mise à jour du score
   const scrRef = ref(db, `rooms/${room}/scores/${winner}`);
   const cur = (await get(scrRef)).val() || 0;
   await set(scrRef, cur + pts);
-  alert(`Victoire de ${winner} : +${pts} pt(s)`);
+
+  showNotification(`Victoire de ${winner} : +${pts} pt(s)`);
+
   await resetGame(room);
 }
 
 async function resetGame(room) {
-  const players = Object.keys((await get(ref(db, `rooms/${room}/players`))).val());
+  const players = Object.keys((await get(ref(db, `rooms/${room}/players`))).val() || {});
   for (const id of players) {
     await set(ref(db, `rooms/${room}/hands/${id}`), null);
     await set(ref(db, `rooms/${room}/discard/${id}`), null);
@@ -209,11 +241,13 @@ async function resetGame(room) {
   await set(ref(db, `rooms/${room}/deck`), null);
   await set(ref(db, `rooms/${room}/currentTurn`), null);
   await set(ref(db, `rooms/${room}/actions`), null);
-  await set(ref(db, `rooms/${room}/joker`), null);
-  gameInitialized=false;
-  alert('Partie terminée. Rejoignez ou créez une nouvelle partie.');
+
+  showStatus('Partie terminée. Rejoignez ou créez une nouvelle partie.');
+  gameInitialized = false;
+  jokerCard = null;
 }
 
+// --- Création & Mélange du deck ---
 function createDeck() {
   const suits = [
     { name: 'Coeurs', symbol: '♥', color: 'red' },
@@ -221,19 +255,33 @@ function createDeck() {
     { name: 'Trèfles', symbol: '♣', color: 'black' },
     { name: 'Piques', symbol: '♠', color: 'black' }
   ];
-  const ranks = [ 'A','2','3','4','5','6','7','8','9','10','J','Q','K' ];
-  const values = ranks.map((r,i)=>i+1);
-  const deck = [];
+  const ranks = [
+    { symbol: 'A', value: 1 },
+    { symbol: '2', value: 2 },
+    { symbol: '3', value: 3 },
+    { symbol: '4', value: 4 },
+    { symbol: '5', value: 5 },
+    { symbol: '6', value: 6 },
+    { symbol: '7', value: 7 },
+    { symbol: '8', value: 8 },
+    { symbol: '9', value: 9 },
+    { symbol: '10', value: 10 },
+    { symbol: 'J', value: 11 },
+    { symbol: 'Q', value: 12 },
+    { symbol: 'K', value: 13 }
+  ];
+
+  let deck = [];
   for (let d = 0; d < 2; d++) {
-    for (let s of suits) {
-      for (let i = 0; i < ranks.length; i++) {
-        deck.push({ 
-          suit: s.name, 
-          symbol: s.symbol,
-          color: s.color,
-          rank: ranks[i],
-          value: values[i],
-          id: `${ranks[i]}${s.symbol}${d}`
+    for (const suit of suits) {
+      for (const rank of ranks) {
+        deck.push({
+          suit: suit.name,
+          symbol: suit.symbol,
+          color: suit.color,
+          rank: rank.symbol,
+          value: rank.value,
+          id: `${rank.symbol}${suit.symbol}${d}`
         });
       }
     }
@@ -242,37 +290,79 @@ function createDeck() {
 }
 
 function shuffleDeck(deck) {
-  const arr = [...deck];
-  for (let i = arr.length - 1; i > 0; i--) {
+  const shuffled = [...deck];
+  for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return arr;
+  return shuffled;
 }
 
-async function dealCards(room, players) {
-  const deck = shuffleDeck(createDeck());
-  const joker = drawJoker(deck);
-  await set(ref(db, `rooms/${room}/joker`), joker);
-
-  let i = 0;
-  for (const id of players) {
-    const hand = deck.slice(i, i+13);
-    i += 13;
-    await set(ref(db, `rooms/${room}/hands/${id}`), hand);
-    await set(ref(db, `rooms/${room}/discard/${id}`), []);
-  }
-  await set(ref(db, `rooms/${room}/deck`), deck.slice(i));
-  await set(ref(db, `rooms/${room}/currentTurn`), players[0]);
-}
-
+// --- Tirage aléatoire du joker ---
 function drawJoker(deck) {
-  const chosen = deck[Math.floor(Math.random() * deck.length)];
-  const rank = chosen.rank;
-  const oppositeColors = {
-    'red': ['♣', '♠'],
-    'black': ['♦', '♥']
-  };
-  const jokers = oppositeColors[chosen.color].map(symbol => ({ rank, symbol }));
-  return jokers;
+  // Tirer au hasard une carte dans le deck
+  const randomIndex = Math.floor(Math.random() * deck.length);
+  return deck[randomIndex];
 }
+
+// --- Distribution des cartes ---
+async function dealCards(roomCode, players) {
+  let deck = shuffleDeck(createDeck());
+
+  // Tirage joker aléatoire au début de la partie
+  jokerCard = drawJoker(deck);
+  await set(ref(db, `rooms/${roomCode}/joker`), jokerCard);
+
+  if (players.length * 13 > deck.length) {
+    alert("Trop de joueurs pour la taille du deck !");
+    return false;
+  }
+
+  let index = 0;
+  for (const pId of players) {
+    const playerCards = deck.slice(index, index + 13);
+    await set(ref(db, `rooms/${roomCode}/hands/${pId}`), playerCards);
+    await set(ref(db, `rooms/${roomCode}/discard/${pId}`), []);
+    index += 13;
+  }
+
+  const remainingDeck = deck.slice(index);
+  await set(ref(db, `rooms/${roomCode}/deck`), remainingDeck);
+
+  return true;
+}
+
+// --- Messages et notifications ---
+function showStatus(message) {
+  status.innerText = message;
+}
+
+function showNotification(message) {
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  notification.textContent = message;
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.classList.add('show');
+  }, 10);
+
+  setTimeout(() => {
+    notification.classList.remove('show');
+    setTimeout(() => notification.remove(), 500);
+  }, 3000);
+}
+
+// --- Initialisation ---
+function init() {
+  menuDiv.style.display = 'block';
+  gameDiv.style.display = 'none';
+  drawCardBtn.disabled = true;
+  takeDiscardBtn.disabled = true;
+  endTurnBtn.disabled = true;
+  gameInitialized = false;
+  currentRoom = '';
+  jokerCard = null;
+}
+
+init();
