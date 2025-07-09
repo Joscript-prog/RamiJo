@@ -116,10 +116,6 @@ function showJoker(jokerCard) {
 
 // --- DOM & État ---
 // Define player-specific variables FIRST
-const pseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
-const playerId = 'player_' + Math.floor(Math.random() * 10000); // Corrected: playerId is defined here!
-let currentRoom = '';
-let hasDrawnOrPicked = false; // Flag to track if a card has been drawn/picked this turn
 
 // Now, it's safe to use playerId for DOM element selection if needed
 const createRoomBtn = document.getElementById('createRoom');
