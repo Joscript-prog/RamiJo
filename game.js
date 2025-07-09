@@ -1,4 +1,3 @@
-// game.js (version corrigée)
 import { db, ref, set, get, onValue, onDisconnect, push } from './firebase.js';
 
 // --- Références DOM ---
@@ -10,21 +9,21 @@ const gameDiv = document.getElementById('game');
 const menuDiv = document.getElementById('menu');
 const playersDiv = document.getElementById('players');
 const drawCardBtn = document.getElementById('drawCard');
+const takeDiscardBtn = document.getElementById('takeDiscard'); // Nouveau bouton pour prendre la défausse du joueur précédent
 const endTurnBtn = document.getElementById('endTurn');
 const handDiv = document.getElementById('hand');
+
 const declare7NBtn = document.getElementById('declare7N');
 const declareWinBtn = document.getElementById('declareWin');
-const dropZone = document.getElementById('dropZone');
 
 // --- Variables de config ---
 const pseudo = prompt("Entrez votre pseudo :") || 'Anonyme';
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
 let gameInitialized = false;
+
 let draggedCard = null;
 let draggedCardIndex = null;
-let draggedFromHand = false;
-let draggedFromSlot = null;
 
 // --- Création du deck ---
 function createDeck() {
@@ -77,7 +76,7 @@ function shuffleDeck(deck) {
   return shuffled;
 }
 
-// --- Gestion des salles ---
+// --- Création ou Rejoindre une salle ---
 createRoomBtn.onclick = async () => {
   currentRoom = 'RAMI' + Math.floor(Math.random() * 1000);
   await joinRoom(currentRoom);
@@ -107,7 +106,6 @@ function initGameListeners(roomCode) {
   listenToPlayers(roomCode);
   listenToTurn(roomCode);
   listenToHand(roomCode);
-  listenToSlots(roomCode);
   setupActions(roomCode);
 }
 
@@ -140,18 +138,60 @@ function updatePlayersUI(players) {
   playersDiv.innerHTML += `<div class="players-list">${playerOrder}</div>`;
 }
 
-// --- Gestion du tour ---
+// --- Gestion du tour et boutons ---
 function listenToTurn(roomCode) {
   const currentTurnRef = ref(db, `rooms/${roomCode}/currentTurn`);
-  onValue(currentTurnRef, snapshot => {
+
+  onValue(currentTurnRef, async snapshot => {
     const currentPlayer = snapshot.val();
     const isMyTurn = currentPlayer === playerId;
-    endTurnBtn.disabled = !isMyTurn;
-    
-    const turnText = isMyTurn 
-      ? '<span class="turn-indicator">⭐ À votre tour !</span>' 
-      : `Tour de : ${getPlayerName(currentPlayer)}`;
-    
+
+    // On récupère main du joueur courant
+    const handSnap = await get(ref(db, `rooms/${roomCode}/hands/${playerId}`));
+    const hand = handSnap.val() || [];
+
+    // On récupère la défausse du joueur précédent (s'il y a un joueur précédent)
+    const playersSnap = await get(ref(db, `rooms/${roomCode}/players`));
+    const players = Object.keys(playersSnap.val() || {});
+    const currentIndex = players.indexOf(currentPlayer);
+
+    // Trouver joueur précédent en boucle
+    const prevPlayerIndex = (currentIndex - 1 + players.length) % players.length;
+    const prevPlayerId = players[prevPlayerIndex];
+
+    const discardPrevSnap = await get(ref(db, `rooms/${roomCode}/discardPile/${prevPlayerId}`));
+    const discardPrev = discardPrevSnap.val() || [];
+
+    const hasDiscardCard = discardPrev.length > 0;
+
+    // Gestion des boutons selon état :
+    if (!isMyTurn) {
+      drawCardBtn.disabled = true;
+      takeDiscardBtn.disabled = true;
+      endTurnBtn.disabled = true;
+    } else {
+      if (hand.length === 13) {
+        // Doit choisir piocher ou prendre la défausse du joueur précédent
+        drawCardBtn.disabled = false;
+        takeDiscardBtn.disabled = !hasDiscardCard;
+        endTurnBtn.disabled = true;
+      } else if (hand.length === 14) {
+        // Doit jeter une carte (double clic sur une carte de la main)
+        drawCardBtn.disabled = true;
+        takeDiscardBtn.disabled = true;
+        endTurnBtn.disabled = true;
+      } else {
+        // Cas inattendu
+        drawCardBtn.disabled = true;
+        takeDiscardBtn.disabled = true;
+        endTurnBtn.disabled = true;
+      }
+    }
+
+    const turnText = isMyTurn
+      ? '<span class="turn-indicator">⭐ À votre tour !</span>'
+      : (currentPlayer ? `Tour de : ${getPlayerName(currentPlayer)}` : 'Tour non défini');
+
     status.innerHTML = `Salle : ${currentRoom} | Vous : ${pseudo} | ${turnText}`;
   });
 }
@@ -160,7 +200,7 @@ function getPlayerName(playerId) {
   return playerId.replace('player_', 'Joueur ');
 }
 
-// --- Gestion de la main ---
+// --- Écoute de la main ---
 function listenToHand(roomCode) {
   const handRef = ref(db, `rooms/${roomCode}/hands/${playerId}`);
   onValue(handRef, snapshot => {
@@ -169,6 +209,7 @@ function listenToHand(roomCode) {
   });
 }
 
+// --- Affichage main ---
 function renderHand(hand) {
   handDiv.innerHTML = '<h3>Votre main :</h3>';
   const cardsContainer = document.createElement('div');
@@ -180,16 +221,17 @@ function renderHand(hand) {
   });
 
   handDiv.appendChild(cardsContainer);
-  setupDragEvents();
+
+  setupCardEvents();
 }
 
-// --- Création d'une carte HTML ---
+// --- Création d’une carte HTML ---
 function createCardElement(card, index) {
   const cardEl = document.createElement('div');
   cardEl.className = `card ${card.color}`;
   cardEl.dataset.index = index;
   cardEl.dataset.cardId = card.id;
-  cardEl.draggable = true;
+  cardEl.draggable = false; // Pas besoin drag & drop pour l’instant
   cardEl.innerHTML = `
     <div class="card-corner top-left">
       <span>${card.rank}</span>
@@ -204,256 +246,162 @@ function createCardElement(card, index) {
   return cardEl;
 }
 
-// --- Gestion drag & drop main ---
-function setupDragEvents() {
-  const cards = document.querySelectorAll('.card');
-  
+// --- Événements sur les cartes de la main ---
+function setupCardEvents() {
+  const cards = document.querySelectorAll('.cards-container .card');
+
   cards.forEach(card => {
-    card.addEventListener('dragstart', handleDragStart);
-    card.addEventListener('dragend', handleDragEnd);
-    card.addEventListener('dblclick', handleDoubleClick);
+    card.addEventListener('dblclick', async () => {
+      await handleDiscardCard(card);
+    });
   });
 }
 
-function handleDragStart(e) {
-  draggedCard = this;
-  draggedCardIndex = parseInt(this.dataset.index);
-  draggedFromHand = true;
-  draggedFromSlot = null;
+// --- Gestion du jeté d’une carte ---
+async function handleDiscardCard(cardEl) {
+  const cardId = cardEl.dataset.cardId;
 
-  e.dataTransfer.setData('text/plain', this.dataset.cardId);
-  setTimeout(() => {
-    this.classList.add('dragging');
-  }, 0);
-}
-
-function handleDragEnd() {
-  this.classList.remove('dragging');
-  draggedCard = null;
-  draggedCardIndex = null;
-  draggedFromHand = false;
-  draggedFromSlot = null;
-}
-
-function handleDoubleClick() {
-  const firstEmptySlot = document.querySelector('.drop-slot.empty');
-  if (firstEmptySlot) {
-    moveCardToSlot(this, firstEmptySlot);
-  }
-}
-
-// --- Gestion de la zone de dépôt (combinaisons) ---
-function listenToSlots(roomCode) {
-  const slotsRef = ref(db, `rooms/${roomCode}/slots/${playerId}`);
-  onValue(slotsRef, snapshot => {
-    const slots = snapshot.val() || {};
-    renderDropZone(slots);
-  });
-}
-
-function renderDropZone(slots) {
-  dropZone.innerHTML = '<h3>Combinaisons :</h3>';
-  const slotsContainer = document.createElement('div');
-  slotsContainer.className = 'slots-container-horizontal'; // <-- horizontal layout (voir CSS)
-
-  // 14 slots max
-  for (let i = 0; i < 14; i++) {
-    const slot = document.createElement('div');
-    slot.className = 'drop-slot';
-    slot.dataset.index = i;
-
-    // Si slot vide ou pas
-    if (!slots[i]) {
-      slot.classList.add('empty');
-      // Ajouter un bouton + pour ajouter une carte
-      const plusBtn = document.createElement('button');
-      plusBtn.textContent = '+';
-      plusBtn.title = 'Ajouter une carte';
-      plusBtn.className = 'plus-btn';
-      plusBtn.onclick = () => openCardSelector(i);
-      slot.appendChild(plusBtn);
-    } else {
-      // Afficher les cartes dans le slot (on suppose un tableau de cartes dans slots[i])
-      slots[i].forEach(card => {
-        const cardEl = createCardElement(card);
-        cardEl.draggable = true;
-        cardEl.addEventListener('dragstart', e => {
-          draggedCard = cardEl;
-          draggedFromHand = false;
-          draggedFromSlot = i;
-          e.dataTransfer.setData('text/plain', card.id);
-          setTimeout(() => cardEl.classList.add('dragging'), 0);
-        });
-        cardEl.addEventListener('dragend', e => {
-          cardEl.classList.remove('dragging');
-          draggedCard = null;
-          draggedFromSlot = null;
-        });
-        // Clique pour retirer la carte vers la main
-        cardEl.addEventListener('click', () => {
-          returnCardToHandFromSlot(card, i);
-        });
-        slot.appendChild(cardEl);
-      });
-    }
-
-    slot.addEventListener('dragover', handleDragOver);
-    slot.addEventListener('dragenter', handleDragEnter);
-    slot.addEventListener('dragleave', handleDragLeave);
-    slot.addEventListener('drop', handleDrop);
-
-    dropZone.appendChild(slotsContainer);
-    slotsContainer.appendChild(slot);
-  }
-}
-
-// --- Gestion drag & drop sur slots ---
-function handleDragOver(e) {
-  e.preventDefault();
-}
-
-function handleDragEnter(e) {
-  e.preventDefault();
-  this.classList.add('drop-target');
-}
-
-function handleDragLeave() {
-  this.classList.remove('drop-target');
-}
-
-async function handleDrop(e) {
-  e.preventDefault();
-  this.classList.remove('drop-target');
-
-  const slotIndex = parseInt(this.dataset.index);
-  const cardId = e.dataTransfer.getData('text/plain');
-
-  if (!cardId) return;
-
-  if (draggedFromHand) {
-    // Carte venant de la main => ajouter au slot
-    const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
-    let hand = handSnap.val() || [];
-    const cardIndex = hand.findIndex(c => c.id === cardId);
-    if (cardIndex === -1) return;
-
-    const card = hand[cardIndex];
-
-    // Supprimer carte de la main
-    hand.splice(cardIndex, 1);
-    await set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand);
-
-    // Ajouter carte au slot
-    const slotsSnap = await get(ref(db, `rooms/${currentRoom}/slots/${playerId}`));
-    let slots = slotsSnap.val() || {};
-    if (!slots[slotIndex]) slots[slotIndex] = [];
-    slots[slotIndex].push(card);
-    await set(ref(db, `rooms/${currentRoom}/slots/${playerId}`), slots);
-
-  } else if (draggedFromSlot !== null) {
-    // Carte venant d'un autre slot => déplacer entre slots
-    if (draggedFromSlot === slotIndex) return; // même slot, rien à faire
-
-    const slotsSnap = await get(ref(db, `rooms/${currentRoom}/slots/${playerId}`));
-    let slots = slotsSnap.val() || {};
-
-    const fromCards = slots[draggedFromSlot] || [];
-    const cardIndex = fromCards.findIndex(c => c.id === cardId);
-    if (cardIndex === -1) return;
-    const card = fromCards[cardIndex];
-
-    // Enlever de l'ancien slot
-    fromCards.splice(cardIndex, 1);
-    slots[draggedFromSlot] = fromCards;
-
-    // Ajouter au nouveau slot
-    if (!slots[slotIndex]) slots[slotIndex] = [];
-    slots[slotIndex].push(card);
-
-    await set(ref(db, `rooms/${currentRoom}/slots/${playerId}`), slots);
-
-  } else {
-    // Peut-être cas non prévu
-    console.warn("Drop card from unknown source");
-  }
-}
-
-// --- Ouvrir sélecteur de carte pour ajouter dans slot vide ---
-async function openCardSelector(slotIndex) {
   const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
-  const hand = handSnap.val() || [];
+  let hand = handSnap.val() || [];
 
-  if (hand.length === 0) return alert("Votre main est vide !");
-
-  // Créer un prompt simple pour choisir une carte (améliorable)
-  const cardList = hand.map((c, i) => `${i + 1}: ${c.rank}${c.symbol}`).join('\n');
-  const choice = prompt(`Choisissez une carte à ajouter au slot ${slotIndex + 1}:\n${cardList}\nEntrez un numéro:`);
-
-  const choiceIndex = parseInt(choice) - 1;
-  if (isNaN(choiceIndex) || choiceIndex < 0 || choiceIndex >= hand.length) {
-    alert("Choix invalide.");
+  // Vérifier que la main est bien à 14 cartes (on ne peut jeter que dans ce cas)
+  if (hand.length !== 14) {
+    alert("Vous ne pouvez jeter une carte que si vous avez 14 cartes en main.");
     return;
   }
 
-  // Retirer la carte de la main
-  const card = hand[choiceIndex];
-  hand.splice(choiceIndex, 1);
+  const cardIndex = hand.findIndex(c => c.id === cardId);
+  if (cardIndex === -1) {
+    alert("Carte introuvable dans votre main.");
+    return;
+  }
+
+  const [discardedCard] = hand.splice(cardIndex, 1);
+
+  // Mettre à jour la main (13 cartes)
   await set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand);
 
-  // Ajouter la carte au slot
-  const slotsSnap = await get(ref(db, `rooms/${currentRoom}/slots/${playerId}`));
-  let slots = slotsSnap.val() || {};
-  if (!slots[slotIndex]) slots[slotIndex] = [];
-  slots[slotIndex].push(card);
-  await set(ref(db, `rooms/${currentRoom}/slots/${playerId}`), slots);
-}
+  // Ajouter la carte jetée dans la défausse du joueur
+  const discardRef = ref(db, `rooms/${currentRoom}/discardPile/${playerId}`);
+  const discardSnap = await get(discardRef);
+  let discardPile = discardSnap.val() || [];
 
-// --- Retourner une carte du slot à la main ---
-async function returnCardToHandFromSlot(card, slotIndex) {
-  const slotsSnap = await get(ref(db, `rooms/${currentRoom}/slots/${playerId}`));
-  let slots = slotsSnap.val() || {};
-  if (!slots[slotIndex]) return;
+  discardPile.push(discardedCard);
+  await set(discardRef, discardPile);
 
-  // Retirer la carte du slot
-  slots[slotIndex] = slots[slotIndex].filter(c => c.id !== card.id);
-  if (slots[slotIndex].length === 0) delete slots[slotIndex];
-  await set(ref(db, `rooms/${currentRoom}/slots/${playerId}`), slots);
+  // Activer le bouton fin de tour car main = 13 après jeté
+  endTurnBtn.disabled = false;
 
-  // Ajouter la carte à la main
-  const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
-  let hand = handSnap.val() || [];
-  hand.push(card);
-  await set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand);
+  showNotification(`Vous avez jeté ${discardedCard.rank}${discardedCard.symbol}`);
 }
 
 // --- Gestion des actions ---
 function setupActions(roomCode) {
   drawCardBtn.onclick = () => handleDrawCard(roomCode);
+  takeDiscardBtn.onclick = () => handleTakeDiscard(roomCode);
   endTurnBtn.onclick = () => handleEndTurn(roomCode);
   declare7NBtn.onclick = () => handleDeclare7N(roomCode);
   declareWinBtn.onclick = () => handleDeclareWin(roomCode);
 }
 
+// --- Piocher dans le deck ---
 async function handleDrawCard(roomCode) {
   const turnSnap = await get(ref(db, `rooms/${roomCode}/currentTurn`));
   if (turnSnap.val() !== playerId) return alert("Ce n'est pas votre tour !");
 
-  const deckSnap = await get(ref(db, `rooms/${roomCode}/deck`));
-  const deck = deckSnap.val();
-  if (!deck || deck.length === 0) return alert("Plus de cartes disponibles !");
-
-  const drawnCard = deck[0];
-  const newDeck = deck.slice(1);
-  await set(ref(db, `rooms/${roomCode}/deck`), newDeck);
-
   const handSnap = await get(ref(db, `rooms/${roomCode}/hands/${playerId}`));
-  const hand = handSnap.val() || [];
+  let hand = handSnap.val() || [];
+
+  if (hand.length !== 13) {
+    return alert("Vous devez avoir exactement 13 cartes pour piocher.");
+  }
+
+  const deckSnap = await get(ref(db, `rooms/${roomCode}/deck`));
+  let deck = deckSnap.val() || [];
+
+  if (deck.length === 0) {
+    return alert("Plus de cartes dans le deck !");
+  }
+
+  // Prendre la première carte du deck
+  const drawnCard = deck.shift();
   hand.push(drawnCard);
+
+  // Mise à jour
+  await set(ref(db, `rooms/${roomCode}/deck`), deck);
   await set(ref(db, `rooms/${roomCode}/hands/${playerId}`), hand);
 
   showCardDrawAnimation(drawnCard);
+
+  // Après pioche, désactiver piocher et prendre défausse, obliger à jeter
+  drawCardBtn.disabled = true;
+  takeDiscardBtn.disabled = true;
+  endTurnBtn.disabled = true;
 }
 
+// --- Prendre la dernière carte défaussée du joueur précédent ---
+async function handleTakeDiscard(roomCode) {
+  const turnSnap = await get(ref(db, `rooms/${roomCode}/currentTurn`));
+  if (turnSnap.val() !== playerId) return alert("Ce n'est pas votre tour !");
+
+  const handSnap = await get(ref(db, `rooms/${roomCode}/hands/${playerId}`));
+  let hand = handSnap.val() || [];
+
+  if (hand.length !== 13) {
+    return alert("Vous devez avoir exactement 13 cartes pour prendre la défausse.");
+  }
+
+  // Trouver joueur précédent
+  const playersSnap = await get(ref(db, `rooms/${roomCode}/players`));
+  const players = Object.keys(playersSnap.val() || {});
+  const currentIndex = players.indexOf(playerId);
+  const prevPlayerIndex = (currentIndex - 1 + players.length) % players.length;
+  const prevPlayerId = players[prevPlayerIndex];
+
+  const discardRef = ref(db, `rooms/${roomCode}/discardPile/${prevPlayerId}`);
+  const discardSnap = await get(discardRef);
+  let discardPile = discardSnap.val() || [];
+
+  if (discardPile.length === 0) {
+    return alert("La défausse du joueur précédent est vide.");
+  }
+
+  // Prendre la dernière carte de la défausse
+  const cardTaken = discardPile.pop();
+
+  await set(discardRef, discardPile);
+
+  hand.push(cardTaken);
+  await set(ref(db, `rooms/${roomCode}/hands/${playerId}`), hand);
+
+  // Après prise défausse, désactiver piocher et prendre défausse, obliger à jeter
+  drawCardBtn.disabled = true;
+  takeDiscardBtn.disabled = true;
+  endTurnBtn.disabled = true;
+
+  showNotification(`Vous avez pris ${cardTaken.rank}${cardTaken.symbol} de la défausse.`);
+}
+
+// --- Fin du tour ---
+async function handleEndTurn(roomCode) {
+  const playersSnap = await get(ref(db, `rooms/${roomCode}/players`));
+  const players = Object.keys(playersSnap.val() || {});
+
+  if (players.length < 2) return alert("Pas assez de joueurs pour changer de tour.");
+
+  const currentSnap = await get(ref(db, `rooms/${roomCode}/currentTurn`));
+  const currentIndex = players.indexOf(currentSnap.val());
+  const nextIndex = (currentIndex + 1) % players.length;
+
+  await set(ref(db, `rooms/${roomCode}/currentTurn`), players[nextIndex]);
+
+  // Après changement de tour, désactiver tous les boutons côté joueur
+  drawCardBtn.disabled = true;
+  takeDiscardBtn.disabled = true;
+  endTurnBtn.disabled = true;
+}
+
+// --- Animation de la carte piochée ---
 function showCardDrawAnimation(card) {
   const animationDiv = document.createElement('div');
   animationDiv.className = 'card-draw-animation';
@@ -483,37 +431,7 @@ function showCardDrawAnimation(card) {
   }, 2000);
 }
 
-async function handleEndTurn(roomCode) {
-  const playersSnap = await get(ref(db, `rooms/${roomCode}/players`));
-  const players = Object.keys(playersSnap.val() || {});
-  if (players.length < 2) return alert("Pas assez de joueurs pour changer de tour.");
-
-  const currentSnap = await get(ref(db, `rooms/${roomCode}/currentTurn`));
-  const currentIndex = players.indexOf(currentSnap.val());
-  const nextIndex = (currentIndex + 1) % players.length;
-  await set(ref(db, `rooms/${roomCode}/currentTurn`), players[nextIndex]);
-}
-
-function handleDeclare7N(roomCode) {
-  push(ref(db, `rooms/${roomCode}/actions`), {
-    type: '7N_DECLARED',
-    playerId,
-    pseudo,
-    timestamp: Date.now()
-  });
-  showNotification("7 naturel déclaré !");
-}
-
-function handleDeclareWin(roomCode) {
-  push(ref(db, `rooms/${roomCode}/actions`), {
-    type: 'VICTORY_DECLARED',
-    playerId,
-    pseudo,
-    timestamp: Date.now()
-  });
-  showNotification("Fin de manche déclarée !");
-}
-
+// --- Notifications ---
 function showNotification(message) {
   const notification = document.createElement('div');
   notification.className = 'notification';
@@ -542,16 +460,33 @@ async function dealCards(roomCode, players) {
   for (const pId of players) {
     const playerCards = deck.slice(index, index + 13);
     await set(ref(db, `rooms/${roomCode}/hands/${pId}`), playerCards);
+    // Initialiser défausse vide pour chaque joueur
+    await set(ref(db, `rooms/${roomCode}/discardPile/${pId}`), []);
     index += 13;
   }
 
   const remainingDeck = deck.slice(index);
   await set(ref(db, `rooms/${roomCode}/deck`), remainingDeck);
-  await set(ref(db, `rooms/${roomCode}/discardPile`), []);
+  await set(ref(db, `rooms/${roomCode}/currentTurn`), players[0]);
+
   return true;
 }
 
+// --- Démarrer la partie ---
 async function startGame(roomCode, players) {
-  const firstPlayer = players[Math.floor(Math.random() * players.length)];
-  await set(ref(db, `rooms/${roomCode}/currentTurn`), firstPlayer);
+  showNotification('La partie commence !');
+  drawCardBtn.disabled = true;
+  takeDiscardBtn.disabled = true;
+  endTurnBtn.disabled = true;
 }
+
+// --- Initialisation générale ---
+function init() {
+  menuDiv.style.display = 'block';
+  gameDiv.style.display = 'none';
+  drawCardBtn.disabled = true;
+  takeDiscardBtn.disabled = true;
+  endTurnBtn.disabled = true;
+}
+
+init();
