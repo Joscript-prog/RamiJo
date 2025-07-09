@@ -1,3 +1,4 @@
+// firebase.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getDatabase,
@@ -5,22 +6,34 @@ import {
   set,
   get,
   onValue,
-  onDisconnect
+  onDisconnect,
+  push
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+// Configuration Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDnMUxn4llJdeeKWVCt-8Z4YP0rrv5BOZM",
   authDomain: "rami-en-ligne.firebaseapp.com",
   databaseURL: "https://rami-en-ligne-default-rtdb.firebaseio.com",
   projectId: "rami-en-ligne",
-  storageBucket: "rami-en-ligne.firebasestorage.app",
+  storageBucket: "rami-en-ligne.appspot.com", // ✅ corrigé (.app → .com)
   messagingSenderId: "521757798474",
   appId: "1:521757798474:web:db77e704d36990a1d0b6b3"
 };
 
-// Initialise Firebase app et base de données
+// Initialisation de l'app Firebase
 const app = initializeApp(firebaseConfig);
+
+// Référence à la base de données
 const db = getDatabase(app);
 
-// Export des fonctions nécessaires, dont onDisconnect
-export { db, ref, set, get, onValue, onDisconnect };
+// ✅ Export des fonctions nécessaires à game.js
+export {
+  db,
+  ref,
+  set,
+  get,
+  onValue,
+  onDisconnect,
+  push
+};
