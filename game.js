@@ -258,6 +258,36 @@ async function updateScoreAndNext(room) {
     setTimeout(() => update(stateRef, { started: true }), 10000);
   }, 1000);
 }
+// --- Piocher une carte ---
+async function drawCard(room) {
+  // 1) Récupère l’état pour limiter à 1 pioche
+  const stateRef = ref(db, `rooms/${room}/state`);
+  const stateSnap = await get(stateRef);
+  const state = stateSnap.val() || {};
+  state.drawCount = state.drawCount || 0;
+  if (state.drawCount >= 1) return alert('Une seule pioche par tour.');
+
+  // 2) Récupère le deck et la main
+  const deckRef = ref(db, `rooms/${room}/deck`);
+  const handRef = ref(db, `rooms/${room}/hands/${playerId}`);
+  const [deckSnap, handSnap] = await Promise.all([ get(deckRef), get(handRef) ]);
+  const deck = deckSnap.val() || [];
+  const hand = handSnap.val() || [];
+
+  if (deck.length === 0) return alert('Pas de cartes restantes dans la pioche !');
+
+  // 3) Tire la première carte du deck (deck déjà mélangé contient 104 cartes)
+  const card = deck.shift();
+  hand.push(card);
+
+  // 4) Sauvegarde en base, et incrémente drawCount
+  state.drawCount++;
+  await Promise.all([
+    set(deckRef, deck),
+    set(handRef, hand),
+    set(stateRef, state)
+  ]);
+}
 
 // --- Création / Rejoindre partie ---
 async function createRoom() {
@@ -308,7 +338,7 @@ function init() {
   enableDragDrop();
   createRoomBtn.onclick = createRoom;
   joinRoomBtn.onclick   = joinRoom;
-  drawCardBtn.onclick   = () => alert('Pioche à implémenter');
+  drawCardBtn.onclick = () => drawCard(currentRoom);
   endTurnBtn.onclick    = () => endTurn(currentRoom);
   declare7NBtn.onclick  = () => declare7N(currentRoom);
   declareWinBtn.onclick = () => declareWin(currentRoom);
