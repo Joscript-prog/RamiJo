@@ -1,13 +1,17 @@
 // firebase.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+  initializeApp 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getDatabase,
   ref,
   set,
+  update,
   get,
   onValue,
   onDisconnect,
-  push
+  push,
+  remove
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // ✅ Configuration Firebase (ton projet Rami en ligne)
@@ -32,8 +36,10 @@ export {
   db,
   ref,
   set,
+  update,
   get,
   onValue,
   onDisconnect,
-  push
+  push,
+  remove
 };
