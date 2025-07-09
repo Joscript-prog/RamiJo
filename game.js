@@ -21,6 +21,7 @@ const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
 let gameInitialized = false;
 
+// Création du deck 104 cartes (2 jeux de 52)
 function createDeck() {
   const suits = ['Coeurs', 'Carreaux', 'Trèfles', 'Piques'];
   const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -35,6 +36,7 @@ function createDeck() {
   return deck;
 }
 
+// Mélange Fisher-Yates
 function shuffleDeck(deck) {
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -122,7 +124,7 @@ function listenToHand(roomCode) {
       handDiv.appendChild(cardEl);
     });
 
-    // Générer les zones de dépôt
+    // Générer les zones de dépôt (14 cases)
     dropZone.innerHTML = '';
     for (let i = 0; i < 14; i++) {
       const slot = document.createElement('div');
@@ -156,12 +158,14 @@ function setupActions(roomCode) {
     const hand = handSnap.val() || [];
     hand.push(drawnCard);
     await set(ref(db, `rooms/${roomCode}/hands/${playerId}`), hand);
+
+    alert(`Vous avez pioché : ${drawnCard.rank} de ${drawnCard.suit}`);
   };
 
   endTurnBtn.onclick = async () => {
     const playersSnap = await get(ref(db, `rooms/${roomCode}/players`));
     const players = Object.keys(playersSnap.val() || {});
-    if (players.length < 2) return;
+    if (players.length < 2) return alert("Pas assez de joueurs pour changer de tour.");
 
     const currentSnap = await get(ref(db, `rooms/${roomCode}/currentTurn`));
     const currentIndex = players.indexOf(currentSnap.val());
@@ -215,5 +219,6 @@ async function startGame(roomCode, players) {
   await set(ref(db, `rooms/${roomCode}/currentTurn`), firstPlayer);
 }
 
+// Expose pour debug manuel
 window.dealCards = dealCards;
 window.startGame = startGame;
