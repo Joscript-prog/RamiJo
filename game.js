@@ -249,62 +249,59 @@ async function drawCard(room) {
     const stateRef = ref(db, `rooms/${room}/state`);
     const stateSnapshot = await get(stateRef);
     const state = stateSnapshot.val() || { drawCount: 0 };
-    
+
     if (state.drawCount >= 1) {
       alert('Une seule pioche par tour');
       return;
-    } catch (error) {
-    console.error("Erreur lors de la pioche:", error);
-    alert("Une erreur est survenue lors de la pioche");
-  }
-}
-    
+    }
+
     const [deckSnap, handSnap, jokerSetSnap, playersSnap] = await Promise.all([
       get(ref(db, `rooms/${room}/deck`)),
       get(ref(db, `rooms/${room}/hands/${playerId}`)),
       get(ref(db, `rooms/${room}/jokerSet`)),
       get(ref(db, `rooms/${room}/players`))
     ]);
-    
+
     const deck = deckSnap.val() || [];
     const hand = handSnap.val() || [];
     const jokerSet = jokerSetSnap.val()?.jokerSet || [];
-    const players = Object.keys(playersSnap.val()||{});
-    
+    const players = Object.keys(playersSnap.val() || {});
+
     if (deck.length === 0) {
       alert('Deck vide');
       return;
     }
-    
-    const card = deck.shift(); 
+
+    const card = deck.shift();
     hand.push(card);
-    
-    // Vérification et défausse automatique du joker
+
+    // Vérifie et défausse automatiquement le joker
     if (deck.length <= players.length && hand.some(c => jokerSet.includes(c.id))) {
       const idx = hand.findIndex(c => jokerSet.includes(c.id));
       if (idx !== -1) {
         const [jok] = hand.splice(idx, 1);
         const discardRef = ref(db, `rooms/${room}/discard/${playerId}`);
-        const pile = (await get(discardRef)).val()||[];
+        const pile = (await get(discardRef)).val() || [];
         pile.push(jok);
         await set(discardRef, pile);
         alert('Joker défaussé automatiquement');
       }
     }
-    
-    state.drawCount = (state.drawCount||0) + 1;
-    
+
+    state.drawCount = (state.drawCount || 0) + 1;
+
     await Promise.all([
       set(ref(db, `rooms/${room}/deck`), deck),
       set(ref(db, `rooms/${room}/hands/${playerId}`), hand),
       set(stateRef, state)
     ]);
-    
+
   } catch (error) {
-    console.error('Error drawing card:', error);
-    alert('Erreur lors de la pioche');
+    console.error('Erreur lors de la pioche :', error);
+    alert("Une erreur est survenue lors de la pioche");
   }
 }
+
 
 // --- Défausse manuelle ---
 function enableCardDiscard() {
