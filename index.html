@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rami en ligne</title>
+
+  <!-- Fichier CSS pour le style -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Modules Firebase et logique du jeu -->
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="game.js"></script>
+</head>
+<body>
+  <div id="app">
+    <h1>Jeu de Rami en ligne</h1>
+
+    <!-- Menu principal : création ou rejoindre une partie -->
+    <div id="menu">
+      <button id="createRoom">Créer une partie</button>
+      <input type="text" id="roomCodeInput" placeholder="Code de partie" />
+      <button id="joinRoom">Rejoindre</button>
+    </div>
+
+    <!-- Zone de jeu (cachée par défaut) -->
+    <div id="game" style="display: none">
+      <div id="status"></div>
+      <div id="players"></div>
+      <div id="hand"></div>
+
+      <!-- Boutons de jeu -->
+      <button id="drawCard">Piocher</button>
+      <button id="endTurn">Fin de tour</button>
+    </div>
+  </div>
+</body>
+</html>

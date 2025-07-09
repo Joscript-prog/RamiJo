@@ -1,0 +1,19 @@
+body {
+  font-family: sans-serif;
+  background: #f0f0f0;
+  text-align: center;
+  padding: 20px;
+}
+#hand {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+.card {
+  border: 1px solid #333;
+  padding: 10px;
+  margin: 5px;
+  background: white;
+  border-radius: 4px;
+  width: 60px;
+}
