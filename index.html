@@ -10,62 +10,47 @@
   <script type="module" src="game.js"></script>
 </head>
 <body>
-  <div class="game-container">
-    <!-- En-tête -->
-    <header class="game-header">
-      <h1>Rami en ligne</h1>
-      <div id="status" class="game-status">Prêt à jouer</div>
-    </header>
+  <div class="table">
+    <!-- Cercle de joueurs -->
+    <div id="players" class="players-circle"></div>
 
-    <!-- Zone des joueurs -->
-    <section id="players" class="players-section"></section>
-
-    <!-- Zone de jeu principale -->
-    <main class="game-main">
-      <!-- Zone de défausse et pioche -->
-      <div class="deck-area">
+    <!-- Tapis vert central -->
+    <div class="tapis-vert">
+      <div id="deck-area" class="deck-area">
         <div class="deck-pile" id="deck">
           <div class="card-back"></div>
         </div>
+      </div>
+      <div id="discard-area" class="discard-area">
         <div class="discard-pile" id="discardPile"></div>
       </div>
-
-      <!-- Zone de combinaisons -->
-      <div id="combinations" class="combinations-area"></div>
-
-      <!-- Main du joueur -->
-      <div id="hand" class="player-hand"></div>
-    </main>
-
-    <!-- Contrôles de jeu -->
-    <div class="game-controls">
-      <div class="controls-row">
-        <button id="drawCard" class="btn btn-draw">Piocher</button>
-        <button id="takeDiscard" class="btn btn-take">Prendre défausse</button>
-      </div>
-      <div class="controls-row">
-        <button id="endTurn" class="btn btn-end">Fin de tour</button>
-        <button id="declare7N" class="btn btn-special">7 Naturel</button>
-        <button id="declareWin" class="btn btn-special">Déclarer victoire</button>
+      <div class="controls-vert">
+        <button id="declare7N" class="btn-special">7 Naturel</button>
+        <button id="declareWin" class="btn-special">Déclarer victoire</button>
       </div>
     </div>
 
-    <!-- Menu principal -->
-    <div id="menu" class="menu-overlay">
-      <div class="menu-content">
-        <h2>Nouvelle partie</h2>
-        <button id="createRoom" class="btn btn-primary">Créer une partie</button>
-        
-        <div class="separator">ou</div>
-        
-        <h2>Rejoindre une partie</h2>
-        <div class="join-form">
-          <input type="text" id="roomCodeInput" placeholder="Code de partie" class="room-input">
-          <button id="joinRoom" class="btn btn-secondary">Rejoindre</button>
-        </div>
+    <!-- Main du joueur -->
+    <div id="hand" class="player-hand"></div>
+  </div>
+
+  <!-- Menu principal -->
+  <div id="menu" class="menu-overlay">
+    <div class="menu-content">
+      <h2>Nouvelle partie</h2>
+      <button id="createRoom" class="btn btn-primary">Créer une partie</button>
+      
+      <div class="separator">ou</div>
+      
+      <h2>Rejoindre une partie</h2>
+      <div class="join-form">
+        <input type="text" id="roomCodeInput" placeholder="Code de partie" class="room-input">
+        <button id="joinRoom" class="btn btn-secondary">Rejoindre</button>
       </div>
     </div>
   </div>
-<div id="notificationContainer"></div>
+
+  <!-- Container notifications -->
+  <div id="notificationContainer"></div>
 </body>
 </html>
