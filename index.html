@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rami en ligne - Jeu de cartes multijoueur</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Poppins:wght@600&display=swap" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Poppins:wght@600&display=swap"
+  />
   <link rel="stylesheet" href="style.css" />
   <script type="module" src="firebase.js"></script>
   <script type="module" src="game.js"></script>
@@ -44,8 +47,18 @@
       </div>
       <div class="header-right">
         <button id="toggleChat" class="chat-toggle">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         </button>
       </div>
@@ -61,7 +74,16 @@
       <main class="game-table">
         <div id="players" class="players-circle"></div>
 
-        <!-- Ajout de la structure complète dans game-table -->
+        <!-- ── ZONES DE DÉFAUSSE PAR JOUEUR ── -->
+        <div class="discard-zones">
+          <div class="discard-zone" id="discard-zone-0"></div>
+          <div class="discard-zone" id="discard-zone-1"></div>
+          <div class="discard-zone" id="discard-zone-2"></div>
+          <div class="discard-zone" id="discard-zone-3"></div>
+        </div>
+        <!-- ── FIN ZONES DE DÉFAUSSE ── -->
+
+        <!-- Structure centrale (pioche + défausse globale) -->
         <div class="game-center">
           <div class="table-center">
             <div class="deck-area">
@@ -70,13 +92,13 @@
               </div>
               <div class="deck-label">Pioche</div>
             </div>
-
             <div class="discard-area" id="global-discard">
               <div class="discard-label">Défausse</div>
             </div>
           </div>
         </div>
 
+        <!-- Main du joueur -->
         <div id="hand" class="player-hand"></div>
       </main>
     </div>
@@ -85,7 +107,12 @@
     <div id="chat-container">
       <div id="chat-messages"></div>
       <form id="chat-form">
-        <input type="text" id="chat-input" placeholder="Message..." autocomplete="off" />
+        <input
+          type="text"
+          id="chat-input"
+          placeholder="Message..."
+          autocomplete="off"
+        />
         <button type="submit">Envoyer</button>
       </form>
     </div>
