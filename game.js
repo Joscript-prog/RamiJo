@@ -292,22 +292,6 @@ function updateActionButtons(hand) {
   declareWinBtn.disabled = !Rules.validateWinHand(hand);
 }
 
-function listenDiscard(room) {
-  onValue(ref(db, `rooms/${room}/discard`), snap => {
-    const discards = snap.val() || {};
-    Object.entries(discards).forEach(([pid, pile]) => {
-      const discardEl = document.getElementById(`discard-${pid}`);
-      if (discardEl) {
-        discardEl.innerHTML = pile.slice(-3).map(card => `
-          <div class="discard-card ${card.color}" data-card-id="${card.id}" data-player-id="${pid}">
-            ${card.rank}${card.symbol}
-          </div>
-        `).join('');
-      }
-    });
-  });
-}
-
 function listenTurn(room) {
   onValue(ref(db, `rooms/${room}/turn`), snap => {
     const turn = snap.val();
