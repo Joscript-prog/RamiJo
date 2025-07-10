@@ -81,18 +81,25 @@ async function dealCards(roomId, playerIds) {
   const jokerSet = deck.filter(c => c.value === jokerCard.value && c.suit !== jokerCard.suit);
   const hands = {}, discards = {};
   playerIds.forEach(pid => {
-    hands[pid] = deck.splice(0, 13);
+    hands[pid]    = deck.splice(0, 13);
     discards[pid] = [];
   });
+
   await Promise.all([
     set(ref(db, `rooms/${roomId}/deck`), deck),
     set(ref(db, `rooms/${roomId}/jokerCard`), jokerCard),
     set(ref(db, `rooms/${roomId}/jokerSet`), { jokerSet: jokerSet.map(c => c.id) }),
     set(ref(db, `rooms/${roomId}/hands`), hands),
     set(ref(db, `rooms/${roomId}/discard`), discards),
-    set(ref(db, `rooms/${roomId}/state`), { currentPlayerIndex: 0 })
+    set(ref(db, `rooms/${roomId}/state`), {
+      started: false,
+      drawCount: 0,
+      lastDiscarder: null,
+      currentPlayerIndex: 0
+    })
   ]);
 }
+
 
 // --- Sélecteurs DOM ---
 const createRoomBtn = document.getElementById('createRoom');
@@ -339,12 +346,26 @@ function setupPlayerHandDiscardListener() {
 
 // --- Fin de tour ---
 async function endTurn() {
-  const players = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {});
-  const current = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
-  const idx = players.indexOf(current);
-  const next = players[(idx + 1) % players.length];
-  
-  await set(ref(db, `rooms/${currentRoom}/turn`), next);
+  const stateRef  = ref(db, `rooms/${currentRoom}/state`);
+  const stateSnap = await get(stateRef);
+  const state     = stateSnap.val() || {};
+  const players   = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {});
+  const current   = state.playersOrder
+                    ? state.playersOrder[state.currentPlayerIndex]
+                    : (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
+  // Calcul de l'indice suivant
+  const nextIndex = (state.currentPlayerIndex + 1) % players.length;
+  const next      = players[nextIndex];
+
+  // On met à jour le tour, l'indice, et on enregistre qui a défaussé
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/turn`), next),
+    update(stateRef, {
+      currentPlayerIndex: nextIndex,
+      lastDiscarder: current,
+      drawCount: 0
+    })
+  ]);
 }
 
 // --- Prendre une carte défaussée ---
