@@ -6,6 +6,7 @@ const pseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
 let hasDrawnOrPicked = false;
+let hasDiscardedThisTurn = false;
 
 // --- MODULE Règles ---
 const Rules = {
