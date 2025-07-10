@@ -29,7 +29,10 @@ const Rules = {
       for (let i = 0; i <= vals.length - len; i++) {
         let ok = true;
         for (let j = 1; j < len; j++) {
-          if (vals[i + j] !== vals[i] + j) { ok = false; break; }
+          if (vals[i + j] !== vals[i] + j) {
+            ok = false;
+            break;
+          }
         }
         if (ok) return true;
       }
@@ -38,7 +41,7 @@ const Rules = {
   },
   has7Naturel(hand) {
     return (this.isQuadri(hand) && this.isEscalier(hand, 3)) ||
-           (this.isEscalier(hand, 4) && this.isTri(hand));
+      (this.isEscalier(hand, 4) && this.isTri(hand));
   },
   validateWinHand(hand) {
     const f1 = this.isQuadri(hand) && this.isEscalier(hand, 3);
@@ -50,18 +53,36 @@ const Rules = {
 
 // --- Création et mélange du deck ---
 function createDeck() {
-  const suits = [
-    { suit: 'Coeurs', symbol: '♥', color: 'red' },
-    { suit: 'Carreaux', symbol: '♦', color: 'red' },
-    { suit: 'Trèfles', symbol: '♣', color: 'black' },
-    { suit: 'Piques', symbol: '♠', color: 'black' }
-  ];
-  const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const suits = [{
+    suit: 'Coeurs',
+    symbol: '♥',
+    color: 'red'
+  }, {
+    suit: 'Carreaux',
+    symbol: '♦',
+    color: 'red'
+  }, {
+    suit: 'Trèfles',
+    symbol: '♣',
+    color: 'black'
+  }, {
+    suit: 'Piques',
+    symbol: '♠',
+    color: 'black'
+  }];
+  const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
   let deck = [];
   for (let d = 0; d < 2; d++) {
     suits.forEach(s => ranks.forEach(r => {
       const value = r === 'A' ? 1 : r === 'J' ? 11 : r === 'Q' ? 12 : r === 'K' ? 13 : parseInt(r);
-      deck.push({ suit: s.suit, symbol: s.symbol, color: s.color, rank: r, value, id: `${r}${s.symbol}${d}` });
+      deck.push({
+        suit: s.suit,
+        symbol: s.symbol,
+        color: s.color,
+        rank: r,
+        value,
+        id: `${r}${s.symbol}${d}`
+      });
     }));
   }
   return deck;
@@ -80,16 +101,19 @@ async function dealCards(roomId, playerIds) {
   let deck = shuffle(createDeck());
   const jokerCard = deck[Math.floor(Math.random() * deck.length)];
   const jokerSet = deck.filter(c => c.value === jokerCard.value && c.suit !== jokerCard.suit);
-  const hands = {}, discards = {};
+  const hands = {},
+    discards = {};
   playerIds.forEach(pid => {
-    hands[pid]    = deck.splice(0, 13);
+    hands[pid] = deck.splice(0, 13);
     discards[pid] = [];
   });
 
   await Promise.all([
     set(ref(db, `rooms/${roomId}/deck`), deck),
     set(ref(db, `rooms/${roomId}/jokerCard`), jokerCard),
-    set(ref(db, `rooms/${roomId}/jokerSet`), { jokerSet: jokerSet.map(c => c.id) }),
+    set(ref(db, `rooms/${roomId}/jokerSet`), {
+      jokerSet: jokerSet.map(c => c.id)
+    }),
     set(ref(db, `rooms/${roomId}/hands`), hands),
     set(ref(db, `rooms/${roomId}/discard`), discards),
     set(ref(db, `rooms/${roomId}/state`), {
@@ -118,9 +142,9 @@ const gameDiv = document.getElementById('game');
 
 // --- Affichage du joker ---
 function showJoker(jokerCard) {
-  jokerDiv.innerHTML = jokerCard?.rank
-    ? `<div class="card ${jokerCard.color}">JOKER: ${jokerCard.rank}${jokerCard.symbol}</div>`
-    : '';
+  jokerDiv.innerHTML = jokerCard?.rank ?
+    `<div class="card ${jokerCard.color}">JOKER: ${jokerCard.rank}${jokerCard.symbol}</div>` :
+    '';
 }
 
 // --- Popups ---
@@ -150,8 +174,8 @@ function actionCreateRoomPopup() {
 
 // --- Drag & Drop ---
 function enableDragDrop() {
-  new Sortable(playerHandDiv, { 
-    animation: 150, 
+  new Sortable(playerHandDiv, {
+    animation: 150,
     ghostClass: 'sortable-ghost',
     onEnd: async (evt) => {
       const hand = Array.from(playerHandDiv.children).map(el => {
@@ -160,14 +184,14 @@ function enableDragDrop() {
           rank: el.querySelector('.corner.top span').textContent,
           symbol: el.querySelector('.corner.top span:nth-child(2)').textContent,
           color: el.classList.contains('red') ? 'red' : 'black',
-          suit: el.querySelector('.corner.top span:nth-child(2)').textContent === '♥' ? 'Coeurs' : 
-                el.querySelector('.corner.top span:nth-child(2)').textContent === '♦' ? 'Carreaux' :
-                el.querySelector('.corner.top span:nth-child(2)').textContent === '♣' ? 'Trèfles' : 'Piques',
-          value: parseInt(el.querySelector('.corner.top span').textContent) || 
-                 (el.querySelector('.corner.top span').textContent === 'A' ? 1 :
-                  el.querySelector('.corner.top span').textContent === 'J' ? 11 :
-                  el.querySelector('.corner.top span').textContent === 'Q' ? 12 :
-                  el.querySelector('.corner.top span').textContent === 'K' ? 13 : 0)
+          suit: el.querySelector('.corner.top span:nth-child(2)').textContent === '♥' ? 'Coeurs' :
+            el.querySelector('.corner.top span:nth-child(2)').textContent === '♦' ? 'Carreaux' :
+            el.querySelector('.corner.top span:nth-child(2)').textContent === '♣' ? 'Trèfles' : 'Piques',
+          value: parseInt(el.querySelector('.corner.top span').textContent) ||
+            (el.querySelector('.corner.top span').textContent === 'A' ? 1 :
+              el.querySelector('.corner.top span').textContent === 'J' ? 11 :
+              el.querySelector('.corner.top span').textContent === 'Q' ? 12 :
+              el.querySelector('.corner.top span').textContent === 'K' ? 13 : 0)
         };
       });
       await set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand);
@@ -179,7 +203,7 @@ function enableDragDrop() {
 function renderPlayers(players) {
   playersDiv.innerHTML = '';
   playersDiv.className = `players-circle ${players.length === 2 ? 'two-players' : ''}`;
-  
+
   players.forEach((p, index) => {
     const badge = document.createElement('div');
     badge.className = `player-badge ${p.id === playerId ? 'current-player' : ''}`;
@@ -197,14 +221,17 @@ function renderPlayers(players) {
 // --- Listeners Firebase ---
 function listenPlayers(room) {
   onValue(ref(db, `rooms/${room}/players`), snap => {
-    const players = Object.entries(snap.val()||{}).map(([id,o]) => ({id, pseudo:o.pseudo}));
+    const players = Object.entries(snap.val() || {}).map(([id, o]) => ({
+      id,
+      pseudo: o.pseudo
+    }));
     renderPlayers(players);
   });
-  
+
   onValue(ref(db, `rooms/${room}/scores`), snap => {
-    Object.entries(snap.val()||{}).forEach(([id,score]) => {
+    Object.entries(snap.val() || {}).forEach(([id, score]) => {
       const el = document.getElementById(`score-${id}`);
-      if(el) el.textContent = `Score: ${score}`;
+      if (el) el.textContent = `Score: ${score}`;
     });
   });
 }
@@ -245,7 +272,7 @@ function listenTurn(room) {
     hasDrawnOrPicked = false; // Réinitialiser à chaque nouveau tour
     drawCardBtn.disabled = !myTurn;
     status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente...";
-    
+
     // Mettre en évidence le joueur courant
     document.querySelectorAll('.player-badge').forEach(badge => {
       badge.classList.toggle('current-turn', badge.id === `badge-${turn}`);
@@ -281,7 +308,9 @@ async function drawCard() {
 
   // 2) Récupérer & initialiser l'état
   const stateRef = ref(db, `rooms/${currentRoom}/state`);
-  let state = (await get(stateRef)).val() || { drawCount: 0 };
+  let state = (await get(stateRef)).val() || {
+    drawCount: 0
+  };
   console.log("⚙️ avant pioche, drawCount =", state.drawCount);
 
   // 3) Empêcher la double pioche
@@ -331,22 +360,25 @@ async function drawCard() {
 
 // --- Prendre la carte défaussée (joueur précédent) ---
 async function takeDiscardedCard(ownerId) {
-  const turnSnap  = await get(ref(db, `rooms/${currentRoom}/turn`));
-  if (turnSnap.val() !== playerId) 
+  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+  if (turnSnap.val() !== playerId)
     return alert("Ce n'est pas votre tour.");
 
-  const stateRef  = ref(db, `rooms/${currentRoom}/state`);
-  let state       = (await get(stateRef)).val() || { drawCount: 0, lastDiscarder: null };
-  if (state.drawCount >= 1) 
+  const stateRef = ref(db, `rooms/${currentRoom}/state`);
+  let state = (await get(stateRef)).val() || {
+    drawCount: 0,
+    lastDiscarder: null
+  };
+  if (state.drawCount >= 1)
     return alert('Vous avez déjà pioché ou pris une carte ce tour.');
 
   // Vérification du joueur précédent
-  if (ownerId !== state.lastDiscarder) 
+  if (ownerId !== state.lastDiscarder)
     return alert("Vous ne pouvez prendre qu'une carte de la défausse du joueur précédent.");
 
   // Récupérer la carte
   let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${ownerId}`))).val() || [];
-  if (!pile.length) 
+  if (!pile.length)
     return alert('Défausse vide.');
 
   const card = pile.pop();
@@ -357,12 +389,41 @@ async function takeDiscardedCard(ownerId) {
   state.drawCount++;
 
   await Promise.all([
-    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`),      hand),
-    set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`),    pile),
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+    set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), pile),
     set(stateRef, state)
   ]);
+  hasDrawnOrPicked = true;
 }
 
+// --- Fin de tour ---
+async function endTurn() {
+  // Référence à l'état du jeu
+  const stateRef = ref(db, `rooms/${currentRoom}/state`);
+  const stateSnap = await get(stateRef);
+  const state = stateSnap.val() || {};
+
+  // Récupérer la liste des joueurs et l'ID du joueur courant
+  const players = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || []);
+  const current = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
+
+  // Calculer l'ID du joueur suivant
+  const idx = players.indexOf(current);
+  const next = players[(idx + 1) % players.length];
+
+  // Mettre à jour le tour, le dernier défausseur et réinitialiser drawCount
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/turn`), next),
+    update(stateRef, {
+      lastDiscarder: current,
+      drawCount: 0
+    })
+  ]);
+
+  // Réinitialiser les flags locaux pour le prochain joueur
+  hasDrawnOrPicked = false;
+  hasDiscardedThisTurn = false;
+}
 
 
 // --- Défausse manuelle & passage immédiat de tour ---
@@ -373,64 +434,44 @@ function setupPlayerHandDiscardListener() {
 
     // Tour actif ?
     const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-    if (turnSnap.val() !== playerId)
+    if (turnSnap.val() !== playerId) {
       return alert("Ce n'est pas votre tour.");
+    }
 
     // Une défausse déjà faite ?
-    if (hasDiscardedThisTurn)
+    if (hasDiscardedThisTurn) {
       return alert("Vous avez déjà jeté une carte ce tour.");
+    }
 
-    // Avez‑vous pioché/pris ?
-    const stateSnap  = await get(ref(db, `rooms/${currentRoom}/state`));
-    const drawCount  = stateSnap.val()?.drawCount || 0;
-    if (drawCount === 0)
+    // Avez‑vous pioché ou pris une carte ?
+    const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+    const drawCount = stateSnap.val()?.drawCount || 0;
+    if (drawCount === 0) {
       return alert("Vous devez piocher ou prendre une carte avant de défausser.");
+    }
 
-    // Retirer la carte
+    // Retirer la carte de la main
     const cardId = cardEl.dataset.cardId;
-    let hand     = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-    const idx    = hand.findIndex(c => c.id === cardId);
+    let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+    const idx = hand.findIndex(c => c.id === cardId);
     if (idx === -1) return;
     const [card] = hand.splice(idx, 1);
 
-    // Ajouter à la défausse
+    // Ajouter la carte à votre défausse
     let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
     pile.push(card);
 
     await Promise.all([
-      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`),   hand),
+      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
       set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
     ]);
 
-    // Marquer la défausse effectuée
+    // Marquer la défausse effectuée localement
     hasDiscardedThisTurn = true;
 
     // Passage automatique au tour suivant
     await endTurn();
   });
-}
-
-// --- Fin de tour ---
-async function endTurn() {
-  const stateRef  = ref(db, `rooms/${currentRoom}/state`);
-  const stateSnap = await get(stateRef);
-  const state     = stateSnap.val() || {};
-  const players   = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || []);
-  const current   = state.turn;
-  const idx       = players.indexOf(current);
-  const next      = players[(idx + 1) % players.length];
-
-  await Promise.all([
-    set(ref(db, `rooms/${currentRoom}/turn`),   next),
-    update(stateRef, {
-      lastDiscarder:    current,
-      drawCount:        0
-    })
-  ]);
-
-  // Réinitialiser les flags locaux
-  hasDrawnOrPicked     = false;
-  hasDiscardedThisTurn = false;
 }
 
 
@@ -442,7 +483,7 @@ function enableDiscardPileInteraction() {
 
     const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
     if (turnSnap.val() !== playerId) return alert("Pas votre tour.");
-    if (hasDrawnOrPicked)   return alert("Vous avez déjà pioché ou pris une carte.");
+    if (hasDrawnOrPicked) return alert("Vous avez déjà pioché ou pris une carte.");
 
     // on ne peut prendre que la dernière carte défaussée DU joueur précédent
     const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
@@ -464,8 +505,8 @@ function enableDiscardPileInteraction() {
     const updated = discards.filter(c => c.id !== cardId);
 
     await Promise.all([
-      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`),      hand),
-      set(ref(db, `rooms/${currentRoom}/discard/${pid}`),     updated)
+      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+      set(ref(db, `rooms/${currentRoom}/discard/${pid}`), updated)
     ]);
 
     hasDrawnOrPicked = true;
@@ -477,31 +518,32 @@ function enableDiscardPileInteraction() {
 async function createRoom() {
   currentRoom = 'RAMI' + Math.floor(Math.random() * 1000);
   await Promise.all([
-    set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo }),
+    set(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
+      pseudo
+    }),
     set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0),
     set(ref(db, `rooms/${currentRoom}/turn`), playerId)
   ]);
-  
+
   const playerIds = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val());
   await dealCards(currentRoom, playerIds);
-  
+
   menuDiv.style.display = 'none';
   gameDiv.hidden = false;
   status.textContent = `Salle: ${currentRoom} | Vous: ${pseudo}`;
   actionCreateRoomPopup();
-  
+
   // Initialisation des écouteurs
   listenPlayers(currentRoom);
   listenDiscard(currentRoom);
   listenHand(currentRoom);
   listenTurn(currentRoom);
-  
+
   onValue(ref(db, `rooms/${currentRoom}/jokerCard`), snap => showJoker(snap.val()));
-  enableDragDrop();
-  setupPlayerHandDiscardListener();
-  enableDiscardPileInteraction();
+  // Moved these calls to init()
 }
 
+// --- Rejoindre salle ---
 // --- Rejoindre salle ---
 async function joinRoom() {
   const code = roomInput.value.trim();
@@ -513,31 +555,24 @@ async function joinRoom() {
   if (!roomSnap.exists()) return alert('Salle inexistante');
 
   // Empêcher l’entrée si le jeu est déjà commencé
-  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-  if (stateSnap.val()?.started) {
+  const stateRef      = ref(db, `rooms/${currentRoom}/state`);
+  const stateSnapInit = await get(stateRef);
+  if (stateSnapInit.val()?.started) {
     return alert('Le jeu a déjà commencé : plus aucune entrée n’est possible.');
   }
 
   // Ajouter le joueur et initialiser son score
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo }),
-    set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0),
+    set(ref(db, `rooms/${currentRoom}/scores/${playerId}`),  0),
   ]);
 
   // S’assurer que chacun a bien 13 cartes (nouveau joueur inclus)
   const handsSnap = await get(ref(db, `rooms/${currentRoom}/hands`));
-  const hands = handsSnap.val() || {};
+  const hands     = handsSnap.val() || {};
   if (!hands[playerId]) {
-    // Option 1 : redistribuer à tous (pour garder synchronisé)
     const playerIds = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val());
     await dealCards(currentRoom, playerIds);
-    // — si  ne donner que 13 cartes au nouvel entrant :
-    // let deck = (await get(ref(db, `rooms/${currentRoom}/deck`))).val() || [];
-    // const newCards = deck.splice(0, 13);
-    // await Promise.all([
-    //   set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), newCards),
-    //   set(ref(db, `rooms/${currentRoom}/deck`), deck)
-    // ]);
   }
 
   // Masquer le menu, afficher le jeu
@@ -551,19 +586,16 @@ async function joinRoom() {
   listenDiscard(currentRoom);
   listenHand(currentRoom);
   listenTurn(currentRoom);
-
   onValue(ref(db, `rooms/${currentRoom}/jokerCard`), snap => showJoker(snap.val()));
-  enableDragDrop();
-  setupPlayerHandDiscardListener();
-  enableDiscardPileInteraction();
 
-  // Si c’est le second joueur à entrer (ou plus), on considère que le jeu commence
-  // et on verrouille l’entrée aux suivants
-  const playersCount = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {}).length;
-  if (playersCount > 1 && !stateSnap.val()?.started) {
-    await update(ref(db, `rooms/${currentRoom}/state`), { started: true });
+  // Début du jeu dès que le second joueur (ou plus) rejoint
+  const playersCount  = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {}).length;
+  const stateSnapNow  = await get(stateRef);
+  if (playersCount > 1 && !stateSnapNow.val()?.started) {
+    await update(stateRef, { started: true });
   }
 }
+
 
 // --- Abandon de partie (–0.5 point) ---
 async function abandonGame() {
@@ -572,7 +604,7 @@ async function abandonGame() {
   await set(ref(db, `rooms/${currentRoom}/players/${playerId}`), null);
   // Décrémenter son score
   const scoreRef = ref(db, `rooms/${currentRoom}/scores/${playerId}`);
-  const cur      = (await get(scoreRef)).val() || 0;
+  const cur = (await get(scoreRef)).val() || 0;
   await set(scoreRef, cur - 0.5);
   alert('Vous avez abandonné : –0.5 point');
   // Optionnel : masquer l’UI ou rediriger
@@ -585,11 +617,11 @@ async function declare7N() {
   if (!currentRoom) return;
   const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
   if (!Rules.has7Naturel(hand)) return alert('Combinaison invalide pour 7 Naturel');
-  
+
   const scoreRef = ref(db, `rooms/${currentRoom}/scores/${playerId}`);
   const cur = (await get(scoreRef)).val() || 0;
   await set(scoreRef, cur + 0.5);
-  
+
   showPopup('7 Naturel validé ! +0.5 point');
 }
 
@@ -597,11 +629,11 @@ async function declareWin() {
   if (!currentRoom) return;
   const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
   if (!Rules.validateWinHand(hand)) return alert('Combinaison invalide pour la victoire');
-  
+
   const scoreRef = ref(db, `rooms/${currentRoom}/scores/${playerId}`);
   const cur = (await get(scoreRef)).val() || 0;
   await set(scoreRef, cur + 1);
-  
+
   showPopup('Victoire validée ! +1 point');
 }
 
@@ -612,7 +644,12 @@ function init() {
   drawCardBtn.onclick = drawCard;
   declare7NBtn.onclick = declare7N;
   declareWinBtn.onclick = declareWin;
-  
+
+  // Initialiser les interactions de jeu
+  enableDragDrop();
+  setupPlayerHandDiscardListener();
+  enableDiscardPileInteraction();
+
   // Cacher la partie jeu au départ
   gameDiv.hidden = true;
 }
