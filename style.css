@@ -1,6 +1,3 @@
-/* style.css */
-
-/* Variables modernes */
 :root {
   --primary: #2c3e50;
   --secondary: #2980b9;
@@ -18,9 +15,9 @@
   --shadow-md: 0 4px 8px rgba(0,0,0,0.15);
   --shadow-lg: 0 8px 16px rgba(0,0,0,0.2);
   --radius: 10px;
-  --transition: all 0.25s ease;
-  --card-width-base: 100px;
-  --card-height-base: 140px;
+  --transition: all 0.3s ease;
+  --card-width-base: 80px;
+  --card-height-base: 120px;
 }
 
 * {
@@ -39,50 +36,94 @@ body {
   overflow-x: hidden;
 }
 
+/* Menu */
+#menu {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.menu-content {
+  background: white;
+  padding: 2rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+
+.menu-section {
+  margin: 2rem 0;
+}
+
 /* Game layout */
 #game {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - 40px);
+  background-color: var(--felt-green);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
 }
 
 .game-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
+  padding: 10px 20px;
+  background-color: rgba(0,0,0,0.1);
+  color: white;
 }
 
 .game-main-content {
   flex: 1;
   display: flex;
-  overflow: hidden;
+  position: relative;
 }
 
-/* Controls à droite */
+/* Controls */
 .game-controls {
   width: 200px;
-  background: white;
+  background: rgba(255,255,255,0.9);
   padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  border-left: 1px solid #ddd;
-  overflow-y: auto;
+  z-index: 10;
 }
 
 .game-controls button {
-  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 5px;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+  transition: var(--transition);
 }
 
-/* Table de jeu à gauche */
+.game-controls button:hover {
+  background: var(--secondary);
+}
+
+.game-controls button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-special {
+  background: var(--accent) !important;
+}
+
+/* Table de jeu */
 .game-table {
   flex: 1;
-  background-color: var(--felt-green);
   position: relative;
-  padding: 20px;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
 }
 
@@ -90,41 +131,39 @@ body {
 .players-circle {
   position: absolute;
   inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-/* Pour 2 joueurs : face à face */
-.players-circle.two-players .player-badge:nth-child(1) {
-  top: 5%; left: 50%; transform: translateX(-50%);
-}
-.players-circle.two-players .player-badge:nth-child(2) {
-  bottom: 5%; left: 50%; transform: translateX(-50%);
+.players-circle.two-players {
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-/* Position par défaut pour jusqu'à 5 joueurs */
-.players-circle .player-badge:nth-child(1) {
-  top: 5%; left: 50%; transform: translateX(-50%);
-}
-.players-circle .player-badge:nth-child(2) {
-  top: 30%; right: 2%; transform: translateY(-50%);
-}
-.players-circle .player-badge:nth-child(3) {
-  bottom: 30%; right: 2%;
-}
-.players-circle .player-badge:nth-child(4) {
-  bottom: 30%; left: 2%;
-}
-.players-circle .player-badge:nth-child(5) {
-  top: 30%; left: 2%; transform: translateY(-50%);
+.players-circle.two-players .player-badge {
+  position: static;
+  transform: none;
+  margin: 20px 0;
 }
 
 .player-badge {
   position: absolute;
-  width: 140px;
-  padding: 0.75rem;
+  width: 160px;
+  padding: 1rem;
   background: white;
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   text-align: center;
+  transition: var(--transition);
+}
+
+.player-badge.current-player {
+  border: 2px solid var(--accent);
+}
+
+.player-badge.current-turn {
+  box-shadow: 0 0 0 3px var(--warning);
 }
 
 .player-name {
@@ -137,47 +176,63 @@ body {
   color: var(--text-light);
 }
 
-/* Réserve centrale */
+/* Main des adversaires */
+.opponent-hand {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 0.5rem;
+}
+
+.opponent-hand .card {
+  width: 30px;
+  height: 45px;
+  font-size: 0.7rem;
+  padding: 3px;
+}
+
+/* Défausses */
+.discard-pile {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 0.5rem;
+}
+
+.discard-card {
+  width: 30px;
+  height: 45px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.8rem;
+  background: white;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.discard-card.red { color: var(--card-red); }
+.discard-card.black { color: var(--card-black); }
+
+.discard-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Zone centrale */
 .game-center {
-  margin-top: 60px;
+  position: relative;
+  z-index: 5;
   display: flex;
   gap: 2rem;
+  margin-top: 20px;
 }
 
 .game-zone {
   width: var(--card-width-base);
   height: var(--card-height-base);
-}
-
-/* Pioche et défausse globale */
-.card-back,
-.discard-pile-display {
-  width: 100%;
-  height: 100%;
-  border-radius: var(--radius);
-}
-
-.card-back {
-  background: linear-gradient(135deg, #1e5799 0%, #2989d8 50%, #207cca 100%);
-}
-
-.discard-pile-display {
-  position: relative;
-}
-
-/* Main du joueur */
-.player-hand {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 0.5rem;
-  padding: 1rem;
-  background: rgba(255,255,255,0.2);
-  border-radius: var(--radius);
-  max-width: 95%;
-  overflow-x: auto;
 }
 
 /* Cartes */
@@ -193,46 +248,135 @@ body {
   padding: 10px;
   cursor: pointer;
   transition: var(--transition);
+  position: relative;
+  user-select: none;
 }
 
 .card.red { color: var(--card-red); }
 .card.black { color: var(--card-black); }
 
-/* Dos de carte */
+.card .corner {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.card .corner.bottom {
+  align-self: flex-end;
+  transform: rotate(180deg);
+}
+
+.card .suit.main {
+  font-size: 2rem;
+  text-align: center;
+  margin: auto 0;
+}
+
 .card.back {
   background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 50%, var(--secondary) 100%);
-}
-
-/* Mini-défausses (3 cartes max) */
-.mini-discard {
+  color: white;
   display: flex;
-  gap: 0.25rem;
   justify-content: center;
-  margin-top: 0.5rem;
-  max-width: calc(3 * 24px + 2 * 0.25rem);
-  overflow: hidden;
-}
-
-.mini-card {
-  width: 24px;
-  height: 36px;
-  border-radius: 4px;
-  background: var(--card-white);
-  display: flex;
   align-items: center;
-  justify-content: center;
+  font-size: 2rem;
 }
 
-@media (max-width: 1024px) {
-  .game-main-content { flex-direction: column; }
+/* Main du joueur */
+.player-hand {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(255,255,255,0.2);
+  border-radius: var(--radius);
+  max-width: 90%;
+  overflow-x: auto;
+  z-index: 10;
+}
+
+.player-hand .card {
+  flex-shrink: 0;
+}
+
+.player-hand .card:hover {
+  transform: translateY(-20px);
+}
+
+/* Animations */
+.card.discarding {
+  animation: discardAnimation 0.5s forwards;
+}
+
+@keyframes discardAnimation {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.5) translateY(-100px); opacity: 0; }
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: var(--radius);
+  max-width: 500px;
+  width: 90%;
+}
+
+.modal-close {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  :root {
+    --card-width-base: 60px;
+    --card-height-base: 90px;
+  }
+  
+  .game-main-content {
+    flex-direction: column;
+  }
+  
   .game-controls {
     width: 100%;
-    border-left: none;
-    border-top: 1px solid #ddd;
     order: 2;
+    flex-direction: row;
+    flex-wrap: wrap;
   }
-  .game-table {
-    order: 1;
-    height: 60vh;
+  
+  .game-controls button {
+    flex: 1 1 45%;
+    min-width: 120px;
+  }
+  
+  .player-badge {
+    width: 120px;
+    padding: 0.5rem;
+  }
+  
+  .players-circle.two-players .player-badge {
+    margin: 10px 0;
   }
 }
