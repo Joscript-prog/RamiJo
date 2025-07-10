@@ -271,30 +271,33 @@ function renderHand(hand) {
 // --- Pioche ---
 async function drawCard() {
   if (!currentRoom) return;
-  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-  if (turnSnap.val() !== playerId) return alert("Ce n'est pas votre tour.");
-  
-  if (hasDrawnOrPicked) return alert('Vous avez déjà effectué une action ce tour.');
-  
+  const turnSnap  = await get(ref(db, `rooms/${currentRoom}/turn`));
+  if (turnSnap.val() !== playerId) 
+    return alert("Ce n'est pas votre tour.");
+
+  const stateRef  = ref(db, `rooms/${currentRoom}/state`);
+  let state       = (await get(stateRef)).val() || { drawCount: 0 };
+  if (state.drawCount >= 1) 
+    return alert('Vous avez déjà pioché ou pris une carte ce tour.');
+
+  // Récupérer deck/hand/jokerSet
   let [deckSnap, handSnap, jokerSetSnap] = await Promise.all([
     get(ref(db, `rooms/${currentRoom}/deck`)),
     get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)),
     get(ref(db, `rooms/${currentRoom}/jokerSet`))
   ]);
-  
   let deck = deckSnap.val() || [];
   let hand = handSnap.val() || [];
   const jokerSet = jokerSetSnap.val()?.jokerSet || [];
-  
-  if (!deck.length) {
-    alert('Deck vide');
-    return;
-  }
-  
-  const card = deck.shift(); 
+
+  if (!deck.length) 
+    return alert('Deck vide');
+
+  // On pioche
+  const card = deck.shift();
   hand.push(card);
-  
-  // Vérification pour défausse automatique du joker
+
+  // Joker automatique (inchangé)…
   const playersCount = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {}).length;
   if (deck.length <= playersCount && hand.some(c => jokerSet.includes(c.id))) {
     const idx = hand.findIndex(c => jokerSet.includes(c.id));
@@ -302,16 +305,53 @@ async function drawCard() {
     let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
     pile.push(jok);
     await set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile);
-    showPopup('Joker défaussé automatiquement selon les règles du jeu');
+    showPopup('Joker défaussé automatiquement');
   }
-  
-  hasDrawnOrPicked = true;
+
+  // **Incrémentation** du drawCount
+  state.drawCount++;
   
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/deck`), deck),
     set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+    set(stateRef, state)
   ]);
 }
+// --- Prendre la carte défaussée (joueur précédent) ---
+async function takeDiscardedCard(ownerId) {
+  const turnSnap  = await get(ref(db, `rooms/${currentRoom}/turn`));
+  if (turnSnap.val() !== playerId) 
+    return alert("Ce n'est pas votre tour.");
+
+  const stateRef  = ref(db, `rooms/${currentRoom}/state`);
+  let state       = (await get(stateRef)).val() || { drawCount: 0, lastDiscarder: null };
+  if (state.drawCount >= 1) 
+    return alert('Vous avez déjà pioché ou pris une carte ce tour.');
+
+  // Vérification du joueur précédent
+  if (ownerId !== state.lastDiscarder) 
+    return alert("Vous ne pouvez prendre qu'une carte de la défausse du joueur précédent.");
+
+  // Récupérer la carte
+  let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${ownerId}`))).val() || [];
+  if (!pile.length) 
+    return alert('Défausse vide.');
+
+  const card = pile.pop();
+  let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+  hand.push(card);
+
+  // **Incrémentation** du drawCount
+  state.drawCount++;
+
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`),      hand),
+    set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`),    pile),
+    set(stateRef, state)
+  ]);
+}
+
+
 
 // --- Défausse manuelle & passage immédiat de tour ---
 function setupPlayerHandDiscardListener() {
