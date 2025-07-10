@@ -121,10 +121,10 @@ async function dealCards(roomId, playerIds) {
       drawCount: 0,
       lastDiscarder: null,
       currentPlayerIndex: 0
-    })
+    }),
+    set(ref(db, `rooms/${roomId}/chat`), {}) // Initialiser le chat
   ]);
 }
-
 
 // --- Sélecteurs DOM ---
 const createRoomBtn = document.getElementById('createRoom');
@@ -139,6 +139,11 @@ const declare7NBtn = document.getElementById('declare7N');
 const declareWinBtn = document.getElementById('declareWin');
 const menuDiv = document.getElementById('menu');
 const gameDiv = document.getElementById('game');
+const toggleChatBtn = document.getElementById('toggleChat');
+const chatContainer = document.getElementById('chat-container');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatMessages = document.getElementById('chat-messages');
 
 // --- Affichage du joker ---
 function showJoker(jokerCard) {
@@ -361,7 +366,6 @@ async function drawCard() {
   hasDrawnOrPicked = true;
 }
 
-
 // --- Prendre la carte défaussée (joueur précédent) ---
 async function takeDiscardedCard(ownerId) {
   // Vérification que c'est le tour du joueur
@@ -408,7 +412,6 @@ async function takeDiscardedCard(ownerId) {
   hasDrawnOrPicked = true;
 }
 
-
 // --- Fin de tour ---
 async function endTurn() {
   // Référence à l'état du jeu
@@ -437,7 +440,6 @@ async function endTurn() {
   hasDrawnOrPicked = false;
   hasDiscardedThisTurn = false;
 }
-
 
 // --- Défausse manuelle & passage immédiat de tour ---
 function setupPlayerHandDiscardListener() {
@@ -487,46 +489,53 @@ function setupPlayerHandDiscardListener() {
   });
 }
 
+// --- Gestion du chat ---
+function enableChat() {
+  // Toggle du chat
+  toggleChatBtn.addEventListener('click', () => {
+    chatContainer.classList.toggle('open');
+  });
 
+  // Envoi des messages
+  chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const message = chatInput.value.trim();
+    if (!message) return;
+    
+    const timestamp = Date.now();
+    const messageData = {
+      sender: playerId,
+      pseudo: pseudo,
+      message: message,
+      timestamp: timestamp
+    };
+    
+    const messageRef = ref(db, `rooms/${currentRoom}/chat/${timestamp}`);
+    await set(messageRef, messageData);
+    chatInput.value = '';
+  });
 
-// --- Prendre une carte défaussée ---
-function enableDiscardPileInteraction() {
-  playersDiv.addEventListener('click', async e => {
-    const discardEl = e.target.closest('.discard-card');
-    if (!discardEl) return;
-
-    const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-    if (turnSnap.val() !== playerId) return alert("Pas votre tour.");
-    if (hasDrawnOrPicked) return alert("Vous avez déjà pioché ou pris une carte.");
-
-    // on ne peut prendre que la dernière carte défaussée DU joueur précédent
-    const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-    const lastDiscarder = stateSnap.val()?.lastDiscarder;
-    const pid = discardEl.dataset.playerId;
-    if (pid !== lastDiscarder) {
-      return alert("Vous ne pouvez prendre qu'une carte de la défausse du joueur précédent.");
-    }
-
-    // OK, on récupère cette carte et on la déplace dans la main
-    const cardId = discardEl.dataset.cardId;
-    const discards = (await get(ref(db, `rooms/${currentRoom}/discard/${pid}`))).val() || [];
-    const card = discards.find(c => c.id === cardId);
-    if (!card) return;
-
-    // mise à jour main & défausse
-    let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-    hand.push(card);
-    const updated = discards.filter(c => c.id !== cardId);
-
-    await Promise.all([
-      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
-      set(ref(db, `rooms/${currentRoom}/discard/${pid}`), updated)
-    ]);
-
-    hasDrawnOrPicked = true;
+  // Réception des messages en temps réel
+  const chatRef = ref(db, `rooms/${currentRoom}/chat`);
+  onValue(chatRef, (snapshot) => {
+    const messages = snapshot.val() || {};
+    const messagesArray = Object.entries(messages)
+      .map(([id, msg]) => ({ id, ...msg }))
+      .sort((a, b) => a.timestamp - b.timestamp);
+    
+    chatMessages.innerHTML = '';
+    
+    messagesArray.forEach(msg => {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = msg.sender === playerId ? 'me' : '';
+      messageDiv.innerHTML = `<b>${msg.pseudo}:</b> ${msg.message}`;
+      chatMessages.appendChild(messageDiv);
+    });
+    
+    // Scroll automatique vers le dernier message
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   });
 }
-
 
 // --- Création de salle ---
 async function createRoom() {
@@ -552,12 +561,11 @@ async function createRoom() {
   listenDiscard(currentRoom);
   listenHand(currentRoom);
   listenTurn(currentRoom);
+  enableChat(); // Activation du chat
 
   onValue(ref(db, `rooms/${currentRoom}/jokerCard`), snap => showJoker(snap.val()));
-  // Moved these calls to init()
 }
 
-// --- Rejoindre salle ---
 // --- Rejoindre salle ---
 async function joinRoom() {
   const code = roomInput.value.trim();
@@ -600,6 +608,7 @@ async function joinRoom() {
   listenDiscard(currentRoom);
   listenHand(currentRoom);
   listenTurn(currentRoom);
+  enableChat(); // Activation du chat
   onValue(ref(db, `rooms/${currentRoom}/jokerCard`), snap => showJoker(snap.val()));
 
   // Début du jeu dès que le second joueur (ou plus) rejoint
@@ -609,7 +618,6 @@ async function joinRoom() {
     await update(stateRef, { started: true });
   }
 }
-
 
 // --- Abandon de partie (–0.5 point) ---
 async function abandonGame() {
@@ -662,7 +670,6 @@ function init() {
   // Initialiser les interactions de jeu
   enableDragDrop();
   setupPlayerHandDiscardListener();
-  enableDiscardPileInteraction();
 
   // Cacher la partie jeu au départ
   gameDiv.hidden = true;
