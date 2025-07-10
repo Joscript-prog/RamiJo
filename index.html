@@ -83,20 +83,22 @@
         </div>
         <!-- ── FIN ZONES DE DÉFAUSSE ── -->
 
-        <!-- Structure centrale (pioche + défausse globale) -->
-        <div class="game-center">
-          <div class="table-center">
-            <div class="deck-area">
-              <div class="deck-pile" id="deck">
-                <div class="card back"></div>
-              </div>
-              <div class="deck-label">Pioche</div>
-            </div>
-            <div class="discard-area" id="global-discard">
-              <div class="discard-label">Défausse</div>
-            </div>
-          </div>
-        </div>
+ <!-- Structure centrale (pioche + défausse globale) -->
+<div class="game-center">
+  <div class="table-center">
+    <div class="deck-area">
+      <!-- Ajout de la classe "clickable" pour transformer en bouton -->
+      <div class="deck-pile clickable" id="deck">
+        <div class="card back"></div>
+      </div>
+      <div class="deck-label">Pioche</div>
+    </div>
+    <div class="discard-area" id="global-discard">
+      <div class="discard-label">Défausse</div>
+    </div>
+  </div>
+</div>
+
 
         <!-- Main du joueur -->
         <div id="hand" class="player-hand"></div>
