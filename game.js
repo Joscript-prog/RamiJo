@@ -354,7 +354,7 @@ async function drawCard() {
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/deck`), deck),
     set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
-    set(stateRef, state)
+    update(stateRef, { drawCount: state.drawCount })
   ]);
 }
 
@@ -453,7 +453,9 @@ function setupPlayerHandDiscardListener() {
     }
 
     // 3) Vérifier qu'une carte a bien été piochée ou prise
-    if (!hasDrawnOrPicked) {
+    const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+    const drawCount = stateSnap.val()?.drawCount || 0;
+    if (!hasDrawnOrPicked && drawCount === 0) {
       return alert("Vous devez piocher ou prendre une carte avant de défausser.");
     }
 
@@ -480,6 +482,7 @@ function setupPlayerHandDiscardListener() {
     await endTurn();
   });
 }
+
 
 
 // --- Prendre une carte défaussée ---
