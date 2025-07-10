@@ -1,4 +1,3 @@
-// game.js
 import { db, ref, set, update, get, onValue } from './firebase.js';
 import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/modular/sortable.esm.js';
 
@@ -66,6 +65,7 @@ function createDeck() {
   }
   return deck;
 }
+
 function shuffle(deck) {
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -94,18 +94,18 @@ async function dealCards(roomId, playerIds) {
 }
 
 // --- Sélecteurs DOM ---
-const createRoomBtn    = document.getElementById('createRoom');
-const joinRoomBtn      = document.getElementById('joinRoom');
-const roomInput        = document.getElementById('roomCodeInput');
-const status           = document.getElementById('status');
-const playersDiv       = document.getElementById('players');
-const playerHandDiv    = document.getElementById('hand');
-const jokerDiv         = document.getElementById('joker');
-const drawCardBtn      = document.getElementById('drawCard');
-const declare7NBtn     = document.getElementById('declare7N');
-const declareWinBtn    = document.getElementById('declareWin');
-const menuDiv          = document.getElementById('menu');
-const gameDiv          = document.getElementById('game');
+const createRoomBtn = document.getElementById('createRoom');
+const joinRoomBtn = document.getElementById('joinRoom');
+const roomInput = document.getElementById('roomCodeInput');
+const status = document.getElementById('status');
+const playersDiv = document.getElementById('players');
+const playerHandDiv = document.getElementById('hand');
+const jokerDiv = document.getElementById('joker');
+const drawCardBtn = document.getElementById('drawCard');
+const declare7NBtn = document.getElementById('declare7N');
+const declareWinBtn = document.getElementById('declareWin');
+const menuDiv = document.getElementById('menu');
+const gameDiv = document.getElementById('game');
 
 // --- Affichage du joker ---
 function showJoker(jokerCard) {
@@ -127,7 +127,6 @@ function showPopup(content) {
   modal.querySelector('.modal-close').onclick = () => modal.remove();
 }
 
-// Affiche et copie le code de la salle
 function actionCreateRoomPopup() {
   showPopup(`
     <h3>Salle créée</h3>
@@ -142,44 +141,51 @@ function actionCreateRoomPopup() {
 
 // --- Drag & Drop ---
 function enableDragDrop() {
-  new Sortable(playerHandDiv, { animation: 150, ghostClass: 'sortable-ghost' });
+  new Sortable(playerHandDiv, { 
+    animation: 150, 
+    ghostClass: 'sortable-ghost',
+    onEnd: async (evt) => {
+      const hand = Array.from(playerHandDiv.children).map(el => {
+        return {
+          id: el.dataset.cardId,
+          rank: el.querySelector('.corner.top span').textContent,
+          symbol: el.querySelector('.corner.top span:nth-child(2)').textContent,
+          color: el.classList.contains('red') ? 'red' : 'black'
+        };
+      });
+      await set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand);
+    }
+  });
 }
 
 // --- Rendu des joueurs et de leurs mains ---
 function renderPlayers(players) {
   playersDiv.innerHTML = '';
-  players.forEach(p => {
+  playersDiv.className = `players-circle ${players.length === 2 ? 'two-players' : ''}`;
+  
+  players.forEach((p, index) => {
     const badge = document.createElement('div');
-    badge.className = 'player-badge'; badge.id = `badge-${p.id}`;
+    badge.className = `player-badge ${p.id === playerId ? 'current-player' : ''}`;
+    badge.id = `badge-${p.id}`;
     badge.innerHTML = `
-      <div class="player-name">${p.pseudo}</div>
-      <div class="mini-discard" id="discard-${p.id}"></div>
+      <div class="player-name">${p.pseudo} ${p.id === playerId ? '(Vous)' : ''}</div>
       <div class="player-score" id="score-${p.id}">Score: 0</div>
+      <div class="discard-pile" id="discard-${p.id}"></div>
       <div class="opponent-hand" id="hand-${p.id}"></div>
     `;
     playersDiv.append(badge);
-
-    // Si ce n'est pas vous, affichez 13 dos de cartes
-    if (p.id !== playerId) {
-      const oppHand = document.getElementById(`hand-${p.id}`);
-      oppHand.innerHTML = '';
-      for (let i = 0; i < 13; i++) {
-        const back = document.createElement('div');
-        back.className = 'card back';
-        oppHand.append(back);
-      }
-    }
   });
 }
 
 // --- Listeners Firebase ---
 function listenPlayers(room) {
   onValue(ref(db, `rooms/${room}/players`), snap => {
-    const players = Object.entries(snap.val()||{}).map(([id,o])=>({id,pseudo:o.pseudo}));
+    const players = Object.entries(snap.val()||{}).map(([id,o]) => ({id, pseudo:o.pseudo}));
     renderPlayers(players);
   });
+  
   onValue(ref(db, `rooms/${room}/scores`), snap => {
-    Object.entries(snap.val()||{}).forEach(([id,score])=>{
+    Object.entries(snap.val()||{}).forEach(([id,score]) => {
       const el = document.getElementById(`score-${id}`);
       if(el) el.textContent = `Score: ${score}`;
     });
@@ -187,35 +193,53 @@ function listenPlayers(room) {
 }
 
 function listenHand(room) {
-  onValue(ref(db, `rooms/${room}/hands/${playerId}`), snap => renderHand(snap.val()||[]));
+  onValue(ref(db, `rooms/${room}/hands/${playerId}`), snap => {
+    const hand = snap.val() || [];
+    renderHand(hand);
+    updateActionButtons(hand);
+  });
+}
+
+function updateActionButtons(hand) {
+  declare7NBtn.disabled = !Rules.has7Naturel(hand);
+  declareWinBtn.disabled = !Rules.validateWinHand(hand);
 }
 
 function listenDiscard(room) {
   onValue(ref(db, `rooms/${room}/discard`), snap => {
-    Object.entries(snap.val()||{}).forEach(([pid,pile])=>{
-      const z = document.getElementById(`discard-${pid}`);
-      if(z) z.innerHTML = pile.length
-        ? `<div class="mini-card ${pile[pile.length-1].color}" data-card-id="${pile[pile.length-1].id}">${pile[pile.length-1].rank}</div>`
-        : '';
+    const discards = snap.val() || {};
+    Object.entries(discards).forEach(([pid, pile]) => {
+      const discardEl = document.getElementById(`discard-${pid}`);
+      if (discardEl) {
+        discardEl.innerHTML = pile.slice(-3).map(card => `
+          <div class="discard-card ${card.color}" data-card-id="${card.id}">
+            ${card.rank}${card.symbol}
+          </div>
+        `).join('');
+      }
     });
   });
 }
 
 function listenTurn(room) {
   onValue(ref(db, `rooms/${room}/turn`), snap => {
-    const turn = snap.val(), myTurn = turn===playerId;
+    const turn = snap.val();
+    const myTurn = turn === playerId;
     hasDrawnOrPicked = myTurn ? false : hasDrawnOrPicked;
     drawCardBtn.disabled = !myTurn || hasDrawnOrPicked;
-    declare7NBtn.disabled = !myTurn;
-    declareWinBtn.disabled = !myTurn;
-    status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente...";
+    status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente...";
+    
+    // Mettre en évidence le joueur courant
+    document.querySelectorAll('.player-badge').forEach(badge => {
+      badge.classList.toggle('current-turn', badge.id === `badge-${turn}`);
+    });
   });
 }
 
 // --- Rendu de la main du joueur ---
 function renderHand(hand) {
   playerHandDiv.innerHTML = '';
-  hand.forEach(c=>{
+  hand.forEach(c => {
     const div = document.createElement('div');
     div.className = `card ${c.color}`;
     div.dataset.cardId = c.id;
@@ -232,28 +256,40 @@ function renderHand(hand) {
 async function drawCard(room) {
   const turnSnap = await get(ref(db, `rooms/${room}/turn`));
   if (turnSnap.val() !== playerId) return alert("Ce n'est pas votre tour.");
+  
   const stateRef = ref(db, `rooms/${room}/state`);
-  let state = (await get(stateRef)).val()||{drawCount:0};
-  if(state.drawCount>=1) return alert('Vous avez déjà pioché.');
+  let state = (await get(stateRef)).val() || { drawCount: 0 };
+  if (state.drawCount >= 1) return alert('Vous avez déjà pioché.');
+  
   let [deckSnap, handSnap, jokerSetSnap] = await Promise.all([
     get(ref(db, `rooms/${room}/deck`)),
     get(ref(db, `rooms/${room}/hands/${playerId}`)),
     get(ref(db, `rooms/${room}/jokerSet`))
   ]);
-  let deck = deckSnap.val()||[], hand = handSnap.val()||[], jokerSet = jokerSetSnap.val()?.jokerSet||[];
-  if(!deck.length) return alert('Deck vide');
-  const card = deck.shift(); hand.push(card);
-  // défausse automatique du joker
-  if(deck.length <= Object.keys((await get(ref(db, `rooms/${room}/players`))).val()||{}).length
-     && hand.some(c=>jokerSet.includes(c.id))) {
-    const idx = hand.findIndex(c=>jokerSet.includes(c.id));
-    const [jok] = hand.splice(idx,1);
-    let pile = (await get(ref(db, `rooms/${room}/discard/${playerId}`))).val()||[];
+  
+  let deck = deckSnap.val() || [];
+  let hand = handSnap.val() || [];
+  const jokerSet = jokerSetSnap.val()?.jokerSet || [];
+  
+  if (!deck.length) return alert('Deck vide');
+  
+  const card = deck.shift(); 
+  hand.push(card);
+  
+  // Vérification pour défausse automatique du joker
+  const playersCount = Object.keys((await get(ref(db, `rooms/${room}/players`))).val() || {}).length;
+  if (deck.length <= playersCount && hand.some(c => jokerSet.includes(c.id))) {
+    const idx = hand.findIndex(c => jokerSet.includes(c.id));
+    const [jok] = hand.splice(idx, 1);
+    let pile = (await get(ref(db, `rooms/${room}/discard/${playerId}`))).val() || [];
     pile.push(jok);
     await set(ref(db, `rooms/${room}/discard/${playerId}`), pile);
-    alert('Joker défaussé automatiquement');
+    showPopup('Joker défaussé automatiquement selon les règles du jeu');
   }
-  state.drawCount++; hasDrawnOrPicked=true;
+  
+  state.drawCount++; 
+  hasDrawnOrPicked = true;
+  
   await Promise.all([
     set(ref(db, `rooms/${room}/deck`), deck),
     set(ref(db, `rooms/${room}/hands/${playerId}`), hand),
@@ -265,69 +301,105 @@ async function drawCard(room) {
 function setupPlayerHandDiscardListener() {
   playerHandDiv.addEventListener('click', async e => {
     const cardEl = e.target.closest('.card');
-    if(!cardEl) return;
+    if (!cardEl) return;
+    
     const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
-    if(turn!==playerId) return;
-    if(!hasDrawnOrPicked) return alert('Piochez avant.');
+    if (turn !== playerId) return;
+    if (!hasDrawnOrPicked) return alert('Piochez avant de défausser.');
+    
     const cardId = cardEl.dataset.cardId;
-    let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val()||[];
-    const idx = hand.findIndex(c=>c.id===cardId);
-    if(idx===-1) return;
-    const [card] = hand.splice(idx,1);
-    let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val()||[];
+    let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+    const idx = hand.findIndex(c => c.id === cardId);
+    if (idx === -1) return;
+    
+    const [card] = hand.splice(idx, 1);
+    let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
     pile.push(card);
-    await Promise.all([
-      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
-      set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
-    ]);
-    // fin de tour automatique
-    await endTurn(currentRoom);
+    
+    // Animation de défausse
+    cardEl.classList.add('discarding');
+    setTimeout(async () => {
+      await Promise.all([
+        set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+        set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
+      ]);
+      await endTurn(currentRoom);
+    }, 300);
   });
 }
 
 // --- Fin de tour ---
 async function endTurn(room) {
-  const players = Object.keys((await get(ref(db, `rooms/${room}/players`))).val()||{});
+  const players = Object.keys((await get(ref(db, `rooms/${room}/players`))).val() || {});
   const current = (await get(ref(db, `rooms/${room}/turn`))).val();
   const idx = players.indexOf(current);
-  const next = players[(idx+1)%players.length];
+  const next = players[(idx + 1) % players.length];
+  
   await Promise.all([
     set(ref(db, `rooms/${room}/turn`), next),
-    update(ref(db, `rooms/${room}/state`), { drawCount:0, lastDiscarder: current })
+    update(ref(db, `rooms/${room}/state`), { drawCount: 0, lastDiscarder: current })
   ]);
 }
 
 // --- Interaction piles adverses ---
 function enableDiscardPileInteraction() {
-  onValue(ref(db, `rooms/${currentRoom}/players`), snap => {
-    Object.keys(snap.val()||{}).forEach(pid => {
-      if(pid!==playerId) {
-        const el = document.getElementById(`discard-${pid}`);
-        if(el) el.onclick = () => takeDiscardedCard(pid);
-      }
-    });
-  }, { onlyOnce:true });
+  playersDiv.addEventListener('click', async e => {
+    const discardEl = e.target.closest('.discard-card');
+    if (!discardEl) return;
+    
+    const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
+    if (turn !== playerId) return;
+    if (hasDrawnOrPicked) return alert('Vous avez déjà joué ce tour.');
+    
+    const pid = discardEl.parentElement.id.replace('discard-', '');
+    const cardId = discardEl.dataset.cardId;
+    
+    // Récupérer la carte de la défausse
+    const discards = (await get(ref(db, `rooms/${currentRoom}/discard/${pid}`))).val() || [];
+    const card = discards.find(c => c.id === cardId);
+    if (!card) return;
+    
+    // Ajouter à la main du joueur
+    let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+    hand.push(card);
+    
+    // Retirer de la défausse
+    const updatedDiscards = discards.filter(c => c.id !== cardId);
+    
+    await Promise.all([
+      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+      set(ref(db, `rooms/${currentRoom}/discard/${pid}`), updatedDiscards),
+      update(ref(db, `rooms/${currentRoom}/state`), { drawCount: 1 })
+    ]);
+    
+    hasDrawnOrPicked = true;
+  });
 }
 
 // --- Création de salle ---
 async function createRoom() {
-  currentRoom = 'RAMI'+Math.floor(Math.random()*1000);
+  currentRoom = 'RAMI' + Math.floor(Math.random() * 1000);
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo }),
     set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0),
-    set(ref(db, `rooms/${currentRoom}/state`), { started:false, drawCount:0, lastDiscarder: null }),
+    set(ref(db, `rooms/${currentRoom}/state`), { started: false, drawCount: 0, lastDiscarder: null }),
     set(ref(db, `rooms/${currentRoom}/turn`), playerId)
   ]);
+  
   const playerIds = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val());
   await dealCards(currentRoom, playerIds);
+  
   menuDiv.style.display = 'none';
-  gameDiv.style.display = 'block';
+  gameDiv.hidden = false;
   status.textContent = `Salle: ${currentRoom} | Vous: ${pseudo}`;
   actionCreateRoomPopup();
+  
+  // Initialisation des écouteurs
   listenPlayers(currentRoom);
   listenDiscard(currentRoom);
   listenHand(currentRoom);
   listenTurn(currentRoom);
+  
   onValue(ref(db, `rooms/${currentRoom}/jokerCard`), snap => showJoker(snap.val()));
   enableDragDrop();
   setupPlayerHandDiscardListener();
@@ -337,23 +409,29 @@ async function createRoom() {
 // --- Rejoindre salle ---
 async function joinRoom() {
   const code = roomInput.value.trim();
-  if(!code) return alert('Code invalide');
+  if (!code) return alert('Code invalide');
   currentRoom = code;
+  
   const roomSnap = await get(ref(db, `rooms/${currentRoom}`));
-  if(!roomSnap.exists()) return alert('Salle inexistante');
+  if (!roomSnap.exists()) return alert('Salle inexistante');
+  
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo }),
     set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0),
     update(ref(db, `rooms/${currentRoom}/state`), { drawCount: 0 })
   ]);
+  
   menuDiv.style.display = 'none';
-  gameDiv.style.display = 'block';
+  gameDiv.hidden = false;
   status.textContent = `Salle: ${currentRoom} | Vous: ${pseudo}`;
   showPopup(`<h3>Vous avez rejoint :</h3><p><b>${currentRoom}</b></p>`);
+  
+  // Initialisation des écouteurs
   listenPlayers(currentRoom);
   listenDiscard(currentRoom);
   listenHand(currentRoom);
   listenTurn(currentRoom);
+  
   onValue(ref(db, `rooms/${currentRoom}/jokerCard`), snap => showJoker(snap.val()));
   enableDragDrop();
   setupPlayerHandDiscardListener();
@@ -362,33 +440,37 @@ async function joinRoom() {
 
 // --- Déclarations ---
 async function declare7N(room) {
-  const hand = (await get(ref(db, `rooms/${room}/hands/${playerId}`))).val()||[];
-  if(!Rules.has7Naturel(hand)) return alert('Combinaison invalide');
+  const hand = (await get(ref(db, `rooms/${room}/hands/${playerId}`))).val() || [];
+  if (!Rules.has7Naturel(hand)) return alert('Combinaison invalide pour 7 Naturel');
+  
   const scoreRef = ref(db, `rooms/${room}/scores/${playerId}`);
-  const cur = (await get(scoreRef)).val()||0;
+  const cur = (await get(scoreRef)).val() || 0;
   await set(scoreRef, cur + 0.5);
-  alert('7 Naturel validé ! +0.5 point');
+  
+  showPopup('7 Naturel validé ! +0.5 point');
 }
 
 async function declareWin(room) {
-  const hand = (await get(ref(db, `rooms/${room}/hands/${playerId}`))).val()||[];
-  if(!Rules.validateWinHand(hand)) return alert('Combinaison invalide');
+  const hand = (await get(ref(db, `rooms/${room}/hands/${playerId}`))).val() || [];
+  if (!Rules.validateWinHand(hand)) return alert('Combinaison invalide pour la victoire');
+  
   const scoreRef = ref(db, `rooms/${room}/scores/${playerId}`);
-  const cur = (await get(scoreRef)).val()||0;
+  const cur = (await get(scoreRef)).val() || 0;
   await set(scoreRef, cur + 1);
-  alert('Victoire validée ! +1 point');
+  
+  showPopup('Victoire validée ! +1 point');
 }
 
 // --- Initialisation générale ---
 function init() {
-  createRoomBtn.onclick    = createRoom;
-  joinRoomBtn.onclick      = joinRoom;
-  drawCardBtn.onclick      = () => drawCard(currentRoom);
-  declare7NBtn.onclick     = () => declare7N(currentRoom);
-  declareWinBtn.onclick    = () => declareWin(currentRoom);
-  enableDragDrop();
-  setupPlayerHandDisposableListener();
-  enableDiscardPileInteraction();
+  createRoomBtn.onclick = createRoom;
+  joinRoomBtn.onclick = joinRoom;
+  drawCardBtn.onclick = () => drawCard(currentRoom);
+  declare7NBtn.onclick = () => declare7N(currentRoom);
+  declareWinBtn.onclick = () => declareWin(currentRoom);
+  
+  // Cacher la partie jeu au départ
+  gameDiv.hidden = true;
 }
 
 window.addEventListener('load', init);
