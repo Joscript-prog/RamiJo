@@ -313,36 +313,43 @@ async function drawCard() {
   ]);
 }
 
-// --- Défausse manuelle ---
+// --- Défausse manuelle & passage immédiat de tour ---
 function setupPlayerHandDiscardListener() {
   playerHandDiv.addEventListener('click', async e => {
     const cardEl = e.target.closest('.card');
     if (!cardEl) return;
-    
-    const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
-    if (turn !== playerId) return;
-    if (!hasDrawnOrPicked) return alert('Vous devez d\'abord piocher ou prendre une carte.');
-    
+
+    // Vérifier le tour
+    const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+    if (turnSnap.val() !== playerId) 
+      return alert("Ce n'est pas votre tour.");
+
+    // Charger l'état pour connaître drawCount
+    const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+    const drawCount = stateSnap.val()?.drawCount || 0;
+    if (drawCount === 0) 
+      return alert("Vous devez piocher ou prendre une carte avant de défausser.");
+
+    // Récupérer la carte cliquée et mettre à jour main + défausse
     const cardId = cardEl.dataset.cardId;
     let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
     const idx = hand.findIndex(c => c.id === cardId);
     if (idx === -1) return;
-    
+
     const [card] = hand.splice(idx, 1);
     let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
     pile.push(card);
-    
-    // Animation de défausse
-    cardEl.classList.add('discarding');
-    setTimeout(async () => {
-      await Promise.all([
-        set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
-        set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
-      ]);
-      await endTurn();
-    }, 300);
+
+    await Promise.all([
+      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+      set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
+    ]);
+
+    // Passage de tour automatique
+    await endTurn();
   });
 }
+
 
 // --- Fin de tour ---
 async function endTurn() {
@@ -358,10 +365,9 @@ async function endTurn() {
   const next      = players[nextIndex];
 
   // On met à jour le tour, l'indice, et on enregistre qui a défaussé
-  await Promise.all([
+    await Promise.all([
     set(ref(db, `rooms/${currentRoom}/turn`), next),
     update(stateRef, {
-      currentPlayerIndex: nextIndex,
       lastDiscarder: current,
       drawCount: 0
     })
