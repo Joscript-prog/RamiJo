@@ -271,16 +271,24 @@ function renderHand(hand) {
 // --- Pioche ---
 async function drawCard() {
   if (!currentRoom) return;
-  const turnSnap  = await get(ref(db, `rooms/${currentRoom}/turn`));
-  if (turnSnap.val() !== playerId) 
+
+  // 1) Vérifier que c'est votre tour
+  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+  if (turnSnap.val() !== playerId) {
     return alert("Ce n'est pas votre tour.");
+  }
 
-  const stateRef  = ref(db, `rooms/${currentRoom}/state`);
-  let state       = (await get(stateRef)).val() || { drawCount: 0 };
-  if (state.drawCount >= 1) 
+  // 2) Récupérer & initialiser l'état
+  const stateRef = ref(db, `rooms/${currentRoom}/state`);
+  let state = (await get(stateRef)).val() || { drawCount: 0 };
+  console.log("⚙️ avant pioche, drawCount =", state.drawCount);
+
+  // 3) Empêcher la double pioche
+  if (state.drawCount >= 1) {
     return alert('Vous avez déjà pioché ou pris une carte ce tour.');
+  }
 
-  // Récupérer deck/hand/jokerSet
+  // 4) Récupérer deck/hand
   let [deckSnap, handSnap, jokerSetSnap] = await Promise.all([
     get(ref(db, `rooms/${currentRoom}/deck`)),
     get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)),
@@ -290,14 +298,15 @@ async function drawCard() {
   let hand = handSnap.val() || [];
   const jokerSet = jokerSetSnap.val()?.jokerSet || [];
 
-  if (!deck.length) 
+  if (!deck.length) {
     return alert('Deck vide');
+  }
 
-  // On pioche
+  // 5) Pioche
   const card = deck.shift();
   hand.push(card);
 
-  // Joker automatique (inchangé)…
+  // 6) (optionnel) défausse automatique du joker
   const playersCount = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {}).length;
   if (deck.length <= playersCount && hand.some(c => jokerSet.includes(c.id))) {
     const idx = hand.findIndex(c => jokerSet.includes(c.id));
@@ -308,15 +317,17 @@ async function drawCard() {
     showPopup('Joker défaussé automatiquement');
   }
 
-  // **Incrémentation** du drawCount
+  // 7) Incrémenter drawCount et enregistrer
   state.drawCount++;
-  
+  console.log("⚙️ après pioche, drawCount =", state.drawCount);
+
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/deck`), deck),
     set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
     set(stateRef, state)
   ]);
 }
+
 // --- Prendre la carte défaussée (joueur précédent) ---
 async function takeDiscardedCard(ownerId) {
   const turnSnap  = await get(ref(db, `rooms/${currentRoom}/turn`));
@@ -359,33 +370,39 @@ function setupPlayerHandDiscardListener() {
     const cardEl = e.target.closest('.card');
     if (!cardEl) return;
 
-    // Vérifier le tour
+    // 1) Vérifier tour
     const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-    if (turnSnap.val() !== playerId) 
+    if (turnSnap.val() !== playerId) {
       return alert("Ce n'est pas votre tour.");
+    }
 
-    // Charger l'état pour connaître drawCount
-    const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+    // 2) Récupérer state.drawCount
+    const stateRef = ref(db, `rooms/${currentRoom}/state`);
+    const stateSnap = await get(stateRef);
     const drawCount = stateSnap.val()?.drawCount || 0;
-    if (drawCount === 0) 
-      return alert("Vous devez piocher ou prendre une carte avant de défausser.");
+    console.log("⚙️ avant défausse, drawCount =", drawCount);
 
-    // Récupérer la carte cliquée et mettre à jour main + défausse
+    if (drawCount === 0) {
+      return alert("Vous devez piocher ou prendre une carte avant de défausser.");
+    }
+
+    // 3) Retirer la carte sélectionnée
     const cardId = cardEl.dataset.cardId;
     let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
     const idx = hand.findIndex(c => c.id === cardId);
     if (idx === -1) return;
-
     const [card] = hand.splice(idx, 1);
+
     let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
     pile.push(card);
 
+    // 4) Enregistrer main + défausse
     await Promise.all([
       set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
       set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
     ]);
 
-    // Passage de tour automatique
+    // 5) Passage de tour immédiat
     await endTurn();
   });
 }
