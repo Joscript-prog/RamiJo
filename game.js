@@ -99,10 +99,17 @@ function shuffle(deck) {
 // --- Distribution des cartes ---
 async function dealCards(roomId, playerIds) {
   let deck = shuffle(createDeck());
+
+  // ↓↓ LOGIQUE JOKER : même valeur, couleur opposée ↓↓
   const jokerCard = deck[Math.floor(Math.random() * deck.length)];
-  const jokerSet = deck.filter(c => c.value === jokerCard.value && c.suit !== jokerCard.suit);
-  const hands = {},
-    discards = {};
+  const jokerSet = deck.filter(c =>
+    c.value === jokerCard.value &&
+    c.color !== jokerCard.color
+  );
+  // ↑↑ FIN LOGIQUE JOKER ↑↑
+
+  const hands = {};
+  const discards = {};
   playerIds.forEach(pid => {
     hands[pid] = deck.splice(0, 13);
     discards[pid] = [];
@@ -125,6 +132,7 @@ async function dealCards(roomId, playerIds) {
     set(ref(db, `rooms/${roomId}/chat`), {}) // Initialiser le chat
   ]);
 }
+
 
 // --- Sélecteurs DOM ---
 const createRoomBtn = document.getElementById('createRoom');
@@ -306,6 +314,37 @@ function listenTurn(room) {
     });
   });
 }
+// ── DÉBUT LOGIQUE DE FIN DE PARTIE ──
+async function terminateGame(winnerId) {
+  // Marquer la manche terminée
+  await update(ref(db, `rooms/${currentRoom}/state`), { roundOver: true });
+  // Popup de victoire
+  showPopup(`🎉 ${winnerId === playerId ? 'Vous' : 'Le joueur ' + winnerId} a gagné la manche !`);
+}
+
+async function checkEndGame() {
+  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+  const state = stateSnap.val() || {};
+  // Si un gagnant a été déclaré, on arrête là
+  if (state.roundOver) return;
+
+  const deckSnap = await get(ref(db, `rooms/${currentRoom}/deck`));
+  const deck = deckSnap.val() || [];
+  // Si le deck est vide et personne n'a gagné → nouvelle manche
+  if (deck.length === 0) {
+    const playerIds = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val());
+    await dealCards(currentRoom, playerIds);
+    await update(ref(db, `rooms/${currentRoom}/state`), { roundOver: false, started: true });
+    showPopup('🔄 Nouvelle manche lancée : deck mélangé et cartes redistribuées');
+  }
+}
+// Appeler checkEndGame à la fin de chaque tour
+const originalEndTurn = endTurn;
+endTurn = async function() {
+  await originalEndTurn();
+  await checkEndGame();
+};
+// ── FIN LOGIQUE DE FIN DE PARTIE ──
 
 // --- Rendu de la main du joueur ---
 function renderHand(hand) {
@@ -681,20 +720,21 @@ async function declareWin() {
   showPopup('Victoire validée ! +1 point');
 }
 
-// --- Initialisation générale ---
 function init() {
   createRoomBtn.onclick = createRoom;
-  joinRoomBtn.onclick = joinRoom;
-  drawCardBtn.onclick = drawCard;
-  declare7NBtn.onclick = declare7N;
-  declareWinBtn.onclick = declareWin;
+  joinRoomBtn.onclick   = joinRoom;
+  drawCardBtn.onclick   = drawCard;
+  declare7NBtn.onclick  = declare7N;
 
-  // Initialiser les interactions de jeu
+  declareWinBtn.onclick = async () => {
+    await declareWin();
+    await terminateGame(playerId);
+  };
+
+  // ← Bien à l’intérieur de init()
   enableDragDrop();
   setupPlayerHandDiscardListener();
-
-  // Cacher la partie jeu au départ
   gameDiv.hidden = true;
-}
+} // ← Maintenant on ferme init()
 
 window.addEventListener('load', init);
