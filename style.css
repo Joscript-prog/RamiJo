@@ -155,33 +155,62 @@ body {
   background: var(--accent) !important;
 }
 
-/* Table de jeu */
+/* Nouveaux styles pour la table de jeu */
 .game-table {
-  flex: 1;
   position: relative;
+  width: 100%;
+  height: 70vh;
+  background: url('felt-pattern.jpg') center/cover;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  overflow: hidden;
   display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* Cercle des joueurs */
-.players-circle {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.players-circle.two-players {
   flex-direction: column;
   justify-content: space-between;
 }
 
-.players-circle.two-players .player-badge {
-  position: static;
-  transform: none;
-  margin: 20px 0;
+.table-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  margin-top: 20px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.deck-area, .discard-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.deck-label, .discard-label {
+  color: white;
+  font-weight: bold;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  font-size: 1.1rem;
+}
+
+#global-discard {
+  min-width: 100px;
+  min-height: 140px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Positionnement des joueurs */
+.players-circle {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
 }
 
 .player-badge {
@@ -194,6 +223,7 @@ body {
   text-align: center;
   transition: var(--transition);
   z-index: 5;
+  transition: all 0.3s ease;
 }
 
 .player-badge.current-player {
@@ -203,6 +233,11 @@ body {
 .player-badge.current-turn {
   box-shadow: 0 0 0 3px var(--warning);
 }
+
+.player-badge:nth-child(1) { top: 10px; left: 50%; transform: translateX(-50%); }
+.player-badge:nth-child(2) { top: 50%; right: 10px; transform: translateY(-50%); }
+.player-badge:nth-child(3) { bottom: 10px; left: 50%; transform: translateX(-50%); }
+.player-badge:nth-child(4) { top: 50%; left: 10px; transform: translateY(-50%); }
 
 .player-name {
   font-weight: 500;
@@ -214,73 +249,27 @@ body {
   color: var(--text-light);
 }
 
-/* Main des adversaires */
-.opponent-hand {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 2px;
-  margin-top: 0.5rem;
-}
+.players-circle.two-players .player-badge:nth-child(1) { top: 5%; }
+.players-circle.two-players .player-badge:nth-child(2) { bottom: 5%; }
 
-.opponent-hand .card {
-  width: 30px;
-  height: 45px;
-  font-size: 0.7rem;
-  padding: 3px;
-}
-
-/* Défausses */
+/* Défausses des joueurs */
 .discard-pile {
+  position: absolute;
   display: flex;
-  justify-content: center;
   gap: 5px;
-  margin-top: 0.5rem;
 }
 
-.discard-card {
-  width: 30px;
-  height: 45px;
-  border-radius: 4px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 0.8rem;
-  background: white;
-  cursor: pointer;
-  transition: var(--transition);
-  box-shadow: var(--shadow-sm);
-}
+#discard-player0 { top: 25%; left: 50%; transform: translateX(-50%); }
+#discard-player1 { top: 50%; right: 5%; transform: translateY(-50%); }
+#discard-player2 { bottom: 25%; left: 50%; transform: translateX(-50%); }
+#discard-player3 { top: 50%; left: 5%; transform: translateY(-50%); }
 
-.discard-card.red { color: var(--card-red); }
-.discard-card.black { color: var(--card-black); }
-
-.discard-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-lg);
-}
-
-/* Zone centrale */
-.game-center {
-  position: relative;
-  z-index: 5;
-  display: flex;
-  gap: 2rem;
-  margin-top: 20px;
-}
-
-.game-zone {
-  width: var(--card-width-base);
-  height: var(--card-height-base);
-}
-
-/* Cartes */
 .card {
   width: var(--card-width-base);
   height: var(--card-height-base);
   background: var(--card-white);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -321,10 +310,32 @@ body {
   font-size: 2rem;
 }
 
+.discard-card {
+  width: 50px;
+  height: 70px;
+  font-size: 1rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.discard-card.red { color: var(--card-red); }
+.discard-card.black { color: var(--card-black); }
+
+.discard-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
 /* Main du joueur */
 .player-hand {
   position: absolute;
-  bottom: 20px;
+  bottom: 5%;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -334,7 +345,7 @@ body {
   border-radius: var(--radius);
   max-width: 90%;
   overflow-x: auto;
-  z-index: 10;
+  z-index: 30;
   scrollbar-width: thin;
   scrollbar-color: var(--secondary) transparent;
 }
@@ -354,16 +365,6 @@ body {
 
 .player-hand .card:hover {
   transform: translateY(-20px);
-}
-
-/* Animations */
-.card.discarding {
-  animation: discardAnimation 0.5s forwards;
-}
-
-@keyframes discardAnimation {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(0.5) translateY(-100px); opacity: 0; }
 }
 
 /* Modal */
