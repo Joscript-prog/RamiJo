@@ -360,6 +360,7 @@ async function drawCard() {
 
 // --- Prendre la carte défaussée (joueur précédent) ---
 async function takeDiscardedCard(ownerId) {
+  // Vérification que c'est le tour du joueur
   const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
   if (turnSnap.val() !== playerId)
     return alert("Ce n'est pas votre tour.");
@@ -369,32 +370,40 @@ async function takeDiscardedCard(ownerId) {
     drawCount: 0,
     lastDiscarder: null
   };
+
+  // Empêche de prendre plus d'une carte ce tour
   if (state.drawCount >= 1)
     return alert('Vous avez déjà pioché ou pris une carte ce tour.');
 
-  // Vérification du joueur précédent
+  // Vérifie que la carte vient bien du joueur précédent
   if (ownerId !== state.lastDiscarder)
     return alert("Vous ne pouvez prendre qu'une carte de la défausse du joueur précédent.");
 
-  // Récupérer la carte
+  // Récupérer la défausse de ce joueur
   let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${ownerId}`))).val() || [];
   if (!pile.length)
     return alert('Défausse vide.');
 
+  // Prendre la dernière carte
   const card = pile.pop();
+
+  // Ajouter à la main du joueur
   let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
   hand.push(card);
 
-  // **Incrémentation** du drawCount
+  // Incrémentation du drawCount
   state.drawCount++;
 
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
     set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), pile),
-    set(stateRef, state)
+    update(stateRef, { drawCount: state.drawCount }) // utiliser update pour ne pas écraser l'état
   ]);
+
+  // Flag local
   hasDrawnOrPicked = true;
 }
+
 
 // --- Fin de tour ---
 async function endTurn() {
@@ -432,32 +441,30 @@ function setupPlayerHandDiscardListener() {
     const cardEl = e.target.closest('.card');
     if (!cardEl) return;
 
-    // Tour actif ?
+    // 1) Vérifier que c'est bien votre tour
     const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
     if (turnSnap.val() !== playerId) {
       return alert("Ce n'est pas votre tour.");
     }
 
-    // Une défausse déjà faite ?
+    // 2) Empêcher plusieurs défausses dans le même tour
     if (hasDiscardedThisTurn) {
       return alert("Vous avez déjà jeté une carte ce tour.");
     }
 
-    // Avez‑vous pioché ou pris une carte ?
-    const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-    const drawCount = stateSnap.val()?.drawCount || 0;
-    if (drawCount === 0) {
+    // 3) Vérifier qu'une carte a bien été piochée ou prise
+    if (!hasDrawnOrPicked) {
       return alert("Vous devez piocher ou prendre une carte avant de défausser.");
     }
 
-    // Retirer la carte de la main
+    // 4) Retirer la carte de la main
     const cardId = cardEl.dataset.cardId;
     let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
     const idx = hand.findIndex(c => c.id === cardId);
     if (idx === -1) return;
     const [card] = hand.splice(idx, 1);
 
-    // Ajouter la carte à votre défausse
+    // 5) Ajouter la carte à votre défausse
     let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
     pile.push(card);
 
@@ -466,10 +473,10 @@ function setupPlayerHandDiscardListener() {
       set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
     ]);
 
-    // Marquer la défausse effectuée localement
+    // 6) Marquer la défausse effectuée localement
     hasDiscardedThisTurn = true;
 
-    // Passage automatique au tour suivant
+    // 7) Passage automatique au tour suivant
     await endTurn();
   });
 }
