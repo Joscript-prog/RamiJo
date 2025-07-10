@@ -216,10 +216,48 @@ function renderPlayers(players) {
     badge.innerHTML = `
       <div class="player-name">${p.pseudo} ${p.id === playerId ? '(Vous)' : ''}</div>
       <div class="player-score" id="score-${p.id}">Score: 0</div>
-      <div class="discard-pile" id="discard-${p.id}"></div>
       <div class="opponent-hand" id="hand-${p.id}"></div>
     `;
     playersDiv.append(badge);
+    
+    // Ajouter une zone de défausse spécifique pour chaque joueur
+    const discardZone = document.createElement('div');
+    discardZone.className = 'discard-pile';
+    discardZone.id = `discard-${p.id}`;
+    document.querySelector('.game-table').appendChild(discardZone);
+  });
+}
+
+// Mettre à jour listenDiscard
+function listenDiscard(room) {
+  onValue(ref(db, `rooms/${room}/discard`), snap => {
+    const discards = snap.val() || {};
+    
+    Object.entries(discards).forEach(([pid, pile]) => {
+      const discardEl = document.getElementById(`discard-${pid}`);
+      if (discardEl) {
+        discardEl.innerHTML = pile.slice(-3).map(card => `
+          <div class="discard-card ${card.color}" 
+               data-card-id="${card.id}" 
+               data-player-id="${pid}">
+            ${card.rank}${card.symbol}
+          </div>
+        `).join('');
+      }
+      
+      // Mettre à jour la défausse centrale pour le joueur courant
+      if (pid === playerId && pile.length > 0) {
+        const lastCard = pile[pile.length - 1];
+        const globalDiscard = document.getElementById('global-discard');
+        globalDiscard.innerHTML = `
+          <div class="discard-card ${lastCard.color}" 
+               data-card-id="${lastCard.id}" 
+               data-player-id="${pid}">
+            ${lastCard.rank}${lastCard.symbol}
+          </div>
+        `;
+      }
+    });
   });
 }
 
