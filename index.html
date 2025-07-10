@@ -36,7 +36,7 @@
     </div>
   </div>
 
-  <div id="game" hidden>
+  <div id="game">
     <header class="game-header">
       <div id="status" class="game-status">Préparation de la partie...</div>
       <div id="joker" class="joker-display"></div>
@@ -45,9 +45,8 @@
     <div class="game-main-content">
       <aside class="game-controls">
         <button id="declare7N" class="btn-special" disabled>7 Naturel</button>
-        <button id="declareWin" class="btn-special" disabled>✓ Victoire</button>
-        <button id="drawCard" class="btn-action" disabled>⇩ Piocher</button>
-        <button id="endTurn" class="btn-action" disabled>↻ Fin du tour</button>
+        <button id="declareWin" class="btn-special" disabled>Déclarer Victoire</button>
+        <button id="drawCard" class="btn-action" disabled>Piocher</button>
       </aside>
 
       <main class="game-table">
@@ -56,20 +55,14 @@
         <div class="game-center">
           <div id="deck-area" class="game-zone">
             <div class="deck-pile" id="deck">
-              <div class="card-back" tabindex="0" aria-label="Pioche"></div>
+              <div class="card back"></div>
             </div>
-          </div>
-
-          <div id="central-discard-area" class="game-zone">
-            <div class="discard-pile-display" id="globalDiscardDisplay" aria-label="Défausse générale"></div>
           </div>
         </div>
 
-        <div id="hand" class="player-hand" aria-label="Votre main"></div>
+        <div id="hand" class="player-hand"></div>
       </main>
     </div>
-
-    <div id="notificationContainer" class="notifications" aria-live="polite"></div>
   </div>
 </body>
 </html>
