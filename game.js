@@ -370,47 +370,44 @@ function setupPlayerHandDiscardListener() {
     const cardEl = e.target.closest('.card');
     if (!cardEl) return;
 
-    // 1) Vérifier le tour
+    // Tour actif ?
     const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-    if (turnSnap.val() !== playerId) 
+    if (turnSnap.val() !== playerId)
       return alert("Ce n'est pas votre tour.");
 
-    // 2) Interdire plusieurs défausses
-    if (hasDiscardedThisTurn) 
+    // Une défausse déjà faite ?
+    if (hasDiscardedThisTurn)
       return alert("Vous avez déjà jeté une carte ce tour.");
 
-    // 3) Récupérer drawCount depuis Firebase
-    const stateRef  = ref(db, `rooms/${currentRoom}/state`);
-    const stateSnap = await get(stateRef);
-    const drawCount = stateSnap.val()?.drawCount || 0;
+    // Avez‑vous pioché/pris ?
+    const stateSnap  = await get(ref(db, `rooms/${currentRoom}/state`));
+    const drawCount  = stateSnap.val()?.drawCount || 0;
     if (drawCount === 0)
       return alert("Vous devez piocher ou prendre une carte avant de défausser.");
 
-    // 4) Retirer la carte sélectionnée de la main
+    // Retirer la carte
     const cardId = cardEl.dataset.cardId;
-    let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-    const idx = hand.findIndex(c => c.id === cardId);
+    let hand     = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+    const idx    = hand.findIndex(c => c.id === cardId);
     if (idx === -1) return;
-
     const [card] = hand.splice(idx, 1);
 
-    // 5) Ajouter la carte à la défausse
+    // Ajouter à la défausse
     let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
     pile.push(card);
 
     await Promise.all([
-      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`),      hand),
-      set(ref(db, `rooms/${currentRoom}/discard/${playerId}`),    pile)
+      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`),   hand),
+      set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
     ]);
 
-    // 6) Bloquer toute nouvelle défausse avant changement de tour
+    // Marquer la défausse effectuée
     hasDiscardedThisTurn = true;
 
-    // 7) Passage automatique de tour
+    // Passage automatique au tour suivant
     await endTurn();
   });
 }
-
 
 // --- Fin de tour ---
 async function endTurn() {
@@ -418,21 +415,20 @@ async function endTurn() {
   const stateSnap = await get(stateRef);
   const state     = stateSnap.val() || {};
   const players   = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || []);
-  const current   = stateSnap.val()?.turn;
+  const current   = state.turn;
   const idx       = players.indexOf(current);
   const next      = players[(idx + 1) % players.length];
 
-  // 1) Mettre à jour Firebase
   await Promise.all([
-    set(ref(db, `rooms/${currentRoom}/turn`),            next),
+    set(ref(db, `rooms/${currentRoom}/turn`),   next),
     update(stateRef, {
       lastDiscarder:    current,
-      drawCount:        0    // remet à zéro pour le prochain joueur
+      drawCount:        0
     })
   ]);
 
-  // 2) Réinitialiser flags locaux
-  hasDrawnOrPicked    = false;
+  // Réinitialiser les flags locaux
+  hasDrawnOrPicked     = false;
   hasDiscardedThisTurn = false;
 }
 
