@@ -356,7 +356,11 @@ async function drawCard() {
     set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
     update(stateRef, { drawCount: state.drawCount })
   ]);
+
+  // 8) ✅ Marquer la pioche effectuée localement
+  hasDrawnOrPicked = true;
 }
+
 
 // --- Prendre la carte défaussée (joueur précédent) ---
 async function takeDiscardedCard(ownerId) {
