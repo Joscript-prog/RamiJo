@@ -135,23 +135,30 @@ async function dealCards(roomId, playerIds) {
 
 
 // --- Sélecteurs DOM ---
-const createRoomBtn = document.getElementById('createRoom');
-const joinRoomBtn = document.getElementById('joinRoom');
-const roomInput = document.getElementById('roomCodeInput');
-const status = document.getElementById('status');
-const playersDiv = document.getElementById('players');
-const playerHandDiv = document.getElementById('hand');
-const jokerDiv = document.getElementById('joker');
-const drawCardBtn = document.getElementById('drawCard');
-const declare7NBtn = document.getElementById('declare7N');
-const declareWinBtn = document.getElementById('declareWin');
-const menuDiv = document.getElementById('menu');
-const gameDiv = document.getElementById('game');
-const toggleChatBtn = document.getElementById('toggleChat');
-const chatContainer = document.getElementById('chat-container');
-const chatForm = document.getElementById('chat-form');
-const chatInput = document.getElementById('chat-input');
-const chatMessages = document.getElementById('chat-messages');
+// --- Sélecteurs DOM ---
+const createRoomBtn    = document.getElementById('createRoom');
+const joinRoomBtn      = document.getElementById('joinRoom');
+const roomInput        = document.getElementById('roomCodeInput');
+const status           = document.getElementById('status');
+const playersDiv       = document.getElementById('players');
+const playerHandDiv    = document.getElementById('hand');
+const jokerDiv         = document.getElementById('joker');
+const drawCardBtn      = document.getElementById('drawCard');
+const declare7NBtn     = document.getElementById('declare7N');
+const declareWinBtn    = document.getElementById('declareWin');
+const menuDiv          = document.getElementById('menu');
+const gameDiv          = document.getElementById('game');
+const toggleChatBtn    = document.getElementById('toggleChat');
+const chatContainer    = document.getElementById('chat-container');
+const chatForm         = document.getElementById('chat-form');
+const chatInput        = document.getElementById('chat-input');
+const chatMessages     = document.getElementById('chat-messages');
+
+// Rendre la pioche cliquable comme un bouton
+const deckPile = document.getElementById('deck');
+deckPile.classList.add('clickable');
+deckPile.addEventListener('click', drawCard);
+
 
 // --- Affichage du joker ---
 function showJoker(jokerCard) {
@@ -244,6 +251,7 @@ function listenDiscard(room) {
     Object.entries(discards).forEach(([pid, pile]) => {
       const discardEl = document.getElementById(`discard-${pid}`);
       if (discardEl) {
+        // Afficher jusqu’aux 3 dernières cartes
         discardEl.innerHTML = pile.slice(-3).map(card => `
           <div class="discard-card ${card.color}" 
                data-card-id="${card.id}" 
@@ -251,6 +259,15 @@ function listenDiscard(room) {
             ${card.rank}${card.symbol}
           </div>
         `).join('');
+        
+        // Rendre chaque carte cliquable pour la prendre
+        discardEl.querySelectorAll('.discard-card').forEach(el => {
+          el.style.cursor = 'pointer';
+          el.onclick = () => {
+            const ownerId = el.dataset.playerId;
+            takeDiscardedCard(ownerId);
+          };
+        });
       }
       
       // Mettre à jour la défausse centrale pour le joueur courant
@@ -268,6 +285,7 @@ function listenDiscard(room) {
     });
   });
 }
+
 
 // --- Listeners Firebase ---
 function listenPlayers(room) {
