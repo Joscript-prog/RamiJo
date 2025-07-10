@@ -89,7 +89,8 @@ async function dealCards(roomId, playerIds) {
     set(ref(db, `rooms/${roomId}/jokerCard`), jokerCard),
     set(ref(db, `rooms/${roomId}/jokerSet`), { jokerSet: jokerSet.map(c => c.id) }),
     set(ref(db, `rooms/${roomId}/hands`), hands),
-    set(ref(db, `rooms/${roomId}/discard`), discards)
+    set(ref(db, `rooms/${roomId}/discard`), discards),
+    set(ref(db, `rooms/${roomId}/state`), { currentPlayerIndex: 0 })
   ]);
 }
 
@@ -150,7 +151,15 @@ function enableDragDrop() {
           id: el.dataset.cardId,
           rank: el.querySelector('.corner.top span').textContent,
           symbol: el.querySelector('.corner.top span:nth-child(2)').textContent,
-          color: el.classList.contains('red') ? 'red' : 'black'
+          color: el.classList.contains('red') ? 'red' : 'black',
+          suit: el.querySelector('.corner.top span:nth-child(2)').textContent === '♥' ? 'Coeurs' : 
+                el.querySelector('.corner.top span:nth-child(2)').textContent === '♦' ? 'Carreaux' :
+                el.querySelector('.corner.top span:nth-child(2)').textContent === '♣' ? 'Trèfles' : 'Piques',
+          value: parseInt(el.querySelector('.corner.top span').textContent) || 
+                 (el.querySelector('.corner.top span').textContent === 'A' ? 1 :
+                  el.querySelector('.corner.top span').textContent === 'J' ? 11 :
+                  el.querySelector('.corner.top span').textContent === 'Q' ? 12 :
+                  el.querySelector('.corner.top span').textContent === 'K' ? 13 : 0)
         };
       });
       await set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand);
@@ -212,7 +221,7 @@ function listenDiscard(room) {
       const discardEl = document.getElementById(`discard-${pid}`);
       if (discardEl) {
         discardEl.innerHTML = pile.slice(-3).map(card => `
-          <div class="discard-card ${card.color}" data-card-id="${card.id}">
+          <div class="discard-card ${card.color}" data-card-id="${card.id}" data-player-id="${pid}">
             ${card.rank}${card.symbol}
           </div>
         `).join('');
@@ -225,8 +234,8 @@ function listenTurn(room) {
   onValue(ref(db, `rooms/${room}/turn`), snap => {
     const turn = snap.val();
     const myTurn = turn === playerId;
-    hasDrawnOrPicked = myTurn ? false : hasDrawnOrPicked;
-    drawCardBtn.disabled = !myTurn || hasDrawnOrPicked;
+    hasDrawnOrPicked = false; // Réinitialiser à chaque nouveau tour
+    drawCardBtn.disabled = !myTurn;
     status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente...";
     
     // Mettre en évidence le joueur courant
@@ -253,51 +262,51 @@ function renderHand(hand) {
 }
 
 // --- Pioche ---
-async function drawCard(room) {
-  const turnSnap = await get(ref(db, `rooms/${room}/turn`));
+async function drawCard() {
+  if (!currentRoom) return;
+  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
   if (turnSnap.val() !== playerId) return alert("Ce n'est pas votre tour.");
   
-  const stateRef = ref(db, `rooms/${room}/state`);
-  let state = (await get(stateRef)).val() || { drawCount: 0 };
-  if (state.drawCount >= 1) return alert('Vous avez déjà pioché.');
+  if (hasDrawnOrPicked) return alert('Vous avez déjà effectué une action ce tour.');
   
   let [deckSnap, handSnap, jokerSetSnap] = await Promise.all([
-    get(ref(db, `rooms/${room}/deck`)),
-    get(ref(db, `rooms/${room}/hands/${playerId}`)),
-    get(ref(db, `rooms/${room}/jokerSet`))
+    get(ref(db, `rooms/${currentRoom}/deck`)),
+    get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)),
+    get(ref(db, `rooms/${currentRoom}/jokerSet`))
   ]);
   
   let deck = deckSnap.val() || [];
   let hand = handSnap.val() || [];
   const jokerSet = jokerSetSnap.val()?.jokerSet || [];
   
-  if (!deck.length) return alert('Deck vide');
+  if (!deck.length) {
+    alert('Deck vide');
+    return;
+  }
   
   const card = deck.shift(); 
   hand.push(card);
   
   // Vérification pour défausse automatique du joker
-  const playersCount = Object.keys((await get(ref(db, `rooms/${room}/players`))).val() || {}).length;
+  const playersCount = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {}).length;
   if (deck.length <= playersCount && hand.some(c => jokerSet.includes(c.id))) {
     const idx = hand.findIndex(c => jokerSet.includes(c.id));
     const [jok] = hand.splice(idx, 1);
-    let pile = (await get(ref(db, `rooms/${room}/discard/${playerId}`))).val() || [];
+    let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
     pile.push(jok);
-    await set(ref(db, `rooms/${room}/discard/${playerId}`), pile);
+    await set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile);
     showPopup('Joker défaussé automatiquement selon les règles du jeu');
   }
   
-  state.drawCount++; 
   hasDrawnOrPicked = true;
   
   await Promise.all([
-    set(ref(db, `rooms/${room}/deck`), deck),
-    set(ref(db, `rooms/${room}/hands/${playerId}`), hand),
-    set(stateRef, state)
+    set(ref(db, `rooms/${currentRoom}/deck`), deck),
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
   ]);
 }
 
-// --- Défausse manuelle & passage de tour ---
+// --- Défausse manuelle ---
 function setupPlayerHandDiscardListener() {
   playerHandDiv.addEventListener('click', async e => {
     const cardEl = e.target.closest('.card');
@@ -305,7 +314,7 @@ function setupPlayerHandDiscardListener() {
     
     const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
     if (turn !== playerId) return;
-    if (!hasDrawnOrPicked) return alert('Piochez avant de défausser.');
+    if (!hasDrawnOrPicked) return alert('Vous devez d\'abord piocher ou prendre une carte.');
     
     const cardId = cardEl.dataset.cardId;
     let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
@@ -323,25 +332,22 @@ function setupPlayerHandDiscardListener() {
         set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
         set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
       ]);
-      await endTurn(currentRoom);
+      await endTurn();
     }, 300);
   });
 }
 
 // --- Fin de tour ---
-async function endTurn(room) {
-  const players = Object.keys((await get(ref(db, `rooms/${room}/players`))).val() || {});
-  const current = (await get(ref(db, `rooms/${room}/turn`))).val();
+async function endTurn() {
+  const players = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {});
+  const current = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
   const idx = players.indexOf(current);
   const next = players[(idx + 1) % players.length];
   
-  await Promise.all([
-    set(ref(db, `rooms/${room}/turn`), next),
-    update(ref(db, `rooms/${room}/state`), { drawCount: 0, lastDiscarder: current })
-  ]);
+  await set(ref(db, `rooms/${currentRoom}/turn`), next);
 }
 
-// --- Interaction piles adverses ---
+// --- Prendre une carte défaussée ---
 function enableDiscardPileInteraction() {
   playersDiv.addEventListener('click', async e => {
     const discardEl = e.target.closest('.discard-card');
@@ -349,9 +355,9 @@ function enableDiscardPileInteraction() {
     
     const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
     if (turn !== playerId) return;
-    if (hasDrawnOrPicked) return alert('Vous avez déjà joué ce tour.');
+    if (hasDrawnOrPicked) return alert('Vous avez déjà effectué une action ce tour.');
     
-    const pid = discardEl.parentElement.id.replace('discard-', '');
+    const pid = discardEl.dataset.playerId;
     const cardId = discardEl.dataset.cardId;
     
     // Récupérer la carte de la défausse
@@ -369,7 +375,6 @@ function enableDiscardPileInteraction() {
     await Promise.all([
       set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
       set(ref(db, `rooms/${currentRoom}/discard/${pid}`), updatedDiscards),
-      update(ref(db, `rooms/${currentRoom}/state`), { drawCount: 1 })
     ]);
     
     hasDrawnOrPicked = true;
@@ -382,7 +387,6 @@ async function createRoom() {
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo }),
     set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0),
-    set(ref(db, `rooms/${currentRoom}/state`), { started: false, drawCount: 0, lastDiscarder: null }),
     set(ref(db, `rooms/${currentRoom}/turn`), playerId)
   ]);
   
@@ -418,7 +422,6 @@ async function joinRoom() {
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo }),
     set(ref(db, `rooms/${currentRoom}/scores/${playerId}`), 0),
-    update(ref(db, `rooms/${currentRoom}/state`), { drawCount: 0 })
   ]);
   
   menuDiv.style.display = 'none';
@@ -439,22 +442,24 @@ async function joinRoom() {
 }
 
 // --- Déclarations ---
-async function declare7N(room) {
-  const hand = (await get(ref(db, `rooms/${room}/hands/${playerId}`))).val() || [];
+async function declare7N() {
+  if (!currentRoom) return;
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
   if (!Rules.has7Naturel(hand)) return alert('Combinaison invalide pour 7 Naturel');
   
-  const scoreRef = ref(db, `rooms/${room}/scores/${playerId}`);
+  const scoreRef = ref(db, `rooms/${currentRoom}/scores/${playerId}`);
   const cur = (await get(scoreRef)).val() || 0;
   await set(scoreRef, cur + 0.5);
   
   showPopup('7 Naturel validé ! +0.5 point');
 }
 
-async function declareWin(room) {
-  const hand = (await get(ref(db, `rooms/${room}/hands/${playerId}`))).val() || [];
+async function declareWin() {
+  if (!currentRoom) return;
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
   if (!Rules.validateWinHand(hand)) return alert('Combinaison invalide pour la victoire');
   
-  const scoreRef = ref(db, `rooms/${room}/scores/${playerId}`);
+  const scoreRef = ref(db, `rooms/${currentRoom}/scores/${playerId}`);
   const cur = (await get(scoreRef)).val() || 0;
   await set(scoreRef, cur + 1);
   
@@ -465,9 +470,9 @@ async function declareWin(room) {
 function init() {
   createRoomBtn.onclick = createRoom;
   joinRoomBtn.onclick = joinRoom;
-  drawCardBtn.onclick = () => drawCard(currentRoom);
-  declare7NBtn.onclick = () => declare7N(currentRoom);
-  declareWinBtn.onclick = () => declareWin(currentRoom);
+  drawCardBtn.onclick = drawCard;
+  declare7NBtn.onclick = declare7N;
+  declareWinBtn.onclick = declareWin;
   
   // Cacher la partie jeu au départ
   gameDiv.hidden = true;
