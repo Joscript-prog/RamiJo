@@ -645,3 +645,33 @@ body {
     padding: 10px;
   }
 }
+/* Rendre la pioche cliquable (curseur main) */
+.deck-pile.clickable {
+  cursor: pointer;
+}
+
+/* ── ZONES DE DÉFAUSSE PAR JOUEUR ── */
+.discard-zones {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.discard-zone {
+  position: absolute;
+  width: calc(var(--card-width-base) * 0.6);
+  height: calc(var(--card-height-base) * 0.6);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  pointer-events: auto;
+}
+/* Joueur haut */
+#discard-zone-0 { top: 5%; left: 50%; transform: translateX(-50%); }
+/* Joueur droite */
+#discard-zone-1 { top: 50%; right: 5%; transform: translateY(-50%); }
+/* Joueur bas */
+#discard-zone-2 { bottom: 5%; left: 50%; transform: translateX(-50%) rotate(180deg); }
+/* Joueur gauche */
+#discard-zone-3 { top: 50%; left: 5%; transform: translateY(-50%); }
