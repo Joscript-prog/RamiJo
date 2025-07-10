@@ -1,3 +1,5 @@
+/* style.css */
+
 /* Variables modernes */
 :root {
   --primary: #2c3e50;
@@ -92,12 +94,10 @@ body {
 
 /* Pour 2 joueurs : face à face */
 .players-circle.two-players .player-badge:nth-child(1) {
-  top: 5%; left: 50%;
-  transform: translateX(-50%);
+  top: 5%; left: 50%; transform: translateX(-50%);
 }
 .players-circle.two-players .player-badge:nth-child(2) {
-  bottom: 5%; left: 50%;
-  transform: translateX(-50%);
+  bottom: 5%; left: 50%; transform: translateX(-50%);
 }
 
 /* Position par défaut pour jusqu'à 5 joueurs */
@@ -184,7 +184,7 @@ body {
 .card {
   width: var(--card-width-base);
   height: var(--card-height-base);
-  background: white;
+  background: var(--card-white);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   display: flex;
@@ -192,10 +192,16 @@ body {
   justify-content: space-between;
   padding: 10px;
   cursor: pointer;
+  transition: var(--transition);
 }
 
 .card.red { color: var(--card-red); }
 .card.black { color: var(--card-black); }
+
+/* Dos de carte */
+.card.back {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 50%, var(--secondary) 100%);
+}
 
 /* Mini-défausses (3 cartes max) */
 .mini-discard {
@@ -211,7 +217,7 @@ body {
   width: 24px;
   height: 36px;
   border-radius: 4px;
-  background: white;
+  background: var(--card-white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -219,6 +225,14 @@ body {
 
 @media (max-width: 1024px) {
   .game-main-content { flex-direction: column; }
-  .game-controls { width: 100%; border-left: none; border-top: 1px solid #ddd; order: 2; }
-  .game-table { order: 1; height: 60vh; }
+  .game-controls {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #ddd;
+    order: 2;
+  }
+  .game-table {
+    order: 1;
+    height: 60vh;
+  }
 }
