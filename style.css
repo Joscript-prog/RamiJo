@@ -1,4 +1,4 @@
-/* Variables CSS modernes */
+/* 1. Variables CSS modernes */
 :root {
   --primary-dark: #0a0a0b;
   --secondary-dark: #1a1a1c;
@@ -16,253 +16,272 @@
   --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-/* Styles globaux améliorés */
+/* 2. Styles globaux */
 * {
   box-sizing: border-box;
 }
-
-.App {
-  text-align: center;
-  position: relative;
-  overflow-x: hidden;
-}
-
-.App-logo {
-  height: 40vmin;
-  max-height: 200px;
-  min-height: 100px;
-  pointer-events: none;
-  filter: drop-shadow(0 0 20px rgba(97, 218, 251, 0.4));
-  transition: var(--transition-smooth);
-  border-radius: 50%;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(97, 218, 251, 0.2);
-}
-
-.App-logo:hover {
-  filter: drop-shadow(0 0 30px rgba(97, 218, 251, 0.7));
-  transform: scale(1.05);
-  border-color: rgba(97, 218, 251, 0.4);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
+body {
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
   background: var(--gradient-bg);
+  color: var(--text-primary);
+  overflow-x: hidden;
   min-height: 100vh;
+}
+
+/* 3. MENU (écran d’accueil) */
+#menu.menu-overlay {
+  position: fixed;
+  inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(14px + 2vmin);
-  color: var(--text-primary);
-  padding: 2rem 1rem;
-  position: relative;
-  overflow: hidden;
+  background: var(--gradient-bg);
+  z-index: 100;
 }
 
-/* Effet de particules en arrière-plan */
-.App-header::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    radial-gradient(circle at 20% 20%, rgba(97, 218, 251, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(97, 218, 251, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 40% 60%, rgba(97, 218, 251, 0.05) 0%, transparent 50%);
-  animation: float 8s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.App-header::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="1" fill="rgba(97,218,251,0.1)"/></svg>') repeat;
-  background-size: 50px 50px;
-  animation: twinkle 4s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-
-.App-header > * {
-  position: relative;
-  z-index: 1;
-}
-
-.App-link {
-  color: var(--accent-blue);
-  text-decoration: none;
-  transition: var(--transition-bounce);
-  position: relative;
-  display: inline-block;
-  border-radius: var(--border-radius);
-  overflow: hidden;
+.menu-content {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   border: 2px solid rgba(97, 218, 251, 0.2);
-  padding: 1rem;
-  margin-bottom: 2rem;
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  text-align: center;
+  box-shadow: var(--shadow-glow), var(--shadow-soft);
 }
 
-.App-link:hover {
-  color: var(--accent-blue-hover);
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: var(--shadow-glow), var(--shadow-intense);
-  border-color: rgba(97, 218, 251, 0.5);
+.menu-content h1 {
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+  color: var(--accent-blue);
+  text-shadow: 0 0 10px rgba(97, 218, 251, 0.5);
+}
+
+.separator {
+  margin: 1.5rem 0;
+  position: relative;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* Formulaire de code */
+.join-form {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+.room-input {
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-size: 1rem;
 }
 
-.App-link:active {
-  transform: translateY(-2px) scale(0.98);
+/* Boutons génériques */
+.btn {
+  cursor: pointer;
+  font-size: 1rem;
+  border-radius: var(--border-radius);
+  transition: var(--transition-bounce);
+  padding: 0.75rem 1.5rem;
+}
+.btn-primary {
+  background: var(--accent-blue);
+  color: var(--text-primary);
+  border: none;
+}
+.btn-primary:hover {
+  background: var(--accent-blue-hover);
+  box-shadow: var(--shadow-glow);
+}
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent-blue);
+  border: 2px solid var(--accent-blue);
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent-blue-hover);
 }
 
-/* Amélioration du texte */
-.App-header p {
-  font-weight: 300;
-  letter-spacing: 0.5px;
-  margin: 0;
+/* 4. GAME (zone de jeu) */
+#game {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Header de la partie */
+.game-header {
+  background: var(--gradient-bg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  box-shadow: var(--shadow-soft);
+}
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.game-status {
+  font-size: 1.1rem;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-  background: var(--gradient-accent);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: shimmer 3s ease-in-out infinite;
+}
+.joker-display {
+  width: 40px;
+  height: 40px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 20px rgba(97,218,251,0.4));
+  transition: var(--transition-smooth);
+}
+.joker-display:hover {
+  filter: drop-shadow(0 0 30px rgba(97,218,251,0.7));
+  transform: scale(1.1);
+}
+.chat-toggle {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(97, 218, 251, 0.2);
+  border-radius: var(--border-radius);
+  padding: 0.5rem;
+  font-size: 1.2rem;
+  transition: var(--transition-bounce);
+}
+.chat-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-glow);
 }
 
-/* Animations améliorées */
+/* Controles latéraux */
+.game-main-content {
+  flex: 1;
+  display: flex;
+}
+.game-controls {
+  width: 200px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(97, 218, 251, 0.2);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.btn-special,
+.btn-action {
+  background: var(--accent-blue);
+  color: var(--text-primary);
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+.btn-special:disabled,
+.btn-action:disabled {
+  background: rgba(255,255,255,0.3);
+  cursor: not-allowed;
+}
+.btn-special:hover:not(:disabled),
+.btn-action:hover:not(:disabled) {
+  background: var(--accent-blue-hover);
+  box-shadow: var(--shadow-glow);
+}
+
+/* Table de jeu */
+.game-table {
+  flex: 1;
+  background: #2e7d32;
+  border-radius: var(--border-radius);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.players-circle {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+.player-hand {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(255,255,255,0.2);
+  border-radius: var(--border-radius);
+  overflow-x: auto;
+  z-index: 10;
+}
+
+/* Chat */
+#chat-container {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 300px;
+  background: rgba(255,255,255,0.95);
+  border-top-left-radius: var(--border-radius);
+  transform: translateY(calc(100% - 40px));
+  transition: var(--transition-smooth);
+}
+#chat-container.open {
+  transform: translateY(0);
+}
+#chat-container form {
+  display: flex;
+}
+#chat-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--text-secondary);
+  border-radius: 4px 0 0 4px;
+  outline: none;
+}
+#chat-container button {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: var(--accent-blue);
+  color: var(--text-primary);
+  border-radius: 0 4px 4px 0;
+}
+
+/* 5. Animations améliorées */
 @keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
-
 @keyframes float {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-20px) rotate(180deg);
-  }
+  0%,100% { transform: translateY(0) rotate(0deg); }
+  50%     { transform: translateY(-20px) rotate(180deg); }
 }
-
 @keyframes twinkle {
-  0% {
-    opacity: 0.3;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0.8;
-    transform: scale(1.1);
-  }
+  0% { opacity: 0.3; transform: scale(1); }
+  100% { opacity: 0.8; transform: scale(1.1); }
 }
-
 @keyframes shimmer {
-  0% {
-    background-position: -200% center;
-  }
-  100% {
-    background-position: 200% center;
-  }
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .App-header {
-    padding: 1rem 0.5rem;
-    font-size: calc(12px + 2vmin);
-  }
-  
-  .App-logo {
-    height: 30vmin;
-    min-height: 80px;
-    max-height: 150px;
-  }
-  
-  .App-link {
-    padding: 0.8rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .App-header p {
-    font-size: 0.9em;
-    padding: 0 1rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .App-header {
-    padding: 1rem 0.25rem;
-    font-size: calc(10px + 2vmin);
-  }
-  
-  .App-logo {
-    height: 25vmin;
-    min-height: 60px;
-    max-height: 120px;
-  }
-  
-  .App-link {
-    padding: 0.6rem;
-    margin-bottom: 1rem;
-  }
-}
-
-/* Améliorations pour les écrans larges */
-@media (min-width: 1200px) {
-  .App-header {
-    font-size: calc(16px + 1.5vmin);
-  }
-  
-  .App-logo {
-    max-height: 250px;
-  }
-  
-  .App-link {
-    padding: 1.5rem;
-    margin-bottom: 2.5rem;
-  }
-}
-
-/* Effets pour les utilisateurs avec préférences d'animation */
+/* 6. Préférences d’animation réduite */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  
-  .App-logo {
-    animation: none !important;
-  }
-  
-  .App-header::before,
-  .App-header::after {
-    animation: none !important;
-  }
 }
 
-/* Amélioration du focus pour l'accessibilité */
-.App-link:focus {
-  outline: 2px solid var(--accent-blue);
-  outline-offset: 4px;
-}
-
-/* Support du mode sombre amélioré */
+/* 7. Mode clair */
 @media (prefers-color-scheme: light) {
   :root {
     --primary-dark: #f8f9fa;
@@ -270,12 +289,5 @@
     --text-primary: #212529;
     --text-secondary: #6c757d;
     --gradient-bg: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #dee2e6 100%);
-  }
-  
-  .App-header::before {
-    background-image: 
-      radial-gradient(circle at 20% 20%, rgba(97, 218, 251, 0.2) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(97, 218, 251, 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 40% 60%, rgba(97, 218, 251, 0.1) 0%, transparent 50%);
   }
 }
