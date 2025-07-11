@@ -1,4 +1,6 @@
-/*── Variables et thèmes ───────────────────────────────────────────────────────*/
+/*─────────────────────────────────────────────────────────────────────────────
+  VARIABLES & THÈME
+─────────────────────────────────────────────────────────────────────────────*/
 :root {
   --primary:    #2c3e50;
   --secondary:  #2980b9;
@@ -14,64 +16,65 @@
   --card-red:   #e74c3c;
   --card-black: #2c3e50;
 
-  --shadow-sm:  0 4px 6px rgba(0, 0, 0, 0.05);
-  --shadow-md:  0 6px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg:  0 12px 24px rgba(0, 0, 0, 0.15);
+  --shadow-sm:  0 4px 6px rgba(0,0,0,0.05);
+  --shadow-md:  0 6px 12px rgba(0,0,0,0.08);
+  --shadow-lg:  0 12px 24px rgba(0,0,0,0.15);
 
-  --radius:            12px;
-  --transition-fast:   0.2s ease-out;
-  --transition-medium: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --radius:          12px;
+  --transition:      all 0.3s cubic-bezier(0.25,0.8,0.25,1);
+  --card-width-base: 80px;
+  --card-height-base:120px;
 
-  --card-width-base:  80px;
-  --card-height-base: 120px;
-
-  --chat-width:  300px;
-  --chat-height: 250px;
+  --chat-width: 300px;
+  --chat-height:250px;
 }
 
-/*── Reset & Global ─────────────────────────────────────────────────────────*/
 * {
-  margin: 0; padding: 0;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
 body {
   font-family: 'Roboto', sans-serif;
-  background: var(--bg) radial-gradient(circle at top right,
-    rgba(236,240,241,0.2) 0%, rgba(189,195,199,0.05) 100%);
+  background-color: var(--bg);
   color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
-  overflow-x: hidden;
   padding: 20px;
+  overflow-x: hidden;
+  background-image: radial-gradient(circle at top right,
+    rgba(236,240,241,0.2) 0%, rgba(189,195,199,0.05) 100%);
 }
 
-/*── Menu de démarrage ──────────────────────────────────────────────────────*/
+/*─────────────────────────────────────────────────────────────────────────────
+  MENU
+─────────────────────────────────────────────────────────────────────────────*/
 #menu {
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   height: 100vh;
 }
 .menu-content {
-  background: #fff;
+  background: white;
   padding: 2rem;
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   text-align: center;
-  max-width: 400px;
+  max-width: 500px;
   width: 100%;
 }
-.menu-section {
-  margin: 2rem 0;
-}
+.menu-section { margin: 2rem 0; }
 
-/*── Structure générale du jeu ──────────────────────────────────────────────*/
+/*─────────────────────────────────────────────────────────────────────────────
+  GAME LAYOUT
+─────────────────────────────────────────────────────────────────────────────*/
 #game {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 40px);
-  background: var(--felt-green);
+  background-color: var(--felt-green);
   border-radius: var(--radius);
   overflow: hidden;
   position: relative;
@@ -80,29 +83,27 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
-  background: rgba(0,0,0,0.1);
-  color: #fff;
+  padding: 10px 20px;
+  background-color: rgba(0,0,0,0.1);
+  color: white;
   flex-wrap: wrap;
   gap: 10px;
 }
 .header-left, .header-right {
   display: flex;
+  gap: 10px;
   align-items: center;
-  gap: 12px;
 }
 .chat-toggle {
   background: transparent;
   border: none;
-  color: #fff;
+  color: white;
   cursor: pointer;
-  padding: 6px;
+  padding: 5px;
   border-radius: 50%;
-  transition: var(--transition-fast);
+  transition: var(--transition);
 }
-.chat-toggle:hover {
-  background: rgba(255,255,255,0.2);
-}
+.chat-toggle:hover { background: rgba(255,255,255,0.2); }
 
 .game-main-content {
   flex: 1;
@@ -110,9 +111,11 @@ body {
   position: relative;
 }
 
-/*── Panneau de contrôle ──────────────────────────────────────────────────*/
+/*─────────────────────────────────────────────────────────────────────────────
+  CONTROLS
+─────────────────────────────────────────────────────────────────────────────*/
 .game-controls {
-  flex: 0 0 200px;
+  width: 200px;
   background: rgba(255,255,255,0.9);
   padding: 1rem;
   display: flex;
@@ -123,60 +126,80 @@ body {
 .game-controls button {
   padding: 0.75rem;
   border: none;
-  border-radius: var(--radius);
+  border-radius: 5px;
   background: var(--primary);
-  color: #fff;
+  color: white;
   cursor: pointer;
+  transition: var(--transition);
   font-weight: 500;
   box-shadow: var(--shadow-sm);
-  transition: var(--transition-fast);
 }
 .game-controls button:hover {
   background: var(--secondary);
   transform: translateY(-2px);
 }
 .game-controls button:disabled {
-  background: #95a5a6; cursor: not-allowed; transform: none;
+  background: #95a5a6;
+  cursor: not-allowed;
+  transform: none;
 }
 .btn-special { background: var(--accent) !important; }
 
-/*── Table de jeu ─────────────────────────────────────────────────────────*/
+/*─────────────────────────────────────────────────────────────────────────────
+  TABLE DE JEU
+─────────────────────────────────────────────────────────────────────────────*/
 .game-table {
   position: relative;
-  flex: 1;
-  background: #2e7d32;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  overflow: visible;
+  width: 100%;
+  height: 70vh;
+  background-color: #2e7d32;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 .table-center {
   position: absolute;
-  top: 45%; left: 50%;
-  transform: translate(-50%, -50%);
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%,-50%);
   display: flex;
+  justify-content: center;
   align-items: center;
   gap: 40px;
+  margin-top: 60px;
   z-index: 2;
 }
-
-/*── Pioche & défausse globale ─────────────────────────────────────────────*/
 .deck-area, .discard-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  z-index: 40;            /* <— HERO : deck au‑dessus */
+  gap: 10px;
+  z-index: 20;
 }
 .deck-label, .discard-label {
-  color: #fff;
+  color: white;
   font-weight: bold;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  font-size: 1.1rem;
+}
+#global-discard {
+  min-width: 100px;
+  min-height: 140px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-/*── Cercle des joueurs ────────────────────────────────────────────────────*/
+/*─────────────────────────────────────────────────────────────────────────────
+  PLAYERS & BADGES
+─────────────────────────────────────────────────────────────────────────────*/
 .players-circle {
   position: absolute;
-  inset: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -184,129 +207,59 @@ body {
 }
 .player-badge {
   position: absolute;
-  width: 120px; padding: 0.6rem;
-  background: rgba(255,255,255,0.95);
-  border-radius: 50%;
+  width: 120px;
+  padding: 0.5rem;
+  background: rgba(255,255,255,0.9);
+  border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   text-align: center;
-  transition: var(--transition-medium);
-  border: 2px solid rgba(0,0,0,0.1);
-  display: flex; flex-direction: column; align-items: center;
-}
-.player-badge::before {
-  content: "";
-  width: 60px; height: 60px;
-  background: #f5f5f5;
-  border-radius: 50%;
-  margin-bottom: 6px;
-  border: 3px solid #ddd;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23757575'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>");
-  background-size: 60%;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-.player-badge.current-player {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(231,76,60,0.3);
-}
-@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(243,156,18,0);} 50%{box-shadow:0 0 0 8px rgba(243,156,18,0.5);} }
-.player-badge.current-turn {
-  animation: pulse 1.5s infinite;
+  z-index: 5;
+  transition: var(--transition);
 }
 .player-name {
-  font-size: 0.9rem; font-weight: 500;
+  font-weight: 500;
+  font-size: 0.9rem;
   color: var(--primary);
+  margin-bottom: 0.25rem;
 }
 .player-score {
-  margin-top: 4px;
+  font-size: 0.85rem;
+  color: white;
   background: var(--primary);
-  color: #fff;
-  font-size: 0.8rem;
-  padding: 2px 6px;
-  border-radius: 8px;
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
-/* Positionnement top/right/bottom/left */
-.player-badge:nth-child(1){ top:10px;    left:50%; transform:translateX(-50%); }
-.player-badge:nth-child(2){ top:50%;    right:10px; transform:translateY(-50%); }
-.player-badge:nth-child(3){ bottom:10px; left:50%; transform:translateX(-50%); }
-.player-badge:nth-child(4){ top:50%;    left:10px; transform:translateY(-50%); }
-
-/*── Défausse perso ───────────────────────────────────────────────────────*/
-.discard-pile {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  z-index: 10;
+/* Positions fixes (jusqu’à 4 joueurs) */
+.player-badge:nth-child(1) {
+  top: 10px; left: 50%; transform: translateX(-50%);
 }
-.discard-pile::before {
-  content: "Défausse";
-  color: #fff;
-  font-size: 0.75rem;
-  margin-right: 4px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+.player-badge:nth-child(2) {
+  top: 50%; right: 10px; transform: translateY(-50%);
 }
-#discard-player0{ top:25%; left:50%; transform:translateX(-50%); }
-#discard-player1{ top:50%; right:5%; transform:translateY(-50%); }
-#discard-player2{ bottom:25%; left:50%; transform:translateX(-50%); }
-#discard-player3{ top:50%; left:5%; transform:translateY(-50%); }
-
-/*── Cartes ────────────────────────────────────────────────────────────────*/
-.card {
-  width: var(--card-width-base);
-  height: var(--card-height-base);
-  background: var(--card-white);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 8px;
-  cursor: pointer;
-  transition: var(--transition-fast);
-  position: relative;
-  user-select: none;
+.player-badge:nth-child(3) {
+  bottom: 10px; left: 50%; transform: translateX(-50%);
 }
-.card.red   { color: var(--card-red); }
-.card.black { color: var(--card-black); }
-.card .corner { font-size: 0.9rem; }
-.card .corner.bottom { transform: rotate(180deg); }
-.card .suit.main { font-size: 2rem; text-align: center; margin: auto 0; }
-.card.back {
-  background: linear-gradient(135deg,var(--secondary) 0%,var(--primary)50%,var(--secondary)100%);
-  color:#fff; display:flex;align-items:center;justify-content:center;font-size:2rem;
+.player-badge:nth-child(4) {
+  top: 50%; left: 10px; transform: translateY(-50%);
 }
 
-/*── Cartes Joker ─────────────────────────────────────────────────────────*/
-.card[data-rank="Joker"] {
-  background: linear-gradient(135deg, #f39c12 0%, #e74c3c 50%, #f39c12 100%);
-  color: #fff; font-weight: bold;
+/* Highlight joueur courant */
+.player-badge.current-player {
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(231,76,60,0.3);
 }
-.card[data-rank="Joker"] .suit.main {
-  font-size: 2.5rem; margin: 8px 0;
-}
-
-/*── Affichage du joker révélé ─────────────────────────────────────────────*/
-#joker {
-  position: absolute; top:20px; left:20px;     /* <— HERO : en haut à gauche */
-  transform: none;
-  background: rgba(255,255,255,0.9);
-  padding: 12px 20px;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  text-align: center;
-  z-index: 50;
-}
-#joker .card {
-  width: 60px; height: 90px;
-  margin: 0 auto;
+.player-badge.current-turn {
+  animation: pulse 1.5s infinite;
+  box-shadow: 0 0 0 3px var(--warning);
 }
 
-/*── Main du joueur ────────────────────────────────────────────────────────*/
+/*─────────────────────────────────────────────────────────────────────────────
+  MAIN DU JOUEUR
+─────────────────────────────────────────────────────────────────────────────*/
 .player-hand {
   position: absolute;
-  bottom: 5%;          /* toujours en bas */
+  bottom: 5%;            /* Toujours en bas */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -316,70 +269,171 @@ body {
   border-radius: var(--radius);
   max-width: 90%;
   overflow-x: auto;
-  z-index: 20;         /* <— main sous le deck */
-  scrollbar-width: thin;
-  scrollbar-color: var(--secondary) transparent;
+  z-index: 30;
 }
-.player-hand::-webkit-scrollbar { height: 6px; }
-.player-hand::-webkit-scrollbar-thumb {
-  background: var(--secondary);
-  border-radius: 3px;
+.player-hand .card {
+  flex-shrink: 0;
 }
 .player-hand .card:hover {
-  transform: translateY(-12px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-20px);
 }
 
-/*── Chat ──────────────────────────────────────────────────────────────────*/
+/*─────────────────────────────────────────────────────────────────────────────
+  CARDS
+─────────────────────────────────────────────────────────────────────────────*/
+.card {
+  width: var(--card-width-base);
+  height: var(--card-height-base);
+  background: var(--card-white);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 10px;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  user-select: none;
+}
+.card.red   { color: var(--card-red); }
+.card.black { color: var(--card-black); }
+.card.back  {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 50%, var(--secondary) 100%);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+}
+
+/* Masquer les vraies cartes Joker du deck (pour ne garder que 104 cartes) */
+.card[data-rank="Joker"] {
+  display: none;
+}
+
+/*─────────────────────────────────────────────────────────────────────────────
+  JOKER TIRÉ (EN HAUT GAUCHE)
+─────────────────────────────────────────────────────────────────────────────*/
+#joker {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 50;
+  background: rgba(255,255,255,0.9);
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+}
+#joker .card {
+  width: calc(var(--card-width-base) * 0.8);
+  height: calc(var(--card-height-base) * 0.8);
+  margin-left: 8px;
+}
+
+/*─────────────────────────────────────────────────────────────────────────────
+  MODAL
+─────────────────────────────────────────────────────────────────────────────*/
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: var(--radius);
+  max-width: 500px;
+  width: 90%;
+}
+.modal-close {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/*─────────────────────────────────────────────────────────────────────────────
+  CHAT
+─────────────────────────────────────────────────────────────────────────────*/
 #chat-container {
   position: fixed;
-  bottom: 0; right: 0;
+  bottom: 0;
+  right: 0;
   width: var(--chat-width);
-  max-height: var(--chat-height);
   background: #fff;
   border-top-left-radius: var(--radius);
-  box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 -2px 15px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  max-height: var(--chat-height);
   transform: translateY(calc(100% - 40px));
   transition: transform 0.3s ease;
   z-index: 1000;
 }
 #chat-container.open { transform: translateY(0); }
 #chat-messages {
-  flex: 1; overflow-y: auto; padding: 12px;
-  display: flex; flex-direction: column; gap: 8px;
-  scrollbar-width: thin; scrollbar-color: var(--secondary) transparent;
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 #chat-form {
-  display: flex; border-top: 1px solid #e0e0e0;
+  display: flex;
+  border-top: 1px solid #e0e0e0;
 }
 #chat-input {
-  flex: 1; padding: 10px; border: none; outline: none;
+  flex: 1;
+  border: none;
+  padding: 12px 15px;
 }
 #chat-form button {
-  border: none; background: var(--secondary);
-  color: #fff; padding: 0 16px; cursor: pointer;
-  transition: var(--transition-fast);
+  border: none;
+  padding: 0 15px;
+  background: var(--secondary);
+  color: white;
+  cursor: pointer;
 }
-#chat-form button:hover { background: var(--primary); }
 
-/*── Animations & Keyframes ─────────────────────────────────────────────────*/
-@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(243,156,18,0);} 50%{box-shadow:0 0 0 8px rgba(243,156,18,0.5);} }
+/*─────────────────────────────────────────────────────────────────────────────
+  ANIMATIONS & RESPONSIVE
+─────────────────────────────────────────────────────────────────────────────*/
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(243,156,18,0.5); }
+  70%  { box-shadow: 0 0 0 10px rgba(243,156,18,0); }
+  100% { box-shadow: 0 0 0 0 rgba(243,156,18,0); }
+}
 
-/*── Responsive ─────────────────────────────────────────────────────────────*/
-@media (max-width: 1024px) {
-  .game-controls { flex: 0 0 160px; }
+@media (max-width: 900px) {
+  :root {
+    --card-width-base: 70px;
+    --card-height-base:105px;
+  }
+  .game-main-content { flex-direction: column; }
+  .game-controls { width: 100%; order: 2; flex-wrap: wrap; }
   .player-badge { width: 100px; }
-  .player-hand { bottom: 8%; }
+  #chat-container { width: 250px; }
 }
-@media (max-width: 768px) {
-  :root { --card-width-base: 60px; --card-height-base: 90px; --chat-width: 240px; }
-  .game-header { flex-direction: column; align-items: flex-start; }
-  .player-hand { bottom: 10%; padding: 0.8rem; }
-}
+
 @media (max-width: 480px) {
-  :root { --card-width-base: 50px; --card-height-base: 75px; --chat-width: 100%; }
-  .player-badge { width: 80px; }
-  .game-controls { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; }
-  .game-controls button { flex: 1 1 45%; font-size: 0.85rem; }
-  .player-hand { bottom: 12%; padding: 0.6rem; }
+  :root {
+    --card-width-base: 50px;
+    --card-height-base:75px;
+    --chat-width:100%;
+    --chat-height:180px;
+  }
+  body { padding: 15px; }
+  .player-hand { bottom: 8%; padding: 0.5rem; }
 }
