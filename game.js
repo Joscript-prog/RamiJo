@@ -898,7 +898,103 @@ function enableChat() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   });
 }
+async function createRoom() {
+  const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900); // Exemple : RAMI938
+  currentRoom = roomCode;
 
-createRoomBtn.addEventListener('click', createRoom);
-joinRoomBtn.addEventListener('click', joinRoom);
-setupPlayerHandDiscardListener();
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  const snapshot = await get(roomRef);
+  if (snapshot.exists()) {
+    alert("La salle existe déjà, réessayez.");
+    return;
+  }
+
+  await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+    pseudo: pseudo
+  });
+
+  await set(ref(db, `rooms/${roomCode}/creator`), playerId);
+
+  listenPlayers(roomCode);
+  listenScores(roomCode);
+  listenDiscard(roomCode);
+  listenHand(roomCode);
+  listenTurn(roomCode);
+  setupPlayerHandDiscardListener();
+  enableChat();
+
+  menuDiv.style.display = 'none';
+  gameDiv.style.display = 'block';
+
+  actionCreateRoomPopup();
+}
+async function joinRoom() {
+  const roomCode = roomInput.value.trim().toUpperCase();
+  if (!roomCode) {
+    alert("Veuillez entrer un code de salle.");
+    return;
+  }
+
+const roomRef = ref(db, `rooms/${roomCode}`);
+const snapshot = await get(roomRef);
+if (!snapshot.exists()) {
+  alert("Cette salle n'existe pas.");
+  return;
+}
+
+// Vérifier si la partie a déjà commencé
+const stateSnap = await get(ref(db, `rooms/${roomCode}/state`));
+if (stateSnap.exists() && stateSnap.val()?.started) {
+  alert("La partie a déjà commencé.");
+  return;
+}
+
+  const playersSnap = await get(ref(db, `rooms/${roomCode}/players`));
+  const players = playersSnap.val() || {};
+
+  if (Object.keys(players).length >= 5) {
+    alert("Cette salle est déjà complète (5 joueurs max).");
+    return;
+  }
+
+  if (players[playerId]) {
+    alert("Vous êtes déjà dans cette salle.");
+    return;
+  }
+
+  await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+    pseudo: pseudo
+  });
+
+  currentRoom = roomCode;
+
+  listenPlayers(roomCode);
+  listenScores(roomCode);
+  listenDiscard(roomCode);
+  listenHand(roomCode);
+  listenTurn(roomCode);
+  setupPlayerHandDiscardListener();
+  enableChat();
+
+  menuDiv.style.display = 'none';
+  gameDiv.style.display = 'block';
+
+  showPopup(`<p>Connecté à la salle <b>${roomCode}</b></p>`);
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM chargé, initialisation du jeu');
+
+
+  console.log('createRoomBtn ?', createRoomBtn, 'joinRoomBtn ?', joinRoomBtn, 'endTurnBtn ?', endTurnBtn);
+
+  if (createRoomBtn) createRoomBtn.addEventListener('click', createRoom);
+  else console.warn("Bouton 'createRoom' introuvable");
+
+  if (joinRoomBtn) joinRoomBtn.addEventListener('click', joinRoom);
+  else console.warn("Bouton 'joinRoom' introuvable");
+
+  if (endTurnBtn) endTurnBtn.addEventListener('click', endTurn);
+  else console.warn("Le bouton 'endTurnBtn' est introuvable, ajout manuel du DOM ?");
+});
