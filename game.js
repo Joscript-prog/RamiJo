@@ -53,41 +53,40 @@ const Rules = {
 
 // --- Création et mélange du deck ---
 function createDeck() {
-  const suits = [{
-    suit: 'Coeurs',
-    symbol: '♥',
-    color: 'red'
-  }, {
-    suit: 'Carreaux',
-    symbol: '♦',
-    color: 'red'
-  }, {
-    suit: 'Trèfles',
-    symbol: '♣',
-    color: 'black'
-  }, {
-    suit: 'Piques',
-    symbol: '♠',
-    color: 'black'
-  }];
-  const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  const suits = [
+    { suit: 'Coeurs',   symbol: '♥', color: 'red'   },
+    { suit: 'Carreaux', symbol: '♦', color: 'red'   },
+    { suit: 'Trèfles',  symbol: '♣', color: 'black' },
+    { suit: 'Piques',   symbol: '♠', color: 'black' }
+  ];
+  const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
   let deck = [];
+
   for (let d = 0; d < 2; d++) {
-    suits.forEach(s => ranks.forEach(r => {
-      const value = r === 'A' ? 1 : r === 'J' ? 11 : r === 'Q' ? 12 : r === 'K' ? 13 : parseInt(r);
-      deck.push({
-        suit: s.suit,
-        symbol: s.symbol,
-        color: s.color,
-        rank: r,
-        value,
-        id: `${r}${s.symbol}${d}`
+    suits.forEach(suitObj => {
+      ranks.forEach(rank => {
+        const value = rank === 'A' ? 1
+                     : rank === 'J' ? 11
+                     : rank === 'Q' ? 12
+                     : rank === 'K' ? 13
+                     : parseInt(rank, 10);
+        deck.push({
+          suit: suitObj.suit,
+          symbol: suitObj.symbol,
+          color: suitObj.color,
+          rank,
+          value,
+          id: `${rank}${suitObj.symbol}${d}`
+        });
       });
-    }));
+    });
+  }
+
+  if (deck.length !== 104) {
+    console.error(`Erreur createDeck : attendu 104 cartes, trouvé ${deck.length}`);
   }
   return deck;
 }
-
 function shuffle(deck) {
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -100,41 +99,37 @@ function shuffle(deck) {
 async function dealCards(roomId, playerIds) {
   let deck = shuffle(createDeck());
 
-  // ↓↓ LOGIQUE JOKER : même valeur, couleur opposée ↓↓
+  // LOGIQUE JOKER
   const jokerCard = deck[Math.floor(Math.random() * deck.length)];
-  const jokerSet = deck.filter(c =>
-    c.value === jokerCard.value &&
-    c.color !== jokerCard.color
-  );
-  // ↑↑ FIN LOGIQUE JOKER ↑↑
+  const jokerSet  = deck.filter(c => c.value === jokerCard.value && c.color !== jokerCard.color);
 
-  const hands = {};
+  const hands    = {};
   const discards = {};
   playerIds.forEach(pid => {
-    hands[pid] = deck.splice(0, 13);
+    hands[pid]    = deck.splice(0, 13);
     discards[pid] = [];
   });
 
   await Promise.all([
     set(ref(db, `rooms/${roomId}/deck`), deck),
     set(ref(db, `rooms/${roomId}/jokerCard`), jokerCard),
-    set(ref(db, `rooms/${roomId}/jokerSet`), {
-      jokerSet: jokerSet.map(c => c.id)
-    }),
+    set(ref(db, `rooms/${roomId}/jokerSet`), { jokerSet: jokerSet.map(c => c.id) }),
     set(ref(db, `rooms/${roomId}/hands`), hands),
     set(ref(db, `rooms/${roomId}/discard`), discards),
     set(ref(db, `rooms/${roomId}/state`), {
       started: false,
       drawCount: 0,
       lastDiscarder: null,
-      currentPlayerIndex: 0
+      sevenPlayed: false,
+      winDeclared: false,
+      sevenCombo: null,
+      winCombos: null
     }),
-    set(ref(db, `rooms/${roomId}/chat`), {}) // Initialiser le chat
+    set(ref(db, `rooms/${roomId}/chat`), {})
   ]);
 }
 
 
-// --- Sélecteurs DOM ---
 // --- Sélecteurs DOM ---
 const createRoomBtn    = document.getElementById('createRoom');
 const joinRoomBtn      = document.getElementById('joinRoom');
@@ -143,7 +138,6 @@ const status           = document.getElementById('status');
 const playersDiv       = document.getElementById('players');
 const playerHandDiv    = document.getElementById('hand');
 const jokerDiv         = document.getElementById('joker');
-const drawCardBtn      = document.getElementById('drawCard');
 const declare7NBtn     = document.getElementById('declare7N');
 const declareWinBtn    = document.getElementById('declareWin');
 const menuDiv          = document.getElementById('menu');
@@ -243,48 +237,40 @@ function renderPlayers(players) {
   });
 }
 
-// Mettre à jour listenDiscard
 function listenDiscard(room) {
   onValue(ref(db, `rooms/${room}/discard`), snap => {
     const discards = snap.val() || {};
-    
     Object.entries(discards).forEach(([pid, pile]) => {
-      const discardEl = document.getElementById(`discard-${pid}`);
-      if (discardEl) {
-        // Afficher jusqu’aux 3 dernières cartes
-        discardEl.innerHTML = pile.slice(-3).map(card => `
-          <div class="discard-card ${card.color}" 
-               data-card-id="${card.id}" 
-               data-player-id="${pid}">
-            ${card.rank}${card.symbol}
-          </div>
-        `).join('');
-        
-        // Rendre chaque carte cliquable pour la prendre
-        discardEl.querySelectorAll('.discard-card').forEach(el => {
-          el.style.cursor = 'pointer';
-          el.onclick = () => {
-            const ownerId = el.dataset.playerId;
-            takeDiscardedCard(ownerId);
-          };
-        });
+      const el = document.getElementById(`discard-${pid}`);
+      if (!el) return;
+      const top = pile.length ? pile[pile.length - 1] : null;
+      el.innerHTML = top ? `
+        <div class="discard-card ${top.color}"
+             data-card-id="${top.id}"
+             data-player-id="${pid}">
+          ${top.rank}${top.symbol}
+        </div>
+      ` : '';
+      if (top) {
+        const cardEl = el.querySelector('.discard-card');
+        cardEl.style.cursor = 'pointer';
+        cardEl.onclick = () => takeDiscardedCard(pid);
       }
-      
-      // Mettre à jour la défausse centrale pour le joueur courant
-      if (pid === playerId && pile.length > 0) {
-        const lastCard = pile[pile.length - 1];
-        const globalDiscard = document.getElementById('global-discard');
-        globalDiscard.innerHTML = `
-          <div class="discard-card ${lastCard.color}" 
-               data-card-id="${lastCard.id}" 
+
+      if (pid === playerId && pile.length) {
+        const global = document.getElementById('global-discard');
+        global.innerHTML = `
+          <div class="discard-card ${top.color}"
+               data-card-id="${top.id}"
                data-player-id="${pid}">
-            ${lastCard.rank}${lastCard.symbol}
+            ${top.rank}${top.symbol}
           </div>
         `;
       }
     });
   });
 }
+
 
 
 // --- Listeners Firebase ---
@@ -322,16 +308,15 @@ function listenTurn(room) {
   onValue(ref(db, `rooms/${room}/turn`), snap => {
     const turn = snap.val();
     const myTurn = turn === playerId;
-    hasDrawnOrPicked = false; // Réinitialiser à chaque nouveau tour
-    drawCardBtn.disabled = !myTurn;
-    status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente...";
+    hasDrawnOrPicked = false;
+    status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente...";
 
-    // Mettre en évidence le joueur courant
     document.querySelectorAll('.player-badge').forEach(badge => {
       badge.classList.toggle('current-turn', badge.id === `badge-${turn}`);
     });
   });
 }
+
 // ── DÉBUT LOGIQUE DE FIN DE PARTIE ──
 async function terminateGame(winnerId) {
   // Marquer la manche terminée
@@ -342,26 +327,40 @@ async function terminateGame(winnerId) {
 
 async function checkEndGame() {
   const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-  const state = stateSnap.val() || {};
-  // Si un gagnant a été déclaré, on arrête là
-  if (state.roundOver) return;
+  const state     = stateSnap.val() || {};
+
+  // 1) Si déjà relancé ou victoire déclarée, rien à faire
+  if (state.roundOver || state.winDeclared) return;
 
   const deckSnap = await get(ref(db, `rooms/${currentRoom}/deck`));
-  const deck = deckSnap.val() || [];
-  // Si le deck est vide et personne n'a gagné → nouvelle manche
-  if (deck.length === 0) {
-    const playerIds = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val());
-    await dealCards(currentRoom, playerIds);
-    await update(ref(db, `rooms/${currentRoom}/state`), { roundOver: false, started: true });
-    showPopup('🔄 Nouvelle manche lancée : deck mélangé et cartes redistribuées');
+  const deck     = deckSnap.val() || [];
+
+  // 2) Si deck vide et pas de 7 joué → nouvelle manche
+  if (deck.length === 0 && !state.sevenPlayed) {
+    await newRound('Aucun 7 Naturel — nouvelle manche');
+    return;
+  }
+
+  // 3) Si deck vide et pas de victoire déclarée → nouvelle manche
+  if (deck.length === 0 && !state.winDeclared) {
+    await newRound('Aucune victoire — nouvelle manche');
   }
 }
-// Appeler checkEndGame à la fin de chaque tour
-const originalEndTurn = endTurn;
-endTurn = async function() {
-  await originalEndTurn();
-  await checkEndGame();
-};
+
+async function newRound(message) {
+  const playerIds = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val());
+  await dealCards(currentRoom, playerIds);
+  await update(ref(db, `rooms/${currentRoom}/state`), {
+    roundOver: false,
+    started: true,
+    sevenPlayed: false,
+    winDeclared: false,
+    sevenCombo: null,
+    winCombos: null
+  });
+  showPopup(`🔄 ${message}`);
+}
+
 // ── FIN LOGIQUE DE FIN DE PARTIE ──
 
 // --- Rendu de la main du joueur ---
@@ -651,21 +650,24 @@ async function joinRoom() {
   if (!code) return alert('Code invalide');
   currentRoom = code;
 
-  // Vérifier que la salle existe
-  const roomSnap = await get(ref(db, `rooms/${currentRoom}`));
+  const roomSnap      = await get(ref(db, `rooms/${currentRoom}`));
   if (!roomSnap.exists()) return alert('Salle inexistante');
 
-  // Empêcher l’entrée si le jeu est déjà commencé
   const stateRef      = ref(db, `rooms/${currentRoom}/state`);
   const stateSnapInit = await get(stateRef);
   if (stateSnapInit.val()?.started) {
     return alert('Le jeu a déjà commencé : plus aucune entrée n’est possible.');
   }
 
-  // Ajouter le joueur et initialiser son score
+  const playersSnap  = await get(ref(db, `rooms/${currentRoom}/players`));
+  const playersCount = Object.keys(playersSnap.val() || {}).length;
+  if (playersCount >= 5) {
+    return alert('Salle pleine : maximum 5 joueurs.');
+  }
+
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/players/${playerId}`), { pseudo }),
-    set(ref(db, `rooms/${currentRoom}/scores/${playerId}`),  0),
+    set(ref(db, `rooms/${currentRoom}/scores/${playerId}`),   0),
   ]);
 
   // S’assurer que chacun a bien 13 cartes (nouveau joueur inclus)
@@ -691,12 +693,12 @@ async function joinRoom() {
   onValue(ref(db, `rooms/${currentRoom}/jokerCard`), snap => showJoker(snap.val()));
 
   // Début du jeu dès que le second joueur (ou plus) rejoint
-  const playersCount  = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {}).length;
-  const stateSnapNow  = await get(stateRef);
-  if (playersCount > 1 && !stateSnapNow.val()?.started) {
+  const newPlayersCount = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {}).length;
+  if (newPlayersCount > 1 && !stateSnapInit.val()?.started) {
     await update(stateRef, { started: true });
   }
 }
+
 
 // --- Abandon de partie (–0.5 point) ---
 async function abandonGame() {
@@ -716,43 +718,178 @@ async function abandonGame() {
 // --- Déclarations ---
 async function declare7N() {
   if (!currentRoom) return;
+  const stateRef  = ref(db, `rooms/${currentRoom}/state`);
+  const stateSnap = await get(stateRef);
+  if (stateSnap.val()?.sevenPlayed) {
+    return alert('7 Naturel déjà joué cette manche.');
+  }
   const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-  if (!Rules.has7Naturel(hand)) return alert('Combinaison invalide pour 7 Naturel');
+  if (!Rules.has7Naturel(hand)) return alert('Pas de 7 Naturel valide');
 
+  const combo = extractSevenCombo(hand);
+  if (combo.length !== 7) return alert('Extraction impossible');
+
+  // Score
   const scoreRef = ref(db, `rooms/${currentRoom}/scores/${playerId}`);
-  const cur = (await get(scoreRef)).val() || 0;
+  const cur       = (await get(scoreRef)).val() || 0;
   await set(scoreRef, cur + 0.5);
 
-  showPopup('7 Naturel validé ! +0.5 point');
+  // MàJ état
+  await update(stateRef, { sevenPlayed: true, sevenCombo: combo });
+  declare7NBtn.disabled = true;
+  showPopup('7 Naturel validé ! +0.5 point');
 }
+
+onValue(ref(db, `rooms/${currentRoom}/state/sevenCombo`), snap => {
+  const combo = snap.val();
+  if (combo) {
+    showPopup(
+      `7 Naturel déclaré : ` +
+      combo.map(c => `${c.rank}${c.symbol}`).join(' ')
+    );
+  }
+});
+
+
 
 async function declareWin() {
   if (!currentRoom) return;
+  const stateRef  = ref(db, `rooms/${currentRoom}/state`);
+  const stateSnap = await get(stateRef);
+  if (stateSnap.val()?.winDeclared) {
+    return alert('Victoire déjà déclarée cette manche.');
+  }
   const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-  if (!Rules.validateWinHand(hand)) return alert('Combinaison invalide pour la victoire');
+  if (!Rules.validateWinHand(hand)) return alert('Main non gagnante');
 
+  const combos = extractWinCombos(hand);
+  if (combos.length !== 2) return alert('Extraction impossible');
+
+  // Score
   const scoreRef = ref(db, `rooms/${currentRoom}/scores/${playerId}`);
-  const cur = (await get(scoreRef)).val() || 0;
+  const cur       = (await get(scoreRef)).val() || 0;
   await set(scoreRef, cur + 1);
 
-  showPopup('Victoire validée ! +1 point');
+  // MàJ état
+  await update(stateRef, { winDeclared: true, winCombos: combos.flat() });
+  declareWinBtn.disabled = true;
+  showPopup('Victoire validée ! +1 point');
+  await terminateGame(playerId);
+}
+
+onValue(ref(db, `rooms/${currentRoom}/state/winCombos`), snap => {
+  const flat = snap.val();
+  if (flat) {
+    showPopup(
+      `Combinaisons gagnantes : ` +
+      flat.map(c => `${c.rank}${c.symbol}`).join(' ')
+    );
+  }
+});
+
+
+// Extrait la combinaison du 7 Naturel (quadri + escalier3 OU escalier4 + tri)
+function extractSevenCombo(hand) {
+  // Cas quadri + escalier 3
+  if (Rules.isQuadri(hand) && Rules.isEscalier(hand, 3)) {
+    // On récupère les 4 cartes de même valeur
+    const vals = hand.map(c => c.value);
+    const quadVal = [...new Set(vals)].find(v => vals.filter(x => x === v).length === 4);
+    const quad = hand.filter(c => c.value === quadVal);
+    // On cherche un escalier de longueur 3 dans le reste
+    const restante = hand.filter(c => c.value !== quadVal);
+    for (let suit of ['Coeurs','Carreaux','Trèfles','Piques']) {
+      const suitCards = restante.filter(c => c.suit === suit).sort((a,b)=>a.value-b.value);
+      for (let i=0; i <= suitCards.length-3; i++) {
+        if (suitCards[i+1].value === suitCards[i].value+1 &&
+            suitCards[i+2].value === suitCards[i].value+2) {
+          return [...quad, suitCards[i], suitCards[i+1], suitCards[i+2]];
+        }
+      }
+    }
+  }
+  // Cas escalier4 + tri
+  if (Rules.isEscalier(hand, 4) && Rules.isTri(hand)) {
+    // On extrait l'escalier 4
+    for (let suit of ['Coeurs','Carreaux','Trèfles','Piques']) {
+      const suitCards = hand.filter(c => c.suit === suit).sort((a,b)=>a.value-b.value);
+      for (let i=0; i <= suitCards.length-4; i++) {
+        if ([1,2,3].every(j=> suitCards[i+j].value===suitCards[i].value+j)) {
+          const escal4 = suitCards.slice(i,i+4);
+          // reste pour le tri
+          const restante = hand.filter(c => !escal4.includes(c));
+          const vals2 = restante.map(c=>c.value);
+          const triVal = [...new Set(vals2)].find(v=> vals2.filter(x=>x===v).length>=3);
+          const tri = restante.filter(c=>c.value===triVal).slice(0,3);
+          return [...escal4, ...tri];
+        }
+      }
+    }
+  }
+  return [];
+}
+
+// Extrait les deux combinaisons pour la victoire (f1+f2 ou f2+reste)
+function extractWinCombos(hand) {
+  // On réutilise les deux cas de validateWinHand
+  // f1 = quadri+escalier3
+  const combos = [];
+  // Tenter f1 + reste
+  if (Rules.isQuadri(hand) && Rules.isEscalier(hand, 3)) {
+    // quadri
+    const vals = hand.map(c=>c.value);
+    const quadVal = [...new Set(vals)].find(v=> vals.filter(x=>x===v).length===4);
+    const quad = hand.filter(c=>c.value===quadVal);
+    // escalier3
+    const restante = hand.filter(c=>c.value!==quadVal);
+    for (let suit of ['Coeurs','Carreaux','Trèfles','Piques']) {
+      const suitCards = restante.filter(c=>c.suit===suit).sort((a,b)=>a.value-b.value);
+      for (let i=0; i <= suitCards.length-3; i++) {
+        if (suitCards[i+1].value===suitCards[i].value+1 &&
+            suitCards[i+2].value===suitCards[i].value+2) {
+          combos.push(quad, [suitCards[i], suitCards[i+1], suitCards[i+2]]);
+          return combos;
+        }
+      }
+    }
+  }
+  // f2 = escalier4 + tri
+  if (Rules.isEscalier(hand, 4) && Rules.isTri(hand)) {
+    // escalier4
+    for (let suit of ['Coeurs','Carreaux','Trèfles','Piques']) {
+      const suitCards = hand.filter(c=>c.suit===suit).sort((a,b)=>a.value-b.value);
+      for (let i=0; i <= suitCards.length-4; i++) {
+        if ([1,2,3].every(j=> suitCards[i+j].value===suitCards[i].value+j)) {
+          const escal4 = suitCards.slice(i,i+4);
+          // tri
+          const restante = hand.filter(c=>!escal4.includes(c));
+          const vals2 = restante.map(c=>c.value);
+          const triVal = [...new Set(vals2)].find(v=> vals2.filter(x=>x===v).length>=3);
+          const tri = restante.filter(c=>c.value===triVal).slice(0,3);
+          combos.push(escal4, tri);
+          return combos;
+        }
+      }
+    }
+  }
+  return combos;
 }
 
 function init() {
   createRoomBtn.onclick = createRoom;
   joinRoomBtn.onclick   = joinRoom;
-  drawCardBtn.onclick   = drawCard;
   declare7NBtn.onclick  = declare7N;
-
   declareWinBtn.onclick = async () => {
     await declareWin();
     await terminateGame(playerId);
   };
 
-  // ← Bien à l’intérieur de init()
+  // drag & drop, défausse et chat
   enableDragDrop();
   setupPlayerHandDiscardListener();
-  gameDiv.hidden = true;
-} // ← Maintenant on ferme init()
+  enableChat();
 
+  // Masquer l’UI jeu au chargement
+  gameDiv.hidden = true;
+}
 window.addEventListener('load', init);
