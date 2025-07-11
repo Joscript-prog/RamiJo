@@ -1,37 +1,32 @@
-/* Variables modernisées avec une palette raffinée */
+/* On cache le plateau de jeu tant qu’une salle n’est pas créée/rejointe */
+#game {
+  display: none;
+}
+
 :root {
   --primary: #2c3e50;
-  --secondary: #3498db; /* Bleu plus vif */
+  --secondary: #2980b9;
   --accent: #e74c3c;
-  --success: #2ecc71; /* Vert plus lumineux */
-  --warning: #f1c40f; /* Jaune plus chaud */
+  --success: #27ae60;
+  --warning: #f39c12;
   --text: #2d3436;
-  --text-light: #7f8c8d;
-  --bg: #f9fbfd; /* Fond légèrement bleuté */
-  --felt-green: #27ae60; /* Vert plus dynamique */
-  --card-white: #ffffff;
+  --text-light: #636e72;
+  --bg: #f5f6fa;
+  --felt-green: #2e7d32;
+  --card-white: #fff;
   --card-red: #e74c3c;
-  --card-black: #2c3e50;
-  
-  /* Ombres plus douces et modernes */
-  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 6px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.15);
-  
-  /* Effets visuels modernes */
-  --radius: 12px; /* Coins plus arrondis */
-  --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* Animation plus fluide */
+  --card-black: #2d3436;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.15);
+  --shadow-lg: 0 8px 16px rgba(0,0,0,0.2);
+  --radius: 10px;
+  --transition: all 0.3s ease;
   --card-width-base: 80px;
   --card-height-base: 120px;
   --chat-width: 300px;
   --chat-height: 250px;
-  
-  /* Dégradés modernes */
-  --gradient-primary: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
-  --gradient-accent: linear-gradient(135deg, var(--accent) 0%, #c0392b 100%);
 }
 
-/* Reset moderne */
 * {
   margin: 0;
   padding: 0;
@@ -39,204 +34,144 @@
 }
 
 body {
-  font-family: 'Segoe UI', 'Roboto', sans-serif; /* Police plus moderne */
-  background: var(--bg);
+  font-family: 'Roboto', sans-serif;
+  background-color: var(--bg);
   color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
   padding: 20px;
   overflow-x: hidden;
-  background-image: radial-gradient(circle at top right, rgba(236, 240, 241, 0.2) 0%, rgba(189, 195, 199, 0.05) 100%);
 }
 
-/* Menu - Design épuré avec effet de profondeur */
+/* Menu */
 #menu {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  padding: 20px;
+  height: 100vh;
 }
 
 .menu-content {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 2.5rem;
+  background: white;
+  padding: 2rem;
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   text-align: center;
   max-width: 500px;
   width: 100%;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  position: relative;
-  overflow: hidden;
-}
-
-.menu-content::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(52, 152, 219, 0.1) 0%, transparent 70%);
-  z-index: -1;
 }
 
 .menu-section {
   margin: 2rem 0;
-  position: relative;
-  z-index: 2;
 }
 
-/* Game layout - Design fluide avec dégradés */
+/* Game layout */
 #game {
-  display: none;
+  display: flex;
   flex-direction: column;
   height: calc(100vh - 40px);
-  background: linear-gradient(160deg, var(--felt-green) 0%, #229954 100%);
+  background-color: var(--felt-green);
   border-radius: var(--radius);
   overflow: hidden;
   position: relative;
-  box-shadow: var(--shadow-lg);
-}
-
-/* Effet de texture subtile sur le tapis */
-#game::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(255,255,255,0.05) 0.5px, transparent 1px),
-    radial-gradient(circle at 90% 80%, rgba(0,0,0,0.05) 0.5px, transparent 1px);
-  background-size: 30px 30px;
-  z-index: 1;
 }
 
 .game-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 24px;
-  background-color: rgba(0, 0, 0, 0.15);
+  padding: 10px 20px;
+  background-color: rgba(0,0,0,0.1);
   color: white;
   flex-wrap: wrap;
-  gap: 15px;
-  position: relative;
-  z-index: 5;
-  backdrop-filter: blur(4px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 10px;
 }
 
-.header-left, .header-right {
+.header-left {
   display: flex;
   align-items: center;
   gap: 15px;
+  flex-wrap: wrap;
+}
+
+.header-right {
+  display: flex;
+  gap: 10px;
 }
 
 .chat-toggle {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  border: none;
   color: white;
   cursor: pointer;
-  padding: 8px;
+  padding: 5px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: var(--transition);
-  width: 36px;
-  height: 36px;
 }
 
 .chat-toggle:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
+  background: rgba(255,255,255,0.2);
 }
 
-/* Contrôles avec design moderne */
+.game-main-content {
+  flex: 1;
+  display: flex;
+  position: relative;
+}
+
+/* Controls */
 .game-controls {
   width: 200px;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 1.2rem;
+  background: rgba(255,255,255,0.9);
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.75rem;
   z-index: 10;
-  border-radius: var(--radius);
-  margin: 15px;
-  box-shadow: var(--shadow-md);
-  backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
 }
 
 .game-controls button {
-  padding: 0.85rem 1rem;
+  padding: 0.75rem;
   border: none;
-  border-radius: 8px;
-  background: var(--gradient-primary);
+  border-radius: 5px;
+  background: var(--primary);
   color: white;
   cursor: pointer;
   transition: var(--transition);
-  font-weight: 600;
+  font-weight: 500;
   box-shadow: var(--shadow-sm);
-  letter-spacing: 0.5px;
-  position: relative;
-  overflow: hidden;
-}
-
-.game-controls button::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
-  pointer-events: none;
 }
 
 .game-controls button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 7px 14px rgba(0, 0, 0, 0.15);
-}
-
-.game-controls button:active {
-  transform: translateY(1px);
+  background: var(--secondary);
+  transform: translateY(-2px);
 }
 
 .game-controls button:disabled {
-  background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+  background: #95a5a6;
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
 }
 
 .btn-special {
-  background: var(--gradient-accent) !important;
+  background: var(--accent) !important;
 }
 
-/* Table de jeu - Design élégant avec effet 3D */
+/* Table de jeu */
 .game-table {
   position: relative;
-  width: calc(100% - 30px);
-  height: calc(100% - 30px);
-  margin: 15px auto;
-  background-color: rgba(39, 174, 96, 0.8);
+  width: 100%;
+  height: 70vh;
+  background-color: #2e7d32;
   border-radius: 20px;
-  box-shadow: 
-    0 15px 35px rgba(0, 0, 0, 0.25),
-    inset 0 -8px 25px rgba(0, 0, 0, 0.15),
-    inset 0 8px 20px rgba(255, 255, 255, 0.2);
-  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  overflow: visible; /* Changé de hidden à visible pour afficher les badges */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  position: relative;
-  z-index: 2;
 }
 
 .table-center {
@@ -244,27 +179,28 @@ body {
   justify-content: center;
   align-items: center;
   gap: 40px;
+  margin-top: 20px;
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  z-index: 2; /* S'assurer qu'il est au-dessus du plateau */
 }
 
 .deck-area, .discard-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  position: relative;
+  z-index: 20; /* Z-index élevé pour être au-dessus des badges */
 }
 
 .deck-label, .discard-label {
   color: white;
   font-weight: bold;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
   font-size: 1.1rem;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 4px 12px;
-  border-radius: 20px;
 }
 
 #global-discard {
@@ -275,7 +211,7 @@ body {
   align-items: center;
 }
 
-/* Positionnement des joueurs - Design moderne */
+/* Positionnement des joueurs */
 .players-circle {
   position: absolute;
   width: 100%;
@@ -283,31 +219,23 @@ body {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  z-index: 3;
+  z-index: 1; /* En dessous du centre mais au-dessus du plateau */
 }
 
 .player-badge {
   position: absolute;
-  width: 170px;
-  padding: 1.1rem;
-  background: rgba(255, 255, 255, 0.95);
+  width: 160px;
+  padding: 1rem;
+  background: white;
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   text-align: center;
   z-index: 5;
   transition: var(--transition);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-}
-
-.player-badge:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
 .player-badge.current-player {
   border: 2px solid var(--accent);
-  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.3);
 }
 
 .player-badge.current-turn {
@@ -316,32 +244,50 @@ body {
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0.5); }
-  70% { box-shadow: 0 0 0 10px rgba(241, 196, 15, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.5); }
+  70% { box-shadow: 0 0 0 10px rgba(243, 156, 18, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); }
 }
 
 .player-name {
-  font-weight: 600;
-  margin-bottom: 0.4rem;
-  color: var(--primary);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
 }
 
 .player-score {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-light);
-  font-weight: 500;
 }
 
-/* Cartes - Design élégant avec effets subtils */
+/* Positions des badges de joueurs */
+.player-badge:nth-child(1) { top: 10px; left: 50%; transform: translateX(-50%); }
+.player-badge:nth-child(2) { top: 50%; right: 10px; transform: translateY(-50%); }
+.player-badge:nth-child(3) { bottom: 10px; left: 50%; transform: translateX(-50%); }
+.player-badge:nth-child(4) { top: 50%; left: 10px; transform: translateY(-50%); }
+
+.players-circle.two-players .player-badge:nth-child(1) { top: 5%; }
+.players-circle.two-players .player-badge:nth-child(2) { bottom: 5%; }
+
+/* Défausses des joueurs */
+.discard-pile {
+  position: absolute;
+  display: flex;
+  gap: 5px;
+  z-index: 10;
+}
+
+#discard-player0 { top: 25%; left: 50%; transform: translateX(-50%); }
+#discard-player1 { top: 50%; right: 5%; transform: translateY(-50%); }
+#discard-player2 { bottom: 25%; left: 50%; transform: translateX(-50%); }
+#discard-player3 { top: 50%; left: 5%; transform: translateY(-50%); }
+
+/* Carte */
 .card {
   width: var(--card-width-base);
   height: var(--card-height-base);
   background: var(--card-white);
   border-radius: 8px;
-  box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.1),
-    0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -350,8 +296,6 @@ body {
   transition: var(--transition);
   position: relative;
   user-select: none;
-  transform-style: preserve-3d;
-  perspective: 1000px;
 }
 
 .card.red { color: var(--card-red); }
@@ -360,9 +304,8 @@ body {
 .card .corner {
   display: flex;
   flex-direction: column;
-  font-size: 1rem;
+  font-size: 0.9rem;
   line-height: 1;
-  font-weight: bold;
 }
 
 .card .corner.bottom {
@@ -371,32 +314,28 @@ body {
 }
 
 .card .suit.main {
-  font-size: 2.2rem;
+  font-size: 2rem;
   text-align: center;
   margin: auto 0;
-  font-weight: normal;
 }
 
-/* Dos de la pioche - Design moderne */
+/* Dos de la pioche */
 .card.back {
-  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 50%, var(--secondary) 100%);
   color: white;
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 2.2rem;
-  box-shadow: 
-    inset 0 0 20px rgba(0, 0, 0, 0.2),
-    0 4px 8px rgba(0, 0, 0, 0.15);
+  font-size: 2rem;
 }
 
-/* Défausse - Design cohérent */
+/* Cartes défaussées */
 .discard-card {
-  width: 55px;
-  height: 77px;
-  font-size: 1.1rem;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
-  border-radius: 5px;
+  width: 50px;
+  height: 70px;
+  font-size: 1rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  border-radius: 4px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -409,106 +348,78 @@ body {
 .discard-card.black { color: var(--card-black); }
 
 .discard-card:hover {
-  transform: translateY(-7px);
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
 }
 
-/* Main du joueur - Design fluide */
+/* Main du joueur */
 .player-hand {
   position: absolute;
-  bottom: 5%;
+  bottom: 10%; /* Position modifiée pour être plus haute */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   gap: 0.5rem;
-  padding: 1.2rem;
-  background: rgba(255, 255, 255, 0.25);
+  padding: 1rem;
+  background: rgba(255,255,255,0.2);
   border-radius: var(--radius);
   max-width: 90%;
   overflow-x: auto;
   z-index: 30;
   scrollbar-width: thin;
   scrollbar-color: var(--secondary) transparent;
-  backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .player-hand::-webkit-scrollbar {
-  height: 8px;
+  height: 6px;
 }
 
 .player-hand::-webkit-scrollbar-thumb {
   background-color: var(--secondary);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .player-hand .card {
   flex-shrink: 0;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .player-hand .card:hover {
-  transform: translateY(-25px) scale(1.05);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-  z-index: 35;
+  transform: translateY(-20px);
 }
 
-/* Modal - Design épuré */
+/* Modal */
 .modal {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0,0,0,0.5);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
-  backdrop-filter: blur(5px);
+  z-index: 100;
 }
 
 .modal-content {
   background: white;
-  padding: 2.5rem;
+  padding: 2rem;
   border-radius: var(--radius);
   max-width: 500px;
   width: 90%;
-  box-shadow: var(--shadow-lg);
-  position: relative;
-  overflow: hidden;
-}
-
-.modal-content::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 5px;
-  background: var(--gradient-primary);
 }
 
 .modal-close {
-  margin-top: 1.5rem;
-  padding: 0.7rem 1.5rem;
-  background: var(--gradient-primary);
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 5px;
   cursor: pointer;
-  font-weight: 600;
-  transition: var(--transition);
-  box-shadow: var(--shadow-sm);
 }
 
-.modal-close:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-}
-
-/* Chat - Design moderne et intégré */
+/* Chat */
 #chat-container {
   position: fixed;
   bottom: 0;
@@ -516,83 +427,60 @@ body {
   width: var(--chat-width);
   background: #fff;
   border-top-left-radius: var(--radius);
-  box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.15);
-  font-family: 'Segoe UI', 'Roboto', sans-serif;
+  box-shadow: 0 -2px 15px rgba(0,0,0,0.15);
+  font-family: 'Roboto', sans-serif;
   z-index: 1000;
   display: flex;
   flex-direction: column;
   max-height: var(--chat-height);
-  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-  transform: translateY(calc(100% - 45px));
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  overflow: hidden;
+  transition: transform 0.3s ease;
+  transform: translateY(calc(100% - 40px));
 }
 
 #chat-container.open {
   transform: translateY(0);
 }
 
-#chat-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 5px;
-  background: var(--gradient-primary);
-}
-
 #chat-messages {
   flex: 1;
   max-height: 200px;
   overflow-y: auto;
-  padding: 20px 15px;
+  padding: 15px;
   font-size: 14px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 10px;
   scrollbar-width: thin;
   scrollbar-color: var(--secondary) #f1f1f1;
-  background: #f9fbfd;
 }
 
 #chat-messages::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 #chat-messages::-webkit-scrollbar-thumb {
   background-color: var(--secondary);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 #chat-messages div {
-  background: #edf2f7;
-  padding: 10px 15px;
+  background: #f1f1f1;
+  padding: 8px 12px;
   border-radius: 18px;
   max-width: 85%;
   word-wrap: break-word;
   align-self: flex-start;
-  box-shadow: var(--shadow-sm);
-  position: relative;
-  transition: transform 0.2s ease;
-}
-
-#chat-messages div:hover {
-  transform: translateY(-2px);
 }
 
 #chat-messages div.me {
-  background: var(--gradient-primary);
+  background: var(--secondary);
   color: white;
   align-self: flex-end;
-  box-shadow: 0 3px 8px rgba(52, 152, 219, 0.3);
 }
 
 #chat-form {
   display: flex;
-  border-top: 1px solid #e2e8f0;
-  background: white;
-  padding: 10px;
+  border-top: 1px solid #e0e0e0;
 }
 
 #chat-input {
@@ -601,52 +489,41 @@ body {
   padding: 12px 15px;
   font-size: 14px;
   outline: none;
-  background: #f8fafc;
-  border-radius: 8px;
-  margin-right: 8px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 #chat-form button {
   border: none;
-  padding: 0 20px;
-  background: var(--gradient-primary);
+  padding: 0 15px;
+  background: var(--secondary);
   color: white;
   cursor: pointer;
-  font-weight: 600;
-  transition: var(--transition);
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
+  font-weight: 500;
+  transition: background 0.2s;
 }
 
 #chat-form button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+  background: var(--primary);
 }
 
-/* Responsive - Améliorations pour tous les appareils */
+/* Responsive */
 @media (max-width: 1200px) {
   .players-circle {
-    transform: scale(0.95);
+    transform: scale(0.9);
   }
 }
 
 @media (max-width: 1024px) {
   .player-badge {
-    width: 150px;
-    padding: 1rem;
-    font-size: 0.95rem;
-  }
-  
-  .game-controls {
-    width: 180px;
+    width: 140px;
+    padding: 0.8rem;
+    font-size: 0.9rem;
   }
 }
 
 @media (max-width: 900px) {
   :root {
-    --card-width-base: 75px;
-    --card-height-base: 112px;
+    --card-width-base: 70px;
+    --card-height-base: 105px;
   }
 
   .game-main-content {
@@ -658,36 +535,36 @@ body {
     order: 2;
     flex-direction: row;
     flex-wrap: wrap;
-    padding: 1rem;
-    gap: 0.6rem;
+    padding: 0.8rem;
+    gap: 0.5rem;
   }
 
   .game-controls button {
     flex: 1 1 45%;
-    min-width: 130px;
-    padding: 0.7rem;
-    font-size: 0.95rem;
+    min-width: 120px;
+    padding: 0.6rem;
+    font-size: 0.9rem;
   }
 
   .player-badge {
-    width: 140px;
-    padding: 0.9rem;
+    width: 130px;
+    padding: 0.7rem;
   }
 
   .players-circle.two-players .player-badge {
-    margin: 15px 0;
+    margin: 10px 0;
   }
 
   #chat-container {
-    width: 270px;
+    width: 250px;
   }
 }
 
 @media (max-width: 768px) {
   :root {
-    --card-width-base: 65px;
-    --card-height-base: 97px;
-    --chat-width: 240px;
+    --card-width-base: 60px;
+    --card-height-base: 90px;
+    --chat-width: 220px;
   }
 
   .game-header {
@@ -699,63 +576,57 @@ body {
   .header-left, .header-right {
     width: 100%;
     justify-content: space-between;
-    margin-bottom: 10px;
   }
 
   .player-hand {
-    bottom: 10px;
-    padding: 1rem;
+    bottom: 15%; /* Position modifiée pour mobile */
+    padding: 0.8rem;
   }
 
   .players-circle {
-    transform: scale(0.9);
+    transform: scale(0.85);
   }
 
   #chat-container {
-    max-height: 220px;
+    max-height: 200px;
   }
 
   #chat-messages {
-    max-height: 160px;
+    max-height: 150px;
   }
 }
 
 @media (max-width: 480px) {
   :root {
-    --card-width-base: 55px;
-    --card-height-base: 82px;
+    --card-width-base: 50px;
+    --card-height-base: 75px;
     --chat-width: 100%;
-    --chat-height: 200px;
-  }
-
-  body {
-    padding: 15px;
+    --chat-height: 180px;
   }
 
   .player-badge {
-    width: 120px;
-    padding: 0.7rem;
-    font-size: 0.85rem;
+    width: 110px;
+    padding: 0.5rem;
+    font-size: 0.8rem;
   }
 
   .players-circle {
-    transform: scale(0.8);
+    transform: scale(0.75);
   }
 
   .game-controls button {
-    min-width: 110px;
-    font-size: 0.85rem;
-    padding: 0.6rem;
+    min-width: 100px;
+    font-size: 0.8rem;
   }
 
   .player-hand {
-    bottom: 5px;
-    padding: 0.8rem;
+    bottom: 10%; /* Position modifiée pour petit mobile */
+    padding: 0.5rem;
   }
 
   #chat-container {
     border-radius: 0;
-    transform: translateY(calc(100% - 40px));
+    transform: translateY(calc(100% - 35px));
   }
 
   #chat-container.open {
@@ -763,56 +634,46 @@ body {
   }
 
   #chat-messages {
-    max-height: 130px;
-    padding: 15px 10px;
-    gap: 10px;
+    max-height: 120px;
+    padding: 10px;
   }
 
   #chat-input {
-    padding: 10px 12px;
+    padding: 10px;
   }
 }
 
-/* Effets supplémentaires pour la modernité */
+/* Rendre la pioche cliquable */
 .deck-pile.clickable {
   cursor: pointer;
-  transition: var(--transition);
+  position: relative;
+  z-index: 25; /* Z-index élevé pour être au-dessus des autres éléments */
 }
 
-.deck-pile.clickable:hover {
-  transform: translateY(-5px);
-}
-
+/* Zones de défausse par joueur */
 .discard-zones {
   position: absolute;
-  top: 0; 
-  left: 0;
+  top: 0; left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
 }
-
 .discard-zone {
   position: absolute;
-  width: calc(var(--card-width-base) * 0.7);
-  height: calc(var(--card-height-base) * 0.7);
+  width: calc(var(--card-width-base) * 0.6);
+  height: calc(var(--card-height-base) * 0.6);
   display: flex;
   flex-direction: column-reverse;
-  gap: 3px;
+  gap: 2px;
   pointer-events: auto;
-  transition: var(--transition);
+  z-index: 15;
 }
+#discard-zone-0 { top: 5%; left: 50%; transform: translateX(-50%); }
+#discard-zone-1 { top: 50%; right: 5%; transform: translateY(-50%); }
+#discard-zone-2 { bottom: 5%; left: 50%; transform: translateX(-50%) rotate(180deg); }
+#discard-zone-3 { top: 50%; left: 5%; transform: translateY(-50%); }
 
-.discard-zone:hover {
-  transform: scale(1.05);
-}
-
-/* Animation subtile sur les cartes */
-@keyframes cardDeal {
-  0% { opacity: 0; transform: translateY(20px) rotate(-5deg); }
-  100% { opacity: 1; transform: translateY(0) rotate(0); }
-}
-
-.card {
-  animation: cardDeal 0.4s ease-out forwards;
+/* Correction pour les cartes défaussées */
+#global-discard {
+  z-index: 20; /* S'assurer qu'elle est au-dessus du plateau */
 }
