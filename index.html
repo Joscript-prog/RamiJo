@@ -46,21 +46,7 @@
         <div id="joker" class="joker-display"></div>
       </div>
       <div class="header-right">
-        <button id="toggleChat" class="chat-toggle">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        </button>
+        <button id="toggleChat" class="chat-toggle">💬</button>
       </div>
     </header>
 
@@ -68,44 +54,31 @@
       <aside class="game-controls">
         <button id="declare7N" class="btn-special" disabled>7 Naturel</button>
         <button id="declareWin" class="btn-special" disabled>Déclarer Victoire</button>
-        <button id="drawCard" class="btn-action" disabled>Piocher</button>
+        <!-- bouton Piocher supprimé -->
       </aside>
 
       <main class="game-table">
         <div id="players" class="players-circle"></div>
+        <!-- Les zones de défausse sont désormais créées dynamiquement par renderPlayers() -->
 
-        <!-- ── ZONES DE DÉFAUSSE PAR JOUEUR ── -->
-        <div class="discard-zones">
-          <div class="discard-zone" id="discard-zone-0"></div>
-          <div class="discard-zone" id="discard-zone-1"></div>
-          <div class="discard-zone" id="discard-zone-2"></div>
-          <div class="discard-zone" id="discard-zone-3"></div>
+        <div class="game-center">
+          <div class="table-center">
+            <div class="deck-area">
+              <div class="deck-pile clickable" id="deck">
+                <div class="card back"></div>
+              </div>
+              <div class="deck-label">Pioche</div>
+            </div>
+            <div class="discard-area" id="global-discard">
+              <div class="discard-label">Défausse</div>
+            </div>
+          </div>
         </div>
-        <!-- ── FIN ZONES DE DÉFAUSSE ── -->
 
- <!-- Structure centrale (pioche + défausse globale) -->
-<div class="game-center">
-  <div class="table-center">
-    <div class="deck-area">
-      <!-- Ajout de la classe "clickable" pour transformer en bouton -->
-      <div class="deck-pile clickable" id="deck">
-        <div class="card back"></div>
-      </div>
-      <div class="deck-label">Pioche</div>
-    </div>
-    <div class="discard-area" id="global-discard">
-      <div class="discard-label">Défausse</div>
-    </div>
-  </div>
-</div>
-
-
-        <!-- Main du joueur -->
         <div id="hand" class="player-hand"></div>
       </main>
     </div>
 
-    <!-- Module de chat -->
     <div id="chat-container">
       <div id="chat-messages"></div>
       <form id="chat-form">
