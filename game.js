@@ -455,7 +455,11 @@ function showJoker(jokerCard) {
     jokerDiv.innerHTML = '';
   }
 }
-
+function listenJokerCard(room) {
+  onValue(ref(db, `rooms/${room}/jokerCard`), snap => {
+    showJoker(snap.val());
+  });
+}
 function showPopup(content) {
   const modal = document.createElement('div');
   modal.className = 'modal';
@@ -922,6 +926,7 @@ async function createRoom() {
   listenTurn(roomCode);
   setupPlayerHandDiscardListener();
   enableChat();
+  listenJokerCard(roomCode);
 
   menuDiv.style.display = 'none';
  gameDiv.style.display = 'flex'; 
@@ -977,6 +982,7 @@ async function joinRoom() {
   listenTurn(roomCode);
   setupPlayerHandDiscardListener();
   enableChat();
+  listenJokerCard(roomCode);
 
   // Affichage du jeu
   menuDiv.style.display = 'none';
