@@ -274,6 +274,13 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+/* Style spécifique pour la carte joker affichée */
+.joker-display .card {
+  width: calc(var(--card-width) * 0.8);
+  height: calc(var(--card-height) * 0.8);
+  font-size: 0.8em;
+}
+
 .chat-toggle {
   padding: 0.5rem 1rem;
   background: rgba(255, 255, 255, 0.1);
@@ -453,6 +460,22 @@ body {
   border-color: var(--secondary);
 }
 
+/* Style spécial pour les jokers (texte uniquement) */
+.card[data-rank="Joker"] .corner,
+.card[data-rank="Joker"] .suit.main {
+  display: none;
+}
+
+.card[data-rank="Joker"]::after {
+  content: "JOKER";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
 /* Joueurs */
 .player-badge {
   position: absolute;
@@ -476,6 +499,11 @@ body {
   background: rgba(52, 152, 219, 0.9);
   color: var(--text-white);
   box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+/* Indicateur pour le joueur actif */
+.player-badge.current-turn {
+  border: 2px solid var(--warning);
 }
 
 /* Positions des joueurs (4 joueurs max) */
@@ -570,6 +598,11 @@ body {
   font-size: 0.9rem;
 }
 
+#chat-messages .me {
+  text-align: right;
+  color: var(--secondary);
+}
+
 #chat-form {
   display: flex;
   padding: 1rem;
@@ -599,6 +632,40 @@ body {
 #chat-form button:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
+}
+
+/* Modales */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  max-width: 90%;
+  width: 500px;
+  text-align: center;
+}
+
+.modal-close {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
 }
 
 /* Animations */
