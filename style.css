@@ -158,12 +158,14 @@ body {
   gap: 40px;
   z-index: 2;
 }
+
+/*── Pioche & défausse globale ─────────────────────────────────────────────*/
 .deck-area, .discard-area {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  z-index: 20;
+  z-index: 40;            /* <— HERO : deck au‑dessus */
 }
 .deck-label, .discard-label {
   color: #fff;
@@ -207,11 +209,7 @@ body {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px rgba(231,76,60,0.3);
 }
-@keyframes pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(243,156,18,0.5); }
-  70%  { box-shadow: 0 0 0 10px rgba(243,156,18,0); }
-  100% { box-shadow: 0 0 0 0 rgba(243,156,18,0); }
-}
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(243,156,18,0);} 50%{box-shadow:0 0 0 8px rgba(243,156,18,0.5);} }
 .player-badge.current-turn {
   animation: pulse 1.5s infinite;
 }
@@ -276,8 +274,8 @@ body {
 .card .corner.bottom { transform: rotate(180deg); }
 .card .suit.main { font-size: 2rem; text-align: center; margin: auto 0; }
 .card.back {
-  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 50%, var(--secondary) 100%);
-  color: #fff; display:flex; align-items:center; justify-content:center; font-size:2rem;
+  background: linear-gradient(135deg,var(--secondary) 0%,var(--primary)50%,var(--secondary)100%);
+  color:#fff; display:flex;align-items:center;justify-content:center;font-size:2rem;
 }
 
 /*── Cartes Joker ─────────────────────────────────────────────────────────*/
@@ -291,8 +289,8 @@ body {
 
 /*── Affichage du joker révélé ─────────────────────────────────────────────*/
 #joker {
-  position: absolute; top:20px; left:50%;
-  transform: translateX(-50%);
+  position: absolute; top:20px; left:20px;     /* <— HERO : en haut à gauche */
+  transform: none;
   background: rgba(255,255,255,0.9);
   padding: 12px 20px;
   border-radius: var(--radius);
@@ -308,7 +306,7 @@ body {
 /*── Main du joueur ────────────────────────────────────────────────────────*/
 .player-hand {
   position: absolute;
-  bottom: 16%;
+  bottom: 5%;          /* toujours en bas */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -318,7 +316,7 @@ body {
   border-radius: var(--radius);
   max-width: 90%;
   overflow-x: auto;
-  z-index: 30;
+  z-index: 20;         /* <— main sous le deck */
   scrollbar-width: thin;
   scrollbar-color: var(--secondary) transparent;
 }
@@ -371,17 +369,17 @@ body {
 @media (max-width: 1024px) {
   .game-controls { flex: 0 0 160px; }
   .player-badge { width: 100px; }
-  .player-hand { bottom: 18%; }
+  .player-hand { bottom: 8%; }
 }
 @media (max-width: 768px) {
   :root { --card-width-base: 60px; --card-height-base: 90px; --chat-width: 240px; }
   .game-header { flex-direction: column; align-items: flex-start; }
-  .player-hand { bottom: 20%; padding: 0.8rem; }
+  .player-hand { bottom: 10%; padding: 0.8rem; }
 }
 @media (max-width: 480px) {
   :root { --card-width-base: 50px; --card-height-base: 75px; --chat-width: 100%; }
   .player-badge { width: 80px; }
   .game-controls { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; }
   .game-controls button { flex: 1 1 45%; font-size: 0.85rem; }
-  .player-hand { bottom: 20%; padding: 0.6rem; }
+  .player-hand { bottom: 12%; padding: 0.6rem; }
 }
