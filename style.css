@@ -1,574 +1,1010 @@
-/* Variables modernisées avec une palette raffinée */
-:root {
-  --primary: #2c3e50;
-  --secondary: #2980b9;
-  --accent: #e74c3c;
-  --success: #27ae60;
-  --warning: #f39c12;
-  --text: #2d3436;
-  --text-light: #7f8c8d;
-  --bg: #f9fbfd;
-  --felt-green: #27ae60;
-  --card-white: #ffffff;
-  --card-red: #e74c3c;
-  --card-black: #2c3e50;
-  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 6px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.15);
-  --radius: 12px;
-  --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  --card-width-base: 80px;
-  --card-height-base: 120px;
-  --chat-width: 300px;
-  --chat-height: 250px;
+import { db, ref, set, update, get, onValue } from './firebase.js';
+import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/modular/sortable.esm.js';
+
+// --- Variables globales ---
+const pseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
+const playerId = 'player_' + Math.floor(Math.random() * 10000);
+let currentRoom = '';
+let hasDrawnOrPicked = false;
+let hasDiscardedThisTurn = false;
+
+// --- MODULE Règles (joker-aware) ---
+const Rules = {
+  // Vérifie si une quadri existe (4 cartes de même valeur)
+  isQuadri(hand) {
+    const vals = hand.map(c => c.value);
+    // Compte l'occurrence de chaque valeur et vérifie si au moins 4 sont présentes
+    const counts = {};
+    vals.forEach(v => {
+      counts[v] = (counts[v] || 0) + 1;
+    });
+    return Object.values(counts).some(count => count >= 4);
+  },
+
+  // Vérifie si un tri existe (3 cartes de même valeur)
+  isTri(hand) {
+    const vals = hand.map(c => c.value);
+    const counts = {};
+    vals.forEach(v => {
+      counts[v] = (counts[v] || 0) + 1;
+    });
+    return Object.values(counts).some(count => count >= 3);
+  },
+
+  // Vérifie si un escalier existe (suite de même couleur)
+  isEscalier(hand, len) {
+    const bySuit = hand.reduce((acc, c) => {
+      acc[c.suit] = acc[c.suit] || [];
+      acc[c.suit].push(c.value);
+      return acc;
+    }, {});
+
+    for (let suit in bySuit) {
+      const vals = [...new Set(bySuit[suit])].sort((a, b) => a - b);
+      for (let i = 0; i <= vals.length - len; i++) {
+        let ok = true;
+        for (let j = 1; j < len; j++) {
+          if (vals[i + j] !== vals[i] + j) {
+            ok = false;
+            break;
+          }
+        }
+        if (ok) return true;
+      }
+    }
+    return false;
+  },
+
+  // Vérifie si un Tri avec Joker est possible (2 cartes naturelles + 1 joker)
+  isTriJoker(hand, jokerSet, requireNatural) {
+    if (this.isTri(hand.filter(c => !jokerSet.includes(c.id))) && !requireNatural) return true; // Tri naturel sans joker
+    if (!requireNatural) return false; // Si pas de 7 naturel, les jokers ne peuvent pas former de tri
+
+    const naturalCards = hand.filter(c => !jokerSet.includes(c.id));
+    const handJokersCount = hand.filter(c => jokerSet.includes(c.id)).length;
+
+    if (handJokersCount === 0) { // Si pas de joker, vérifier uniquement les tris naturels
+        return this.isTri(naturalCards);
+    }
+
+    // Tente de former un tri avec 2 cartes naturelles et 1 joker
+    const counts = {};
+    naturalCards.forEach(c => {
+      counts[c.value] = (counts[c.value] || 0) + 1;
+    });
+
+    for (let value in counts) {
+      if (counts[value] >= 2 && handJokersCount >= 1) { // Deux cartes naturelles de même valeur + un joker
+        return true;
+      }
+    }
+    return false;
+  },
+
+  // Vérifie si un Escalier avec Joker est possible
+  isEscalierJoker(hand, len, jokerSet, requireNatural) {
+    if (this.isEscalier(hand.filter(c => !jokerSet.includes(c.id)), len) && !requireNatural) return true; // Escalier naturel sans joker
+    if (!requireNatural) return false; // Si pas de 7 naturel, les jokers ne peuvent pas former d'escalier
+
+    const naturalCards = hand.filter(c => !jokerSet.includes(c.id));
+    const handJokersCount = hand.filter(c => jokerSet.includes(c.id)).length;
+
+    if (handJokersCount === 0) {
+      return this.isEscalier(naturalCards, len);
+    }
+
+    const bySuit = naturalCards.reduce((acc, c) => {
+      acc[c.suit] = acc[c.suit] || [];
+      acc[c.suit].push(c.value);
+      return acc;
+    }, {});
+
+    for (let suit in bySuit) {
+      const vals = [...new Set(bySuit[suit])].sort((a, b) => a - b);
+      // Pour chaque carte naturelle, tente de former un escalier avec jokers
+      for (let i = 0; i < vals.length; i++) {
+        // Tente de faire un escalier en partant de cette carte vers l'avant
+        let currentSequenceLength = 1;
+        let jokersUsed = 0;
+        let currentVal = vals[i];
+
+        // Regarde vers l'avant
+        for (let j = i + 1; j < vals.length && currentSequenceLength < len; j++) {
+          if (vals[j] === currentVal + 1) {
+            currentSequenceLength++;
+            currentVal++;
+          } else if (vals[j] > currentVal + 1) {
+            // S'il y a un trou, voit si un joker peut le combler
+            const gap = vals[j] - (currentVal + 1);
+            if (jokersUsed + gap <= handJokersCount) {
+              jokersUsed += gap;
+              currentSequenceLength += gap + 1; // +1 pour la carte actuelle
+              currentVal = vals[j];
+            } else {
+              break; // Pas assez de jokers, cette séquence est rompue
+            }
+          }
+        }
+
+        // Si on n'a pas atteint la longueur cible, essaie de combler la fin avec des jokers
+        if (currentSequenceLength < len) {
+          const needed = len - currentSequenceLength;
+          if (jokersUsed + needed <= handJokersCount) {
+            currentSequenceLength += needed;
+          }
+        }
+
+        if (currentSequenceLength >= len) {
+          return true;
+        }
+      }
+    }
+    return false;
+  },
+
+  // 7 naturel (quadri + escalier3) ou (escalier4 + tri), SANS joker
+  has7Naturel(hand) {
+    // Les fonctions isQuadri, isEscalier et isTri sont déjà définies pour ne pas utiliser de jokers
+    return (this.isQuadri(hand) && this.isEscalier(hand, 3)) ||
+           (this.isEscalier(hand, 4) && this.isTri(hand));
+  },
+
+  // Validation victoire avec ou sans joker selon 7 naturel
+  validateWinHandWithJoker(hand, jokerSet) {
+    // Une main gagnante doit avoir 14 cartes APRES la pioche et AVANT la défausse finale.
+    // L'utilisateur doit avoir pioché une carte pour arriver à 14 avant de défausser.
+    // Si la main a déjà été défaussée à 13, alors le check est fait sur 13 cartes.
+    // Cette fonction valide si la main PEUT être décomposée.
+    // L'algorithme d'extraction (extractWinCombosJoker) doit confirmer la décomposition.
+
+    const has7 = this.has7Naturel(hand);
+
+    // Une main gagnante complète a 14 cartes et toutes les cartes doivent former des combinaisons.
+    // La validation des combinaisons est complexe. Ici, on vérifie si les conditions sont remplies.
+    // L'extraction complète est le vrai test.
+
+    // Première condition principale : un Quadri et un Escalier de 3
+    const condition1 = this.isQuadri(hand) && this.isEscalierJoker(hand, 3, jokerSet, has7);
+    // Deuxième condition principale : un Escalier de 4 et un Tri
+    const condition2 = this.isEscalierJoker(hand, 4, jokerSet, has7) && this.isTriJoker(hand, jokerSet, has7);
+
+    // Si une des conditions principales est remplie,
+    // il faut ensuite s'assurer que TOUTES les 14 (ou 13) cartes de la main
+    // peuvent être arrangées en combinaisons valides (Tri, Quadri, Escalier 3+, avec jokers si 7N).
+    // Ceci est le rôle de la fonction `extractWinCombosJoker` qui devra renvoyer
+    // des combinaisons qui utilisent toutes les cartes.
+    // Pour l'instant, on se base sur les vérifications d'existence.
+    // C'est un point où un algorithme plus sophistiqué serait nécessaire.
+
+    if (condition1 || condition2) {
+      // Tenter d'extraire les combinaisons pour voir si toutes les cartes sont utilisées.
+      // Cette partie est la plus complexe et votre `extractWinCombosJoker`
+      // doit être capable de décomposer entièrement la main.
+      const extractedCombos = extractWinCombosJoker(hand, jokerSet);
+      const usedCardIds = new Set(extractedCombos.flat().map(c => c.id));
+      // Vérifie si toutes les cartes de la main ont été utilisées dans les combinaisons extraites
+      return usedCardIds.size === hand.length;
+    }
+
+    return false;
+  }
+};
+
+// --- Fonctions d'Extraction de Combinaisons ---
+// Cette fonction est cruciale et nécessite un algorithme robuste.
+// L'implémentation actuelle pourrait ne pas trouver la "meilleure" combinaison
+// ou ne pas utiliser toutes les cartes si plusieurs options sont possibles.
+// Pour un jeu de Rami complet, un algorithme de "Hand Solver" est souvent utilisé.
+// Je vais tenter une amélioration, mais gardez à l'esprit que c'est complexe.
+function extractWinCombosJoker(hand, jokerSet) {
+  const has7 = Rules.has7Naturel(hand);
+  let availableCards = [...hand]; // Copie de la main pour manipulation
+  let availableJokers = availableCards.filter(c => jokerSet.includes(c.id));
+  let nonJokers = availableCards.filter(c => !jokerSet.includes(c.id));
+  const combos = [];
+
+  // Fonction utilitaire pour trouver et retirer des cartes
+  const findAndRemoveCards = (sourceArray, predicate, count) => {
+    const foundCards = [];
+    let tempArray = [...sourceArray];
+    for (let i = 0; i < tempArray.length && foundCards.length < count; i++) {
+      if (predicate(tempArray[i])) {
+        foundCards.push(tempArray[i]);
+        tempArray.splice(i, 1); // Retire la carte
+        i--; // Ajuste l'index après la suppression
+      }
+    }
+    // Met à jour la sourceArray en place si possible, ou retourne la nouvelle
+    if (foundCards.length === count) {
+      // Met à jour la référence originale pour nonJokers ou availableJokers
+      return { found: foundCards, remaining: tempArray };
+    }
+    return { found: [], remaining: sourceArray };
+  };
+
+  // --- Stratégie d'extraction (heuristique simple, pas de backtracking) ---
+  // Prioriser les combinaisons les plus "fortes" ou les plus grandes
+
+  // 1. Extraire le 7 Naturel en premier s'il existe et est la condition de victoire principale
+  if (has7) {
+    const sevenCombo = extractSevenCombo(hand); // Cette fonction devrait déjà renvoyer les 7 cartes
+    if (sevenCombo.length === 7) {
+      combos.push(sevenCombo);
+      availableCards = availableCards.filter(c => !sevenCombo.map(sc => sc.id).includes(c.id));
+      availableJokers = availableCards.filter(c => jokerSet.includes(c.id)); // Réactualiser les jokers restants
+      nonJokers = availableCards.filter(c => !jokerSet.includes(c.id));
+    }
+  }
+
+  // 2. Extraire Quadris naturels
+  for (let v = 1; v <= 13; v++) {
+    const { found, remaining } = findAndRemoveCards(nonJokers, c => c.value === v, 4);
+    if (found.length === 4) {
+      combos.push(found);
+      nonJokers = remaining;
+    }
+  }
+
+  // 3. Extraire Escalier 4 naturels (puis 3)
+  for (let len of [4, 3]) {
+    const bySuit = nonJokers.reduce((acc, c) => {
+      acc[c.suit] = acc[c.suit] || [];
+      acc[c.suit].push(c);
+      return acc;
+    }, {});
+
+    for (let suit in bySuit) {
+      const cardsInSuit = bySuit[suit].sort((a, b) => a.value - b.value);
+      for (let i = 0; i <= cardsInSuit.length - len; i++) {
+        let sequence = [cardsInSuit[i]];
+        for (let j = 1; j < len; j++) {
+          if (cardsInSuit[i + j] && cardsInSuit[i + j].value === sequence[sequence.length - 1].value + 1) {
+            sequence.push(cardsInSuit[i + j]);
+          } else {
+            sequence = []; // Reset si la séquence est brisée
+            break;
+          }
+        }
+        if (sequence.length === len) {
+          combos.push(sequence);
+          nonJokers = nonJokers.filter(c => !sequence.map(sc => sc.id).includes(c.id));
+          break; // Sort de la boucle interne pour cette couleur après avoir trouvé une suite
+        }
+      }
+    }
+  }
+  
+  // 4. Extraire Tris naturels
+  for (let v = 1; v <= 13; v++) {
+    const { found, remaining } = findAndRemoveCards(nonJokers, c => c.value === v, 3);
+    if (found.length === 3) {
+      combos.push(found);
+      nonJokers = remaining;
+    }
+  }
+
+  // 5. Utiliser les jokers restants pour compléter des combinaisons (Tri ou Escalier 3+)
+  // Ceci est l'étape où la complexité est la plus grande.
+  // Un algorithme simple ici pourrait être insuffisant.
+  // Pour l'exemple, nous allons essayer de compléter des paires en tris, ou des doubles en escalier.
+
+  // Tenter de former des tris avec jokers (si 7N ou si jokerSet est non vide)
+  if (has7 || availableJokers.length > 0) {
+    const nonJokersForTri = [...nonJokers]; // Travailler sur une copie
+    for (let v = 1; v <= 13; v++) {
+      const matches = nonJokersForTri.filter(c => c.value === v);
+      if (matches.length === 2 && availableJokers.length > 0) {
+        const joker = availableJokers.shift();
+        combos.push([...matches, joker]);
+        nonJokers = nonJokers.filter(c => !matches.includes(c)); // Retire les cartes utilisées de nonJokers
+      }
+    }
+  }
+  
+  // Tenter de former des escaliers avec jokers (si 7N ou si jokerSet est non vide)
+  if (has7 || availableJokers.length > 0) {
+    const nonJokersForEsc = [...nonJokers];
+    const bySuit = nonJokersForEsc.reduce((acc, c) => {
+      acc[c.suit] = acc[c.suit] || [];
+      acc[c.suit].push(c);
+      return acc;
+    }, {});
+
+    for (let suit in bySuit) {
+      const cardsInSuit = bySuit[suit].sort((a, b) => a.value - b.value);
+      for (let i = 0; i < cardsInSuit.length; i++) {
+        // Tenter de faire des escaliers avec un ou plusieurs jokers
+        for (let j = 0; j < cardsInSuit.length; j++) { // Itérer pour trouver des paires naturelles à compléter
+          if (i === j) continue;
+          const card1 = cardsInSuit[i];
+          const card2 = cardsInSuit[j];
+          if (Math.abs(card1.value - card2.value) === 2 && availableJokers.length > 0) {
+            const missingValue = Math.min(card1.value, card2.value) + 1;
+            // Vérifier que la carte manquante n'est pas déjà dans les cartes naturelles restantes
+            if (!nonJokers.some(c => c.suit === suit && c.value === missingValue)) {
+              const joker = availableJokers.shift();
+              const newCombo = [card1, { value: missingValue, suit: suit, id: joker.id, rank: 'Joker', symbol: joker.symbol, color: joker.color }, card2].sort((a,b) => a.value - b.value); // Crée une "carte joker" fictive pour le combo
+              combos.push(newCombo);
+              nonJokers = nonJokers.filter(c => c.id !== card1.id && c.id !== card2.id); // Retire les cartes naturelles utilisées
+              break; // Passe au prochain tour, combo trouvé
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Vérifier si toutes les cartes ont été utilisées
+  const allUsedCardIds = new Set(combos.flat().map(c => c.id));
+  if (allUsedCardIds.size !== hand.length) {
+    // Si toutes les cartes ne sont pas utilisées, la décomposition est incomplète
+    // Ceci est un signe qu'un solveur plus avancé est nécessaire
+    console.warn("Certaines cartes n'ont pas été utilisées dans l'extraction des combos de victoire.");
+    return []; // Retourne vide si la main n'est pas entièrement décomposée
+  }
+
+  return combos;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
 
-body {
-  font-family: 'Roboto', sans-serif;
-  background-color: var(--bg);
-  color: var(--text);
-  line-height: 1.6;
-  min-height: 100vh;
-  padding: 20px;
-  overflow-x: hidden;
-  background-image: radial-gradient(circle at top right, rgba(236, 240, 241, 0.2) 0%, rgba(189, 195, 199, 0.05) 100%);
-}
-
-/* Menu */
-#menu {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.menu-content {
-  background: white;
-  padding: 2rem;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  text-align: center;
-  max-width: 500px;
-  width: 100%;
-}
-
-.menu-section {
-  margin: 2rem 0;
-}
-
-/* Game layout */
-#game {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 40px);
-  background-color: var(--felt-green);
-  border-radius: var(--radius);
-  overflow: hidden;
-  position: relative;
-}
-
-.game-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 20px;
-  background-color: rgba(0,0,0,0.1);
-  color: white;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-
-.header-right {
-  display: flex;
-  gap: 10px;
-}
-
-.chat-toggle {
-  background: transparent;
-  border: none;
-  color: white;
-  cursor: pointer;
-  padding: 5px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: var(--transition);
-}
-
-.chat-toggle:hover {
-  background: rgba(255,255,255,0.2);
-}
-
-.game-main-content {
-  flex: 1;
-  display: flex;
-  position: relative;
-}
-
-/* Controls */
-.game-controls {
-  width: 200px;
-  background: rgba(255,255,255,0.9);
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  z-index: 10;
-}
-
-.game-controls button {
-  padding: 0.75rem;
-  border: none;
-  border-radius: 5px;
-  background: var(--primary);
-  color: white;
-  cursor: pointer;
-  transition: var(--transition);
-  font-weight: 500;
-  box-shadow: var(--shadow-sm);
-}
-
-.game-controls button:hover {
-  background: var(--secondary);
-  transform: translateY(-2px);
-}
-
-.game-controls button:disabled {
-  background: #95a5a6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-special {
-  background: var(--accent) !important;
-}
-
-/* Table de jeu */
-.game-table {
-  position: relative;
-  width: 100%;
-  height: 70vh;
-  background-color: #2e7d32;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  overflow: visible;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.table-center {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 40px;
-  margin-top: 60px; /* Augmenté pour le joker */
-  position: absolute;
-  top: 40%; /* Ajusté pour centrer avec la main plus haute */
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 2;
-}
-
-.deck-area, .discard-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  position: relative;
-  z-index: 20;
-}
-
-.deck-label, .discard-label {
-  color: white;
-  font-weight: bold;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-  font-size: 1.1rem;
-}
-
-#global-discard {
-  min-width: 100px;
-  min-height: 140px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* Nouveau style pour les joueurs */
-.players-circle {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  z-index: 1;
-}
-
-.player-badge {
-  position: absolute;
-  width: 120px;
-  padding: 0.5rem;
-  background: rgba(255,255,255,0.9);
-  border-radius: 50%;
-  box-shadow: var(--shadow-md);
-  text-align: center;
-  z-index: 5;
-  transition: var(--transition);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border: 2px solid rgba(0,0,0,0.1);
-}
-
-.player-badge::before {
-  content: "";
-  width: 60px;
-  height: 60px;
-  background: #f5f5f5;
-  border-radius: 50%;
-  margin-bottom: 8px;
-  border: 3px solid #ddd;
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23757575"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>');
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 60%;
-}
-
-.player-badge.current-player {
-  border: 2px solid var(--accent);
-  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.3);
-}
-
-.player-badge.current-turn {
-  box-shadow: 0 0 0 3px var(--warning);
-  animation: pulse 1.5s infinite;
-}
-
-.player-name {
-  font-weight: 500;
-  margin-bottom: 0.25rem;
-  font-size: 0.9rem;
-  color: var(--primary);
-}
-
-.player-score {
-  font-size: 0.85rem;
-  color: var(--text-light);
-  background: var(--primary);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 10px;
-  margin-top: 5px;
-}
-
-/* Positionnement des joueurs */
-.player-badge:nth-child(1) { 
-  top: 10px; 
-  left: 50%; 
-  transform: translateX(-50%); 
-}
-.player-badge:nth-child(2) { 
-  top: 50%; 
-  right: 10px; 
-  transform: translateY(-50%); 
-}
-.player-badge:nth-child(3) { 
-  bottom: 10px; 
-  left: 50%; 
-  transform: translateX(-50%); 
-}
-.player-badge:nth-child(4) { 
-  top: 50%; 
-  left: 10px; 
-  transform: translateY(-50%); 
-}
-
-/* Défausse des joueurs - nouveau style */
-.discard-pile {
-  position: absolute;
-  display: flex;
-  gap: 5px;
-  z-index: 10;
-  align-items: center;
-}
-
-.discard-pile::before {
-  content: "Défausse";
-  color: white;
-  font-size: 0.7rem;
-  margin-right: 5px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-}
-
-#discard-player0 { 
-  top: 25%; 
-  left: 50%; 
-  transform: translateX(-50%); 
-}
-#discard-player1 { 
-  top: 50%; 
-  right: 5%; 
-  transform: translateY(-50%); 
-}
-#discard-player2 { 
-  bottom: 25%; 
-  left: 50%; 
-  transform: translateX(-50%); 
-}
-#discard-player3 { 
-  top: 50%; 
-  left: 5%; 
-  transform: translateY(-50%); 
-}
-
-/* Style des jokers */
-.card[data-rank="Joker"] {
-  background: linear-gradient(135deg, #f39c12 0%, #e74c3c 50%, #f39c12 100%);
-  color: white;
-  font-weight: bold;
-}
-
-.card[data-rank="Joker"] .suit.main {
-  font-size: 2.5rem;
-  margin: 10px 0;
-}
-
-/* Affichage du joker révélé */
-#joker {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 10px 20px;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  font-weight: bold;
-  text-align: center;
-}
-
-#joker .card {
-  margin: 0 auto;
-  width: 60px;
-  height: 90px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-#joker .card .suit.main {
-  font-size: 2rem;
-}
-
-/* Animation joker */
-@keyframes jokerPulse {
-  0% { transform: translateX(-50%) scale(1); }
-  50% { transform: translateX(-50%) scale(1.05); }
-  100% { transform: translateX(-50%) scale(1); }
-}
-
-.joker-highlight {
-  animation: jokerPulse 2s infinite;
-  border: 2px solid var(--warning);
-}
-
-/* Main du joueur - position plus haute */
-.player-hand {
-  position: absolute;
-  bottom: 15%; /* Remontée */
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 0.5rem;
-  padding: 1rem;
-  background: rgba(255,255,255,0.2);
-  border-radius: var(--radius);
-  max-width: 90%;
-  overflow-x: auto;
-  z-index: 30;
-  scrollbar-width: thin;
-  scrollbar-color: var(--secondary) transparent;
-}
-
-.player-hand::-webkit-scrollbar {
-  height: 6px;
-}
-
-.player-hand::-webkit-scrollbar-thumb {
-  background-color: var(--secondary);
-  border-radius: 3px;
-}
-
-.player-hand .card {
-  flex-shrink: 0;
-}
-
-.player-hand .card:hover {
-  transform: translateY(-20px);
-}
-
-/* Animation tour joueur */
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.5); }
-  70% { box-shadow: 0 0 0 10px rgba(243, 156, 18, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); }
-}
-
-/* Responsive */
-@media (max-width: 1200px) {
-  .players-circle {
-    transform: scale(0.95);
+// --- Fonctions Utilitaires ---
+function getCardValue(rank) {
+  switch (rank) {
+    case 'A': return 1;
+    case 'J': return 11;
+    case 'Q': return 12;
+    case 'K': return 13;
+    default: return parseInt(rank, 10);
   }
 }
 
-@media (max-width: 1024px) {
-  .player-badge {
-    width: 110px;
-    font-size: 0.9rem;
+// --- Création et mélange du deck ---
+function createDeck() {
+  const suits = [
+    { suit: 'Coeurs', symbol: '♥', color: 'red' },
+    { suit: 'Carreaux', symbol: '♦', color: 'red' },
+    { suit: 'Trèfles', symbol: '♣', color: 'black' },
+    { suit: 'Piques', symbol: '♠', color: 'black' }
+  ];
+  const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  let deck = [];
+
+  for (let d = 0; d < 2; d++) { // Deux jeux de 52 cartes
+    suits.forEach(suitObj => {
+      ranks.forEach(rank => {
+        const value = getCardValue(rank);
+        deck.push({
+          suit: suitObj.suit,
+          symbol: suitObj.symbol,
+          color: suitObj.color,
+          rank,
+          value,
+          id: `${rank}${suitObj.symbol}${d}` // ID unique pour chaque carte
+        });
+      });
+    });
+  }
+
+  // Ajouter les jokers "officiels" si votre jeu utilise des jokers spécifiques (ex: 2 par paquet)
+  // Plutôt que de désigner une carte existante comme joker,
+  // il est plus courant d'ajouter des cartes "Joker" au deck.
+  // Si vous voulez conserver votre logique de jokerCard (une carte existante devient joker),
+  // il faudra s'assurer que `jokerSet` est bien toutes les cartes du même rang mais de couleurs différentes.
+  // Pour un jeu de Rami avec 2 jeux de 52, on ajoute souvent 4 jokers (2 par jeu).
+  // Si on ajoute 4 jokers :
+  deck.push(
+    { suit: 'Joker', symbol: '🃏', color: 'red', rank: 'Joker', value: 0, id: 'joker_red_1' },
+    { suit: 'Joker', symbol: '🃏', color: 'black', rank: 'Joker', value: 0, id: 'joker_black_1' },
+    { suit: 'Joker', symbol: '🃏', color: 'red', rank: 'Joker', value: 0, id: 'joker_red_2' },
+    { suit: 'Joker', symbol: '🃏', color: 'black', rank: 'Joker', value: 0, id: 'joker_black_2' }
+  );
+
+  if (deck.length !== 108) { // 104 + 4 jokers
+    console.error(`Erreur createDeck : attendu 108 cartes, trouvé ${deck.length}`);
+  }
+  return deck;
+}
+
+function shuffle(deck) {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+
+// --- Distribution des cartes ---
+async function dealCards(roomId, playerIds) {
+  let deck = shuffle(createDeck());
+
+  // Si vous utilisez des jokers "officiels" ajoutés dans createDeck,
+  // alors `jokerSet` devrait être les IDs de ces cartes spécifiées.
+  const actualJokerCards = deck.filter(c => c.rank === 'Joker');
+  const jokerSet = actualJokerCards.map(c => c.id);
+
+  // La `jokerCard` (la carte révélée qui détermine les jokers temporaires)
+  // Si vous voulez une "jokerCard" en plus des jokers physiques, elle doit être prise du deck.
+  // Cette logique est à clarifier selon VOS règles du Rami.
+  // Actuellement, votre jokerCard est UNE carte du deck qui définit d'autres jokers.
+  // C'est une règle de rami spécifique qui transforme d'autres cartes en jokers.
+  // Si c'est ce que vous voulez, gardez cette partie. Sinon, utilisez juste les jokers "officiels".
+
+  // Supposons que la `jokerCard` est la première carte du deck après distribution aux joueurs.
+  // Elle est révélée et les cartes de même valeur sont les jokers.
+  const tempDeck = [...deck]; // Copie pour éviter de modifier le deck pendant la détermination du jokerCard
+  const initialJokerCard = tempDeck.splice(0, 1)[0]; // Prend la première carte pour le jokerCard
+
+  // Définition des jokers temporaires basés sur la valeur de la jokerCard
+  // Ex: si jokerCard est 7♥, alors tous les 7 de toutes couleurs deviennent jokers TEMPORAIRES
+  // en plus des jokers "physiques" que vous avez ajoutés dans createDeck.
+  const temporaryJokerIds = deck.filter(c => c.value === initialJokerCard.value && c.rank !== 'Joker').map(c => c.id);
+  const allJokerIds = [...jokerSet, ...temporaryJokerIds]; // Tous les jokers (physiques + temporaires)
+
+  const hands = {};
+  playerIds.forEach(pid => {
+    hands[pid] = deck.splice(0, 13);
+  });
+  // La première carte du deck restant est la carte joker révélée
+  const revealedJokerCard = deck.shift(); // Cette carte peut être la jokerCard ou une autre règle de révélation
+
+  await Promise.all([
+    set(ref(db, `rooms/${roomId}/deck`), deck),
+    set(ref(db, `rooms/${roomId}/jokerCard`), revealedJokerCard), // La carte révélée
+    set(ref(db, `rooms/${roomId}/jokerSet`), { jokerSet: allJokerIds }), // Les IDs de toutes les cartes JOKER ACTUELLES
+    set(ref(db, `rooms/${roomId}/hands`), hands),
+    set(ref(db, `rooms/${roomId}/discard`), {}), // Initialise les piles de défausse vides pour chaque joueur
+    set(ref(db, `rooms/${roomId}/state`), {
+      started: false, // La partie démarre quand le premier joueur pioche
+      drawCount: 0,
+      lastDiscarder: null,
+      sevenPlayed: false,
+      winDeclared: false,
+      sevenCombo: null,
+      winCombos: null,
+      roundOver: false // S'assurer que c'est false au début d'une nouvelle manche
+    }),
+    set(ref(db, `rooms/${roomId}/chat`), {})
+  ]);
+}
+
+// --- Sélecteurs DOM ---
+const createRoomBtn = document.getElementById('createRoom');
+const joinRoomBtn = document.getElementById('joinRoom');
+const roomInput = document.getElementById('roomCodeInput');
+const status = document.getElementById('status');
+const playersDiv = document.getElementById('players');
+const playerHandDiv = document.getElementById('hand');
+const jokerDiv = document.getElementById('joker');
+const declare7NBtn = document.getElementById('declare7N');
+const declareWinBtn = document.getElementById('declareWin');
+const menuDiv = document.getElementById('menu');
+const gameDiv = document.getElementById('game');
+const toggleChatBtn = document.getElementById('toggleChat');
+const chatContainer = document.getElementById('chat-container');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatMessages = document.getElementById('chat-messages');
+const endTurnBtn = document.getElementById('endTurnBtn'); // Assurez-vous d'avoir ce bouton dans votre HTML
+
+// Rendre la pioche cliquable comme un bouton
+const deckPile = document.getElementById('deck');
+deckPile.classList.add('clickable');
+deckPile.addEventListener('click', drawCard);
+
+// Ajout du listener pour le bouton de fin de tour
+if (endTurnBtn) {
+  endTurnBtn.addEventListener('click', endTurn);
+} else {
+  console.warn("Le bouton 'endTurnBtn' n'a pas été trouvé dans le DOM. Le tour ne pourra pas être terminé manuellement.");
+}
+
+
+// --- Affichage du joker ---
+function showJoker(jokerCard) {
+  if (jokerCard?.rank) {
+    jokerDiv.innerHTML = `<div class="card ${jokerCard.color}">JOKER: ${jokerCard.rank}${jokerCard.symbol}</div>`;
+  } else {
+    jokerDiv.innerHTML = '';
   }
 }
 
-@media (max-width: 900px) {
-  :root {
-    --card-width-base: 70px;
-    --card-height-base: 105px;
-  }
+// --- Popups ---
+function showPopup(content) {
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content">
+      ${content}
+      <button class="modal-close">Fermer</button>
+    </div>`;
+  document.body.append(modal);
+  modal.querySelector('.modal-close').onclick = () => modal.remove();
+}
 
-  .game-main-content {
-    flex-direction: column;
-  }
+function actionCreateRoomPopup() {
+  showPopup(`
+    <h3>Salle créée</h3>
+    <p>Code de la salle : <b>${currentRoom}</b></p>
+    <button id="copyRoomCode">Copier</button>
+  `);
+  document.getElementById('copyRoomCode').onclick = () => {
+    navigator.clipboard.writeText(currentRoom);
+    alert('Code copié !');
+  };
+}
 
-  .game-controls {
-    width: 100%;
-    order: 2;
-    flex-direction: row;
-    flex-wrap: wrap;
-    padding: 0.8rem;
-    gap: 0.5rem;
-  }
+// --- Drag & Drop ---
+function enableDragDrop() {
+  new Sortable(playerHandDiv, {
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    onEnd: async (evt) => {
+      // Reconstituer la main à partir des éléments du DOM ordonnés
+      const hand = Array.from(playerHandDiv.children).map(el => {
+        // Pour une meilleure robustesse, il est préférable de stocker les cartes complètes
+        // dans un objet ou Map global après les avoir récupérées de Firebase.
+        // Ici, on reconstitue l'objet carte à partir des data-attributes et du contenu.
+        const cardId = el.dataset.cardId;
+        // Supposons que vous ayez une Map globale `allCardsData` {id: {cardObject}}
+        // Sinon, vous devez récupérer toutes les propriétés de la carte.
+        // Pour l'instant, on se base sur le DOM (ce qui peut être fragile).
+        // Si les données complètes ne sont pas dans le DOM, il faudrait les re-récupérer.
+        // Simplification pour l'exemple, en supposant que le `renderHand` stocke assez d'info dans le DOM.
+        return {
+          id: cardId,
+          rank: el.dataset.rank, // Assurez-vous que ces data-attributes sont définis dans renderHand
+          symbol: el.dataset.symbol,
+          color: el.dataset.color,
+          suit: el.dataset.suit,
+          value: parseInt(el.dataset.value, 10)
+        };
+      });
+      await set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand);
+    }
+  });
+}
 
-  .game-controls button {
-    flex: 1 1 45%;
-    min-width: 120px;
-    padding: 0.6rem;
-    font-size: 0.9rem;
-  }
+// --- Rendu des joueurs et de leurs mains ---
+function renderPlayers(players) {
+  playersDiv.innerHTML = '';
+  playersDiv.className = `players-circle ${players.length === 2 ? 'two-players' : ''}`;
 
-  .player-badge {
-    width: 100px;
-  }
+  players.forEach((p, index) => {
+    const badge = document.createElement('div');
+    badge.className = `player-badge ${p.id === playerId ? 'current-player' : ''}`;
+    badge.id = `badge-${p.id}`;
+    badge.innerHTML = `
+      <div class="player-name">${p.pseudo} ${p.id === playerId ? '(Vous)' : ''}</div>
+      <div class="player-score" id="score-${p.id}">Score: 0</div>
+      <div class="opponent-hand" id="hand-${p.id}"></div>
+      <div class="discard-pile" id="discard-${p.id}"></div> `;
+    playersDiv.append(badge);
+  });
+}
 
-  #chat-container {
-    width: 250px;
+function listenDiscard(room) {
+  onValue(ref(db, `rooms/${room}/discard`), snap => {
+    const discards = snap.val() || {};
+    Object.entries(discards).forEach(([pid, pile]) => {
+      const el = document.getElementById(`discard-${pid}`);
+      if (!el) return;
+      const top = pile.length ? pile[pile.length - 1] : null;
+      el.innerHTML = top ? `
+        <div class="discard-card ${top.color}"
+             data-card-id="${top.id}"
+             data-player-id="${pid}"
+             data-rank="${top.rank}"
+             data-symbol="${top.symbol}"
+             data-color="${top.color}"
+             data-suit="${top.suit}"
+             data-value="${top.value}">
+          ${top.rank}${top.symbol}
+        </div>
+      ` : '';
+      if (top) {
+        const cardEl = el.querySelector('.discard-card');
+        cardEl.style.cursor = 'pointer';
+        // Le joueur peut prendre la carte défaussée si ce n'est pas la sienne
+        if (pid !== playerId) {
+          cardEl.onclick = async () => {
+            const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+            if (turnSnap.val() === playerId) { // Seulement si c'est son tour
+              takeDiscardedCard(pid);
+            } else {
+              alert("Ce n'est pas votre tour.");
+            }
+          };
+        } else {
+          cardEl.onclick = null; // Ne pas permettre de prendre sa propre défausse
+          cardEl.style.cursor = 'default';
+        }
+      }
+    });
+  });
+}
+
+// --- Listeners Firebase ---
+function listenPlayers(room) {
+  onValue(ref(db, `rooms/${room}/players`), snap => {
+    const players = Object.entries(snap.val() || {}).map(([id, o]) => ({
+      id,
+      pseudo: o.pseudo
+    }));
+    renderPlayers(players);
+  });
+}
+
+function listenScores(room) {
+  onValue(ref(db, `rooms/${room}/scores`), snap => {
+    const scores = snap.val() || {};
+    Object.entries(scores).forEach(([id, score]) => {
+      const el = document.getElementById(`score-${id}`);
+      if (el) {
+        el.textContent = `Score: ${score}`;
+      }
+    });
+  });
+}
+
+function listenHand(room) {
+  onValue(ref(db, `rooms/${room}/hands/${playerId}`), snap => {
+    const hand = snap.val() || [];
+    renderHand(hand);
+    updateActionButtons(hand);
+  });
+}
+
+async function updateActionButtons(hand) {
+  const jokerSnap = await get(ref(db, `rooms/${currentRoom}/jokerSet`));
+  const jokerSet = jokerSnap.val()?.jokerSet || [];
+
+  // Le bouton "déclarer 7 naturel" doit être activé si la main contient un 7 naturel
+  declare7NBtn.disabled = !Rules.has7Naturel(hand);
+
+  // Le bouton "déclarer victoire" doit être activé si la main est une main gagnante
+  declareWinBtn.disabled = !Rules.validateWinHandWithJoker(hand, jokerSet);
+}
+
+function listenTurn(room) {
+  onValue(ref(db, `rooms/${room}/turn`), snap => {
+    const turn = snap.val();
+    const myTurn = turn === playerId;
+    // Réinitialiser les flags locaux au début de chaque tour
+    hasDrawnOrPicked = false;
+    hasDiscardedThisTurn = false;
+
+    status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente...";
+
+    document.querySelectorAll('.player-badge').forEach(badge => {
+      badge.classList.toggle('current-turn', badge.id === `badge-${turn}`);
+    });
+
+    // Activer/désactiver les interactions selon le tour du joueur
+    deckPile.style.pointerEvents = myTurn ? 'auto' : 'none';
+    deckPile.style.opacity = myTurn ? '1' : '0.5';
+    // Les cartes de la main sont gérées par le setupPlayerHandDiscardListener et Sortable
+    // Le bouton de fin de tour n'est visible/actif que pour le joueur dont c'est le tour
+    if (endTurnBtn) {
+      endTurnBtn.disabled = !myTurn || !hasDrawnOrPicked || !hasDiscardedThisTurn;
+    }
+  });
+}
+
+// ── DÉBUT LOGIQUE DE FIN DE PARTIE ──
+async function terminateGame(winnerId) {
+  const winnerPseudoSnap = await get(ref(db, `rooms/${currentRoom}/players/${winnerId}/pseudo`));
+  const winnerPseudo = winnerPseudoSnap.val() || 'Joueur Inconnu';
+
+  const winnerHandSnap = await get(ref(db, `rooms/${currentRoom}/hands/${winnerId}`));
+  const winnerHand = winnerHandSnap.val() || [];
+
+  const jokerSetSnap = await get(ref(db, `rooms/${currentRoom}/jokerSet`));
+  const jokerSet = jokerSetSnap.val()?.jokerSet || [];
+
+  // Extraire les combinaisons gagnantes pour les stocker.
+  // C'est ici que l'algorithme de résolution de main doit être robuste.
+  const winCombos = extractWinCombosJoker(winnerHand, jokerSet);
+
+  await update(ref(db, `rooms/${currentRoom}/state`), {
+    roundOver: true,
+    winDeclared: true,
+    winnerId: winnerId,
+    winnerPseudo: winnerPseudo,
+    winCombos: winCombos
+  });
+}
+
+async function checkEndGame() {
+  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+  const state = stateSnap.val() || {};
+
+  if (state.roundOver || state.winDeclared) return;
+
+  const deckSnap = await get(ref(db, `rooms/${currentRoom}/deck`));
+  const deck = deckSnap.val() || [];
+
+  if (deck.length === 0 && !state.winDeclared) {
+    await update(ref(db, `rooms/${currentRoom}/state`), { roundOver: true, reason: 'deck_empty_no_win' });
+    return;
   }
 }
 
-@media (max-width: 768px) {
-  :root {
-    --card-width-base: 60px;
-    --card-height-base: 90px;
-    --chat-width: 220px;
-  }
-
-  .game-header {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 10px;
-  }
-
-  .header-left, .header-right {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .player-hand {
-    bottom: 18%; /* Ajustement mobile */
-    padding: 0.8rem;
-  }
-
-  .players-circle {
-    transform: scale(0.85);
-  }
-
-  #chat-container {
-    max-height: 200px;
-  }
-
-  #chat-messages {
-    max-height: 150px;
-  }
+async function newRound(message) {
+  const playerIds = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {});
+  await dealCards(currentRoom, playerIds); // Redéfausse les cartes et initialise le deck
+  await update(ref(db, `rooms/${currentRoom}/state`), {
+    roundOver: false,
+    started: true, // La partie est à nouveau "démarrée"
+    sevenPlayed: false,
+    winDeclared: false,
+    sevenCombo: null,
+    winCombos: null,
+    reason: null,
+    drawCount: 0, // Réinitialiser le drawCount pour la nouvelle manche
+    lastDiscarder: null // Réinitialiser le dernier défausseur
+  });
+  showPopup(`🔄 ${message}`);
 }
 
-@media (max-width: 480px) {
-  :root {
-    --card-width-base: 50px;
-    --card-height-base: 75px;
-    --chat-width: 100%;
-    --chat-height: 180px;
-  }
-
-  body {
-    padding: 15px;
-  }
-
-  .player-badge {
-    width: 90px;
-    padding: 0.5rem;
-    font-size: 0.8rem;
-  }
-
-  .player-badge::before {
-    width: 50px;
-    height: 50px;
-  }
-
-  .players-circle {
-    transform: scale(0.75);
-  }
-
-  .game-controls button {
-    min-width: 100px;
-    font-size: 0.8rem;
-    padding: 0.6rem;
-  }
-
-  .player-hand {
-    bottom: 15%; /* Ajustement petit mobile */
-    padding: 0.5rem;
-  }
-
-  #chat-container {
-    border-radius: 0;
-    transform: translateY(calc(100% - 35px));
-  }
-
-  #chat-container.open {
-    transform: translateY(0);
-  }
-
-  #chat-messages {
-    max-height: 120px;
-    padding: 10px;
-  }
-
-  #chat-input {
-    padding: 10px 12px;
-  }
+// --- Rendu de la main du joueur ---
+function renderHand(hand) {
+  playerHandDiv.innerHTML = '';
+  hand.forEach(c => {
+    const div = document.createElement('div');
+    div.className = `card ${c.color}`;
+    div.dataset.cardId = c.id;
+    // Ajout des data-attributes pour Sortable afin d'éviter de parser le DOM pour recréer l'objet carte
+    div.dataset.rank = c.rank;
+    div.dataset.symbol = c.symbol;
+    div.dataset.color = c.color;
+    div.dataset.suit = c.suit;
+    div.dataset.value = c.value;
+    div.innerHTML = `
+      <div class="corner top"><span>${c.rank}</span><span>${c.symbol}</span></div>
+      <div class="suit main">${c.symbol}</div>
+      <div class="corner bottom"><span>${c.rank}</span><span>${c.symbol}</span></div>
+    `;
+    playerHandDiv.append(div);
+  });
+  enableDragDrop(); // Réactiver Sortable après chaque rendu de la main
 }
+
+// --- Pioche ---
+async function drawCard() {
+  if (!currentRoom) return;
+
+  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+  if (turnSnap.val() !== playerId) {
+    return alert("Ce n'est pas votre tour.");
+  }
+
+  const stateRef = ref(db, `rooms/${currentRoom}/state`);
+  let state = (await get(stateRef)).val() || { drawCount: 0 };
+
+  if (state.drawCount >= 1) {
+    return alert('Vous avez déjà pioché ou pris une carte ce tour.');
+  }
+
+  let [deckSnap, handSnap, jokerSetSnap] = await Promise.all([
+    get(ref(db, `rooms/${currentRoom}/deck`)),
+    get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)),
+    get(ref(db, `rooms/${currentRoom}/jokerSet`))
+  ]);
+  let deck = deckSnap.val() || [];
+  let hand = handSnap.val() || [];
+  const jokerSet = jokerSetSnap.val()?.jokerSet || [];
+
+  if (!deck.length) {
+    return alert('Deck vide');
+  }
+
+  const card = deck.shift();
+  hand.push(card);
+
+  // Défausse automatique du joker si la règle s'applique
+  // Cette logique est à revoir si vous utilisez des jokers physiques qui ne sont pas "défaussables"
+  // ou si la règle de "défausse automatique du joker si deck presque vide" ne s'applique pas.
+  const playersCount = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {}).length;
+  // Votre règle actuelle : si le deck a moins de cartes que de joueurs, et que vous avez un joker
+  if (deck.length < playersCount && hand.some(c => jokerSet.includes(c.id))) {
+    const idx = hand.findIndex(c => jokerSet.includes(c.id));
+    if (idx !== -1) { // S'assurer qu'un joker est trouvé
+      const [jok] = hand.splice(idx, 1);
+      let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
+      pile.push(jok);
+      await set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile);
+      showPopup('Joker défaussé automatiquement.');
+    }
+  }
+
+  state.drawCount++; // Incrémenter le drawCount Firebase
+
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/deck`), deck),
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+    update(stateRef, { drawCount: state.drawCount, started: true }) // Marquer la partie comme démarrée
+  ]);
+
+  hasDrawnOrPicked = true; // Mettre à jour le flag local
+}
+
+// --- Prendre la carte défaussée (joueur précédent) ---
+async function takeDiscardedCard(ownerId) {
+  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+  if (turnSnap.val() !== playerId)
+    return alert("Ce n'est pas votre tour.");
+
+  const stateRef = ref(db, `rooms/${currentRoom}/state`);
+  let state = (await get(stateRef)).val() || { drawCount: 0, lastDiscarder: null };
+
+  if (state.drawCount >= 1)
+    return alert('Vous avez déjà pioché ou pris une carte ce tour.');
+
+  // Vérifie que la carte vient bien du joueur précédent
+  // La logique du 'lastDiscarder' est pour le cas où un joueur ne peut prendre que la dernière carte jouée.
+  // Dans certains Rami, on peut prendre toute la pile de défausse si on utilise la carte du dessus pour une combinaison.
+  // Adaptez cette règle si nécessaire.
+  if (ownerId !== state.lastDiscarder) {
+    // Dans beaucoup de rami, on peut prendre la carte du dessus de n'importe quelle pile de défausse.
+    // Si c'est votre règle, supprimez cette vérification.
+    // Si la règle est "uniquement la dernière carte défaussée par le joueur précédent", c'est bon.
+    return alert("Vous ne pouvez prendre qu'une carte de la défausse du joueur précédent.");
+  }
+
+
+  let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${ownerId}`))).val() || [];
+  if (!pile.length)
+    return alert('Défausse vide.');
+
+  const card = pile.pop(); // Prend la dernière carte (dessus de la pile)
+
+  let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+  hand.push(card);
+
+  state.drawCount++; // Incrémentation du drawCount
+
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+    set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), pile),
+    update(stateRef, { drawCount: state.drawCount, started: true }) // Marquer la partie comme démarrée
+  ]);
+
+  hasDrawnOrPicked = true;
+}
+
+// --- Fin de tour ---
+async function endTurn() {
+  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+  if (turnSnap.val() !== playerId) {
+    return alert("Ce n'est pas votre tour.");
+  }
+
+  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+  const state = stateSnap.val() || {};
+
+  // Vérifier si le joueur a bien pioché/pris et défaussé
+  if (!hasDrawnOrPicked) {
+    return alert("Vous devez piocher une carte (ou en prendre une de la défausse) avant de terminer votre tour.");
+  }
+  // hasDiscardedThisTurn est déjà géré par setupPlayerHandDiscardListener
+  // On peut s'assurer que la main a la bonne taille (13 cartes) après la défausse
+  const currentHand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+  if (currentHand.length !== 13) {
+    return alert("Vous devez défausser une carte pour avoir 13 cartes en main avant de terminer votre tour.");
+  }
+
+
+  const players = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || []);
+  const current = playerId; // C'est le joueur courant qui termine son tour
+
+  const idx = players.indexOf(current);
+  const next = players[(idx + 1) % players.length];
+
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/turn`), next),
+    update(ref(db, `rooms/${currentRoom}/state`), {
+      lastDiscarder: current,
+      drawCount: 0 // Réinitialiser le compteur de pioche pour le joueur suivant
+    })
+  ]);
+
+  // Vérifier la fin de jeu après chaque tour (si le deck est vide)
+  await checkEndGame();
+
+  // Réinitialiser les flags locaux pour le prochain tour du joueur
+  hasDrawnOrPicked = false;
+  hasDiscardedThisTurn = false;
+}
+
+// --- Défausse manuelle & passage immédiat de tour ---
+function setupPlayerHandDiscardListener() {
+  playerHandDiv.addEventListener('click', async e => {
+    const cardEl = e.target.closest('.card');
+    if (!cardEl) return;
+
+    const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+    if (turnSnap.val() !== playerId) {
+      return alert("Ce n'est pas votre tour.");
+    }
+
+    if (hasDiscardedThisTurn) {
+      return alert("Vous avez déjà jeté une carte ce tour.");
+    }
+
+    const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+    const drawCount = stateSnap.val()?.drawCount || 0;
+    if (!hasDrawnOrPicked || drawCount === 0) { // S'assurer que drawCount est à 1 après pioche/prise
+      return alert("Vous devez piocher ou prendre une carte avant de défausser.");
+    }
+
+    const cardId = cardEl.dataset.cardId;
+    let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+    const idx = hand.findIndex(c => c.id === cardId);
+    if (idx === -1) return;
+    const [card] = hand.splice(idx, 1);
+
+    let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
+    pile.push(card);
+
+    await Promise.all([
+      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+      set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
+    ]);
+
+    hasDiscardedThisTurn = true; // Marquer la défausse effectuée
+
+    // Terminer le tour automatiquement après la défausse
+    await endTurn();
+  });
+}
+
+// --- Gestion du chat ---
+function enableChat() {
+  // Toggle du chat
+  toggleChatBtn.addEventListener('click', () => {
+    chatContainer.classList.toggle('open');
+  });
+
+  // Envoi des messages
+  chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    const timestamp = Date.now();
+    const messageData = {
+      sender: playerId,
+      pseudo: pseudo,
+      message: message,
+      timestamp: timestamp
+    };
+
+    const messageRef = ref(db, `rooms/${currentRoom}/chat/${timestamp}`);
+    await set(messageRef, messageData);
+    chatInput.value = '';
+  });
+
+  // Réception des messages en temps réel
+  const chatRef = ref(db, `rooms/${currentRoom}/chat`);
+  onValue(chatRef, (snapshot) => {
+    const messages = snapshot.val() || {};
+    const messagesArray = Object.entries(messages)
+      .map(([id, msg]) => ({ id, ...msg }))
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    chatMessages.innerHTML = '';
+
+    messagesArray.forEach(msg => {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = msg.sender === playerId ? 'me' : '';
+      messageDiv.innerHTML = `<b>${msg.pseudo}:</b> ${msg.message}`;
+      chatMessages.appendChild(messageDiv); // Fix: this line was cut off
+    });
+    chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to bottom
+  });
+}
+
+// --- Initialisation ---
+createRoomBtn.addEventListener('click', createRoom);
+joinRoomBtn.addEventListener('click', joinRoom);
+setupPlayerHandDiscardListener(); // Appel pour activer l'écouteur de défausse
