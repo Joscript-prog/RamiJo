@@ -1,8 +1,4 @@
-/* On cache le plateau de jeu tant qu’une salle n’est pas créée/rejointe */
-#game {
-  display: none;
-}
-
+/* Variables modernisées avec une palette raffinée */
 :root {
   --primary: #2c3e50;
   --secondary: #2980b9;
@@ -10,17 +6,17 @@
   --success: #27ae60;
   --warning: #f39c12;
   --text: #2d3436;
-  --text-light: #636e72;
-  --bg: #f5f6fa;
-  --felt-green: #2e7d32;
-  --card-white: #fff;
+  --text-light: #7f8c8d;
+  --bg: #f9fbfd;
+  --felt-green: #27ae60;
+  --card-white: #ffffff;
   --card-red: #e74c3c;
-  --card-black: #2d3436;
-  --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
-  --shadow-md: 0 4px 8px rgba(0,0,0,0.15);
-  --shadow-lg: 0 8px 16px rgba(0,0,0,0.2);
-  --radius: 10px;
-  --transition: all 0.3s ease;
+  --card-black: #2c3e50;
+  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 6px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.15);
+  --radius: 12px;
+  --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   --card-width-base: 80px;
   --card-height-base: 120px;
   --chat-width: 300px;
@@ -41,6 +37,7 @@ body {
   min-height: 100vh;
   padding: 20px;
   overflow-x: hidden;
+  background-image: radial-gradient(circle at top right, rgba(236, 240, 241, 0.2) 0%, rgba(189, 195, 199, 0.05) 100%);
 }
 
 /* Menu */
@@ -168,7 +165,7 @@ body {
   background-color: #2e7d32;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  overflow: visible; /* Changé de hidden à visible pour afficher les badges */
+  overflow: visible;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -179,12 +176,12 @@ body {
   justify-content: center;
   align-items: center;
   gap: 40px;
-  margin-top: 20px;
+  margin-top: 60px; /* Augmenté pour le joker */
   position: absolute;
-  top: 50%;
+  top: 40%; /* Ajusté pour centrer avec la main plus haute */
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 2; /* S'assurer qu'il est au-dessus du plateau */
+  z-index: 2;
 }
 
 .deck-area, .discard-area {
@@ -193,7 +190,7 @@ body {
   align-items: center;
   gap: 10px;
   position: relative;
-  z-index: 20; /* Z-index élevé pour être au-dessus des badges */
+  z-index: 20;
 }
 
 .deck-label, .discard-label {
@@ -211,7 +208,7 @@ body {
   align-items: center;
 }
 
-/* Positionnement des joueurs */
+/* Nouveau style pour les joueurs */
 .players-circle {
   position: absolute;
   width: 100%;
@@ -219,23 +216,42 @@ body {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  z-index: 1; /* En dessous du centre mais au-dessus du plateau */
+  z-index: 1;
 }
 
 .player-badge {
   position: absolute;
-  width: 160px;
-  padding: 1rem;
-  background: white;
-  border-radius: var(--radius);
+  width: 120px;
+  padding: 0.5rem;
+  background: rgba(255,255,255,0.9);
+  border-radius: 50%;
   box-shadow: var(--shadow-md);
   text-align: center;
   z-index: 5;
   transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2px solid rgba(0,0,0,0.1);
+}
+
+.player-badge::before {
+  content: "";
+  width: 60px;
+  height: 60px;
+  background: #f5f5f5;
+  border-radius: 50%;
+  margin-bottom: 8px;
+  border: 3px solid #ddd;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23757575"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 60%;
 }
 
 .player-badge.current-player {
   border: 2px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.3);
 }
 
 .player-badge.current-turn {
@@ -243,119 +259,140 @@ body {
   animation: pulse 1.5s infinite;
 }
 
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.5); }
-  70% { box-shadow: 0 0 0 10px rgba(243, 156, 18, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); }
-}
-
 .player-name {
   font-weight: 500;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--primary);
 }
 
 .player-score {
   font-size: 0.85rem;
   color: var(--text-light);
+  background: var(--primary);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 5px;
 }
 
-/* Positions des badges de joueurs */
-.player-badge:nth-child(1) { top: 10px; left: 50%; transform: translateX(-50%); }
-.player-badge:nth-child(2) { top: 50%; right: 10px; transform: translateY(-50%); }
-.player-badge:nth-child(3) { bottom: 10px; left: 50%; transform: translateX(-50%); }
-.player-badge:nth-child(4) { top: 50%; left: 10px; transform: translateY(-50%); }
+/* Positionnement des joueurs */
+.player-badge:nth-child(1) { 
+  top: 10px; 
+  left: 50%; 
+  transform: translateX(-50%); 
+}
+.player-badge:nth-child(2) { 
+  top: 50%; 
+  right: 10px; 
+  transform: translateY(-50%); 
+}
+.player-badge:nth-child(3) { 
+  bottom: 10px; 
+  left: 50%; 
+  transform: translateX(-50%); 
+}
+.player-badge:nth-child(4) { 
+  top: 50%; 
+  left: 10px; 
+  transform: translateY(-50%); 
+}
 
-.players-circle.two-players .player-badge:nth-child(1) { top: 5%; }
-.players-circle.two-players .player-badge:nth-child(2) { bottom: 5%; }
-
-/* Défausses des joueurs */
+/* Défausse des joueurs - nouveau style */
 .discard-pile {
   position: absolute;
   display: flex;
   gap: 5px;
   z-index: 10;
+  align-items: center;
 }
 
-#discard-player0 { top: 25%; left: 50%; transform: translateX(-50%); }
-#discard-player1 { top: 50%; right: 5%; transform: translateY(-50%); }
-#discard-player2 { bottom: 25%; left: 50%; transform: translateX(-50%); }
-#discard-player3 { top: 50%; left: 5%; transform: translateY(-50%); }
-
-/* Carte */
-.card {
-  width: var(--card-width-base);
-  height: var(--card-height-base);
-  background: var(--card-white);
-  border-radius: 8px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 10px;
-  cursor: pointer;
-  transition: var(--transition);
-  position: relative;
-  user-select: none;
-}
-
-.card.red { color: var(--card-red); }
-.card.black { color: var(--card-black); }
-
-.card .corner {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.9rem;
-  line-height: 1;
-}
-
-.card .corner.bottom {
-  align-self: flex-end;
-  transform: rotate(180deg);
-}
-
-.card .suit.main {
-  font-size: 2rem;
-  text-align: center;
-  margin: auto 0;
-}
-
-/* Dos de la pioche */
-.card.back {
-  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 50%, var(--secondary) 100%);
+.discard-pile::before {
+  content: "Défausse";
   color: white;
+  font-size: 0.7rem;
+  margin-right: 5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+#discard-player0 { 
+  top: 25%; 
+  left: 50%; 
+  transform: translateX(-50%); 
+}
+#discard-player1 { 
+  top: 50%; 
+  right: 5%; 
+  transform: translateY(-50%); 
+}
+#discard-player2 { 
+  bottom: 25%; 
+  left: 50%; 
+  transform: translateX(-50%); 
+}
+#discard-player3 { 
+  top: 50%; 
+  left: 5%; 
+  transform: translateY(-50%); 
+}
+
+/* Style des jokers */
+.card[data-rank="Joker"] {
+  background: linear-gradient(135deg, #f39c12 0%, #e74c3c 50%, #f39c12 100%);
+  color: white;
+  font-weight: bold;
+}
+
+.card[data-rank="Joker"] .suit.main {
+  font-size: 2.5rem;
+  margin: 10px 0;
+}
+
+/* Affichage du joker révélé */
+#joker {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  font-weight: bold;
+  text-align: center;
+}
+
+#joker .card {
+  margin: 0 auto;
+  width: 60px;
+  height: 90px;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+}
+
+#joker .card .suit.main {
   font-size: 2rem;
 }
 
-/* Cartes défaussées */
-.discard-card {
-  width: 50px;
-  height: 70px;
-  font-size: 1rem;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-  border-radius: 4px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: white;
-  cursor: pointer;
-  transition: var(--transition);
+/* Animation joker */
+@keyframes jokerPulse {
+  0% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.05); }
+  100% { transform: translateX(-50%) scale(1); }
 }
 
-.discard-card.red { color: var(--card-red); }
-.discard-card.black { color: var(--card-black); }
-
-.discard-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-lg);
+.joker-highlight {
+  animation: jokerPulse 2s infinite;
+  border: 2px solid var(--warning);
 }
 
-/* Main du joueur */
+/* Main du joueur - position plus haute */
 .player-hand {
   position: absolute;
-  bottom: 10%; /* Position modifiée pour être plus haute */
+  bottom: 15%; /* Remontée */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -387,135 +424,23 @@ body {
   transform: translateY(-20px);
 }
 
-/* Modal */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-}
-
-.modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: var(--radius);
-  max-width: 500px;
-  width: 90%;
-}
-
-.modal-close {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-/* Chat */
-#chat-container {
-  position: fixed;
-  bottom: 0;
-  right: 0;
-  width: var(--chat-width);
-  background: #fff;
-  border-top-left-radius: var(--radius);
-  box-shadow: 0 -2px 15px rgba(0,0,0,0.15);
-  font-family: 'Roboto', sans-serif;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  max-height: var(--chat-height);
-  transition: transform 0.3s ease;
-  transform: translateY(calc(100% - 40px));
-}
-
-#chat-container.open {
-  transform: translateY(0);
-}
-
-#chat-messages {
-  flex: 1;
-  max-height: 200px;
-  overflow-y: auto;
-  padding: 15px;
-  font-size: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--secondary) #f1f1f1;
-}
-
-#chat-messages::-webkit-scrollbar {
-  width: 6px;
-}
-
-#chat-messages::-webkit-scrollbar-thumb {
-  background-color: var(--secondary);
-  border-radius: 3px;
-}
-
-#chat-messages div {
-  background: #f1f1f1;
-  padding: 8px 12px;
-  border-radius: 18px;
-  max-width: 85%;
-  word-wrap: break-word;
-  align-self: flex-start;
-}
-
-#chat-messages div.me {
-  background: var(--secondary);
-  color: white;
-  align-self: flex-end;
-}
-
-#chat-form {
-  display: flex;
-  border-top: 1px solid #e0e0e0;
-}
-
-#chat-input {
-  flex: 1;
-  border: none;
-  padding: 12px 15px;
-  font-size: 14px;
-  outline: none;
-}
-
-#chat-form button {
-  border: none;
-  padding: 0 15px;
-  background: var(--secondary);
-  color: white;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-#chat-form button:hover {
-  background: var(--primary);
+/* Animation tour joueur */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.5); }
+  70% { box-shadow: 0 0 0 10px rgba(243, 156, 18, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); }
 }
 
 /* Responsive */
 @media (max-width: 1200px) {
   .players-circle {
-    transform: scale(0.9);
+    transform: scale(0.95);
   }
 }
 
 @media (max-width: 1024px) {
   .player-badge {
-    width: 140px;
-    padding: 0.8rem;
+    width: 110px;
     font-size: 0.9rem;
   }
 }
@@ -547,12 +472,7 @@ body {
   }
 
   .player-badge {
-    width: 130px;
-    padding: 0.7rem;
-  }
-
-  .players-circle.two-players .player-badge {
-    margin: 10px 0;
+    width: 100px;
   }
 
   #chat-container {
@@ -579,7 +499,7 @@ body {
   }
 
   .player-hand {
-    bottom: 15%; /* Position modifiée pour mobile */
+    bottom: 18%; /* Ajustement mobile */
     padding: 0.8rem;
   }
 
@@ -604,10 +524,19 @@ body {
     --chat-height: 180px;
   }
 
+  body {
+    padding: 15px;
+  }
+
   .player-badge {
-    width: 110px;
+    width: 90px;
     padding: 0.5rem;
     font-size: 0.8rem;
+  }
+
+  .player-badge::before {
+    width: 50px;
+    height: 50px;
   }
 
   .players-circle {
@@ -617,10 +546,11 @@ body {
   .game-controls button {
     min-width: 100px;
     font-size: 0.8rem;
+    padding: 0.6rem;
   }
 
   .player-hand {
-    bottom: 10%; /* Position modifiée pour petit mobile */
+    bottom: 15%; /* Ajustement petit mobile */
     padding: 0.5rem;
   }
 
@@ -639,41 +569,6 @@ body {
   }
 
   #chat-input {
-    padding: 10px;
+    padding: 10px 12px;
   }
-}
-
-/* Rendre la pioche cliquable */
-.deck-pile.clickable {
-  cursor: pointer;
-  position: relative;
-  z-index: 25; /* Z-index élevé pour être au-dessus des autres éléments */
-}
-
-/* Zones de défausse par joueur */
-.discard-zones {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-.discard-zone {
-  position: absolute;
-  width: calc(var(--card-width-base) * 0.6);
-  height: calc(var(--card-height-base) * 0.6);
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 2px;
-  pointer-events: auto;
-  z-index: 15;
-}
-#discard-zone-0 { top: 5%; left: 50%; transform: translateX(-50%); }
-#discard-zone-1 { top: 50%; right: 5%; transform: translateY(-50%); }
-#discard-zone-2 { bottom: 5%; left: 50%; transform: translateX(-50%) rotate(180deg); }
-#discard-zone-3 { top: 50%; left: 5%; transform: translateY(-50%); }
-
-/* Correction pour les cartes défaussées */
-#global-discard {
-  z-index: 20; /* S'assurer qu'elle est au-dessus du plateau */
 }
