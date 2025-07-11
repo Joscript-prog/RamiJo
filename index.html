@@ -9,8 +9,6 @@
     href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Poppins:wght@600&display=swap"
   />
   <link rel="stylesheet" href="style.css" />
-  <script type="module" src="firebase.js"></script>
-  <script type="module" src="game.js"></script>
 </head>
 <body>
   <div id="menu" class="menu-overlay">
@@ -39,7 +37,7 @@
     </div>
   </div>
 
-  <div id="game">
+  <div id="game" style="display:none">
     <header class="game-header">
       <div class="header-left">
         <div id="status" class="game-status">Préparation de la partie...</div>
@@ -72,7 +70,6 @@
             </div>
           </div>
         </div>
-
         <div id="hand" class="player-hand"></div>
       </main>
     </div>
@@ -90,5 +87,9 @@
       </form>
     </div>
   </div>
+
+  <!-- Firebase doit être chargé avant game.js -->
+  <script type="module" src="firebase.js" defer></script>
+  <script type="module" src="game.js" defer></script>
 </body>
 </html>
