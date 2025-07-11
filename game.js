@@ -924,7 +924,7 @@ async function createRoom() {
   enableChat();
 
   menuDiv.style.display = 'none';
-  gameDiv.style.display = 'block';
+ gameDiv.style.display = 'flex'; 
 
   actionCreateRoomPopup();
 }
