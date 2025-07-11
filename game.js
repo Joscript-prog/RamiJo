@@ -935,19 +935,19 @@ async function joinRoom() {
     return;
   }
 
-const roomRef = ref(db, `rooms/${roomCode}`);
-const snapshot = await get(roomRef);
-if (!snapshot.exists()) {
-  alert("Cette salle n'existe pas.");
-  return;
-}
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  const snapshot = await get(roomRef);
+  if (!snapshot.exists()) {
+    alert("Cette salle n'existe pas.");
+    return;
+  }
 
-// Vérifier si la partie a déjà commencé
-const stateSnap = await get(ref(db, `rooms/${roomCode}/state`));
-if (stateSnap.exists() && stateSnap.val()?.started) {
-  alert("La partie a déjà commencé.");
-  return;
-}
+  // Vérifier si la partie a déjà commencé
+  const stateSnap = await get(ref(db, `rooms/${roomCode}/state`));
+  if (stateSnap.exists() && stateSnap.val()?.started) {
+    alert("La partie a déjà commencé.");
+    return;
+  }
 
   const playersSnap = await get(ref(db, `rooms/${roomCode}/players`));
   const players = playersSnap.val() || {};
@@ -962,12 +962,14 @@ if (stateSnap.exists() && stateSnap.val()?.started) {
     return;
   }
 
+  // Ajout du joueur
   await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
     pseudo: pseudo
   });
 
   currentRoom = roomCode;
 
+  // Écoute des données
   listenPlayers(roomCode);
   listenScores(roomCode);
   listenDiscard(roomCode);
@@ -976,11 +978,26 @@ if (stateSnap.exists() && stateSnap.val()?.started) {
   setupPlayerHandDiscardListener();
   enableChat();
 
+  // Affichage du jeu
   menuDiv.style.display = 'none';
   gameDiv.style.display = 'block';
 
+  // **---- NOUVEAU : démarrage automatique ----**
+  const updatedPlayersSnap = await get(ref(db, `rooms/${roomCode}/players`));
+  const updatedPlayers = Object.keys(updatedPlayersSnap.val() || {});
+  if (updatedPlayers.length >= 2) {
+    // Distribue les cartes
+    await dealCards(roomCode, updatedPlayers);
+    // Initialise le tour au premier joueur
+    await set(ref(db, `rooms/${roomCode}/turn`), updatedPlayers[0]);
+    // Marque la partie comme démarrée
+    await update(ref(db, `rooms/${roomCode}/state`), { started: true });
+  }
+  // ------------------------------------------
+
   showPopup(`<p>Connecté à la salle <b>${roomCode}</b></p>`);
 }
+
 
 
 document.addEventListener('DOMContentLoaded', () => {
