@@ -51,57 +51,77 @@
       </div>
     </header>
 
-    <div class="game-main-content">
-      <aside class="game-controls">
-        <button id="declare7N" class="btn-special" disabled>7 Naturel</button>
-        <button id="declareWin" class="btn-special" disabled>Déclarer Victoire</button>
-        <button id="endTurnBtn" class="btn-action" disabled>Terminer le tour</button>
-        <button id="startGameBtn" class="btn-action" style="display:none;">Démarrer la partie</button>
-        <button id="remind7NBtn" class="btn btn-secondary">
-          Réafficher mes 7 cartes
-        </button>
-      </aside>
+    <div class="game-play-area"> <!-- Nouveau conteneur principal -->
+      <div class="game-main-content">
+        <aside class="game-controls">
+          <button id="declare7N" class="btn-special" disabled>7 Naturel</button>
+          <button id="declareWin" class="btn-special" disabled>Déclarer Victoire</button>
+          <button id="endTurnBtn" class="btn-action" disabled>Terminer le tour</button>
+          <button id="startGameBtn" class="btn-action" style="display:none;">Démarrer la partie</button>
+          <button id="remind7NBtn" class="btn btn-secondary">
+            Réafficher mes 7 cartes
+          </button>
+        </aside>
 
-      <main class="game-table">
-        <div id="players" class="players-circle"></div>
-        <div class="game-center">
-          <div class="table-center">
-            <div class="deck-area">
-              <div class="deck-pile clickable" id="deck">
-                <div class="card back"></div>
+        <main class="game-table">
+          <div id="players" class="players-circle"></div>
+          <div class="game-center">
+            <div class="table-center">
+              <div class="deck-area">
+                <div class="deck-pile clickable" id="deck">
+                  <div class="card back"></div>
+                </div>
+                <div class="deck-label">Pioche</div>
               </div>
-              <div class="deck-label">Pioche</div>
             </div>
-            <!-- J'ai retiré la défausse d'ici pour la placer plus bas -->
+            
+            <!-- Zone de défausse -->
+            <div id="global-discard">
+              <div class="discard-label">Défausses</div>
+            </div>
           </div>
-          
-          <!-- Zone de défausse déplacée ICI -->
-          <div id="global-discard">
-            <div class="discard-label">Défausses</div>
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
+
+      <!-- Main du joueur -->
+      <div id="hand" class="player-hand"></div>
     </div>
 
-    <!-- Main du joueur placée en dehors du game-table -->
-    <div id="hand" class="player-hand"></div>
-
+    <!-- Tchat avec nouvelle structure -->
     <div id="chat-container">
-      <div id="chat-messages"></div>
-      <form id="chat-form">
-        <input
-          type="text"
-          id="chat-input"
-          placeholder="Message..."
-          autocomplete="off"
-        />
-        <button type="submit">Envoyer</button>
-      </form>
+      <div class="chat-header">
+        <h3>Chat</h3>
+        <span>▼</span>
+      </div>
+      <div class="chat-content">
+        <div id="chat-messages"></div>
+        <form id="chat-form">
+          <input
+            type="text"
+            id="chat-input"
+            placeholder="Message..."
+            autocomplete="off"
+          />
+          <button type="submit">Envoyer</button>
+        </form>
+      </div>
     </div>
   </div>
 
   <!-- Firebase doit être chargé avant game.js -->
   <script type="module" src="firebase.js" defer></script>
   <script type="module" src="game.js" defer></script>
+  
+  <!-- Script pour gérer le tchat -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const chatHeader = document.querySelector('.chat-header');
+      if (chatHeader) {
+        chatHeader.addEventListener('click', () => {
+          document.getElementById('chat-container').classList.toggle('open');
+        });
+      }
+    });
+  </script>
 </body>
 </html>
