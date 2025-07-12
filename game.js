@@ -517,62 +517,67 @@ function listenHandCounts(room) {
     });
   });
 }
-// Modifier la fonction listenDiscard
 function listenDiscard(room) {
-  onValue(ref(db, `rooms/${room}/discard`), snap => {
+  onValue(ref(db, `rooms/${room}/discard`), async snap => {
     const discards = snap.val() || {};
     const discardArea = document.getElementById('global-discard');
     
-    // Vider la zone avant de reconstruire
-    while (discardArea.children.length > 1) {
-      discardArea.removeChild(discardArea.lastChild);
-    }
+    // Garder le label "Défausse"
+    const discardLabel = discardArea.querySelector('.discard-label');
+    discardArea.innerHTML = '';
+    if (discardLabel) discardArea.appendChild(discardLabel);
 
-    Object.entries(discards).forEach(([pid, pile]) => {
+    // Récupérer les pseudos des joueurs
+    const playersSnap = await get(ref(db, `rooms/${room}/players`));
+    const players = playersSnap.val() || {};
+
+    Object.entries(discards).forEach(([playerId, pile]) => {
+      // Ne pas afficher les défausses vides
+      if (!pile || pile.length === 0) return;
+
       const playerDiscard = document.createElement('div');
       playerDiscard.className = 'player-discard';
-      playerDiscard.id = `discard-${pid}`;
+      playerDiscard.id = `discard-${playerId}`;
       
       const playerName = document.createElement('div');
       playerName.className = 'player-name';
-      playerName.textContent = `Joueur ${pid === playerId ? 'vous' : pid.substring(7)}`;
+      playerName.textContent = players[playerId]?.pseudo || `Joueur ${playerId.substring(7)}`;
       
       const cardContainer = document.createElement('div');
       cardContainer.className = 'discard-cards';
 
-      if (pile.length > 0) {
-        const topCard = pile[pile.length - 1];
-        const cardEl = document.createElement('div');
-        cardEl.className = `card ${topCard.color}`;
-        cardEl.innerHTML = `
-          <div class="corner top"><span>${topCard.rank}</span><span>${topCard.symbol}</span></div>
-          <div class="suit main">${topCard.symbol}</div>
-          <div class="corner bottom"><span>${topCard.rank}</span><span>${topCard.symbol}</span></div>
-        `;
-        
-        // Rendre cliquable seulement si ce n'est pas la propre défausse du joueur
-        if (pid !== playerId) {
-          cardEl.style.cursor = 'pointer';
-          cardEl.onclick = async () => {
-            const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-            if (turnSnap.val() === playerId) {
-              takeDiscardedCard(pid);
-            } else {
-              alert("Ce n'est pas votre tour.");
-            }
-          };
-        }
-        
-        cardContainer.appendChild(cardEl);
+      // Afficher uniquement la dernière carte défaussée
+      const topCard = pile[pile.length - 1];
+      const cardEl = document.createElement('div');
+      cardEl.className = `card ${topCard.color}`;
+      cardEl.dataset.cardId = topCard.id;
+      cardEl.dataset.playerId = playerId;
+      cardEl.innerHTML = `
+        <div class="corner top"><span>${topCard.rank}</span><span>${topCard.symbol}</span></div>
+        <div class="suit main">${topCard.symbol}</div>
+        <div class="corner bottom"><span>${topCard.rank}</span><span>${topCard.symbol}</span></div>
+      `;
+      
+      // Rendre cliquable seulement si ce n'est pas la propre défausse du joueur
+      if (playerId !== playerId) {
+        cardEl.style.cursor = 'pointer';
+        cardEl.addEventListener('click', async () => {
+          const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+          if (turnSnap.val() === playerId) {
+            takeDiscardedCard(playerId);
+          } else {
+            alert("Ce n'est pas votre tour.");
+          }
+        });
       }
       
+      cardContainer.appendChild(cardEl);
       playerDiscard.appendChild(playerName);
       playerDiscard.appendChild(cardContainer);
       discardArea.appendChild(playerDiscard);
     });
   });
 }
-
 function listenPlayers(room) {
   onValue(ref(db, `rooms/${room}/players`), async (snap) => {
     const players = Object.entries(snap.val() || {}).map(([id, o]) => ({
