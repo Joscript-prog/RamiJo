@@ -280,6 +280,8 @@ body {
   margin-top: 20px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: var(--radius);
+  position: relative;
+  z-index: 25; /* Supérieur à la main */
 }
 
 .player-discard {
@@ -391,18 +393,15 @@ body {
 }
 
 .players-circle {
-  position: relative; /* Changé pour le responsive */
-  top: 0;
-  left: 0;
-  transform: none;
   display: flex;
-  gap: 1rem; /* Réduit de 2rem */
-  z-index: 30;
   flex-wrap: wrap;
   justify-content: center;
+  gap: 1rem;
+  z-index: 15; /* Inférieur à la défausse */
   padding: 1rem;
-  max-height: 30vh; /* Limite la hauteur */
+  max-height: 30vh;
   overflow-y: auto;
+  width: 100%; /* Prend toute la largeur */
 }
 
 .player-info {
@@ -439,11 +438,12 @@ body {
 .game-center {
   flex: 1;
   display: flex;
+  flex-direction: column; /* Changé à column */
   align-items: center;
   justify-content: center;
   position: relative;
   padding: 1rem;
-  padding-bottom: 180px; /* Augmenté pour les nouvelles cartes */
+  padding-bottom: 220px; /* Augmenté pour plus d'espace */
 }
 
 .table-center {
@@ -592,7 +592,7 @@ body {
 /* Main du joueur */
 .player-hand {
   position: fixed;
-  bottom: var(--hand-bottom); /* Position améliorée */
+  bottom: var(--hand-bottom);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -601,13 +601,13 @@ body {
   background: rgba(255,255,255,0.1);
   backdrop-filter: blur(10px);
   border-radius: var(--radius);
-  max-width: 95vw; /* Amélioration responsive */
+  max-width: 95vw;
   overflow-x: auto;
-  z-index: 20;
+  z-index: 20; /* Inférieur à la défausse */
   border: 1px solid rgba(255,255,255,0.2);
   box-shadow: var(--shadow-lg);
-  scrollbar-width: thin; /* Scrollbar fine pour mobile */
 }
+
 
 .player-hand .card { 
   flex-shrink: 0; 
@@ -636,11 +636,12 @@ body {
   border: 1px solid rgba(255,255,255,0.2);
   border-bottom: none;
   box-shadow: var(--shadow-xl);
-  max-width: 90vw; /* Responsive */
+  max-width: 90vw;
+  height: var(--chat-height); /* Ajouté */
 }
-
 #chat-container.open { 
   transform: translateY(0); 
+  height: auto; /* Modifié */
 }
 
 #chat-messages { 
