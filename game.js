@@ -853,13 +853,17 @@ async function endTurn() {
 
 function setupPlayerHandDiscardListener() {
   let lastClickTime = 0;
+  let lastCardId = null;
   
   playerHandDiv.addEventListener('click', async e => {
     const cardEl = e.target.closest('.card');
     if (!cardEl) return;
-
+    
+    const cardId = cardEl.dataset.cardId;
     const now = Date.now();
-    if (now - lastClickTime < 300) { // Double-clic détecté (300ms)
+    
+    // Double-clic détecté (300ms sur la même carte)
+    if (lastCardId === cardId && now - lastClickTime < 300) {
       const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
       if (turnSnap.val() !== playerId) {
         return alert("Ce n'est pas votre tour.");
@@ -875,7 +879,6 @@ function setupPlayerHandDiscardListener() {
         return alert("Vous devez piocher ou prendre une carte avant de défausser.");
       }
 
-      const cardId = cardEl.dataset.cardId;
       let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
       const idx = hand.findIndex(c => c.id === cardId);
       if (idx === -1) return;
@@ -892,12 +895,17 @@ function setupPlayerHandDiscardListener() {
       hasDiscardedThisTurn = true;
 
       await endTurn();
+      
+      // Réinitialiser pour éviter les actions multiples
+      lastCardId = null;
+      lastClickTime = 0;
+    } else {
+      // Premier clic ou nouvelle carte
+      lastCardId = cardId;
+      lastClickTime = now;
     }
-    
-    lastClickTime = now;
   });
 }
-
 function enableChat() {
   toggleChatBtn.addEventListener('click', () => {
     chatContainer.classList.toggle('open');
