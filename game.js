@@ -369,6 +369,23 @@ function createDeck() {
   }
   return deck;
 }
+function shuffle(array) {
+  let currentIndex = array.length, randomIndex;
+
+  // Tant qu’il reste des éléments à mélanger
+  while (currentIndex !== 0) {
+    // Prend un élément au hasard
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+
+    // Et l’échange avec l’élément actuel
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+
+  return array;
+}
+
 async function dealCards(roomId, playerIds) {
   let deck = shuffle(createDeck());
 
