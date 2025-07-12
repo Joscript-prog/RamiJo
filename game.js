@@ -708,10 +708,9 @@ function listenHand(room) {
   onValue(ref(db, `rooms/${room}/hands/${playerId}`), snap => {
     const hand = snap.val() || [];
     renderHand(hand);
-    updateActionButtons(hand);
+    updateActionButtons(hand); 
   });
 }
-// 1. Fonction pour émettre la notification
 // 1. Fonction pour émettre la notification (déclaration ou rappel)
 async function sendNotification(type, isReminder = false) {
   const notifRef = ref(db, `rooms/${currentRoom}/notifications`);
@@ -736,8 +735,13 @@ async function sendNotification(type, isReminder = false) {
 
   return push(notifRef, payload);
 }
+async function updateActionButtons(hand) {
+  const jokerSnap = await get(ref(db, `rooms/${currentRoom}/jokerSet`));
+  const jokerSet  = jokerSnap.val()?.jokerSet || [];
 
-
+  declare7NBtn.disabled   = !Rules.has7Naturel(hand);
+  declareWinBtn.disabled  = !Rules.validateWinHandWithJoker(hand, jokerSet);
+}
 async function terminateGame(winnerId) {
   const winnerPseudoSnap = await get(ref(db, `rooms/${currentRoom}/players/${winnerId}/pseudo`));
   const winnerPseudo = winnerPseudoSnap.val() || 'Joueur Inconnu';
@@ -1089,20 +1093,40 @@ async function createRoom() {
   // Définir le tour sur le joueur actuel (le créateur)
   await set(ref(db, `rooms/${roomCode}/turn`), playerId);
 
-  listenPlayers(roomCode);
-  listenScores(roomCode);
-  listenDiscard(roomCode);
-  listenHand(roomCode);
-  listenTurn(roomCode);
-  setupPlayerHandDiscardListener();
-  enableChat();
-  listenJokerCard(roomCode);
-  listenNotifications(roomCode);
+listenPlayers(roomCode);
+listenScores(roomCode);
+listenDiscard(roomCode);
+listenHand(roomCode);
+listenTurn(roomCode);    // ← maintenant défini
+setupPlayerHandDiscardListener();
+enableChat();
+listenJokerCard(roomCode);
+listenNotifications(roomCode);
   menuDiv.style.display = 'none';
   gameDiv.style.display = 'flex';
 
   actionCreateRoomPopup();
 }
+function listenTurn(room) {
+  onValue(ref(db, `rooms/${room}/turn`), snap => {
+    const turn = snap.val();
+    const myTurn = turn === playerId;
+    hasDrawnOrPicked = false;
+    hasDiscardedThisTurn = false;
+
+    status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente…";
+
+    // Activ/ désactive la pioche
+    deckPile.style.pointerEvents = myTurn ? 'auto' : 'none';
+    deckPile.style.opacity       = myTurn ? '1'    : '0.5';
+
+    // Bouton "Terminer" n’apparaît que si c’est ton tour ET que tu as pioché ET défaussé
+    if (endTurnBtn) {
+      endTurnBtn.disabled = !myTurn || !hasDrawnOrPicked || !hasDiscardedThisTurn;
+    }
+  });
+}
+
 
 async function joinRoom() {
   const roomCode = roomInput.value.trim().toUpperCase();
