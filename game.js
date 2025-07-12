@@ -1060,7 +1060,7 @@ async function joinRoom() {
 
   // Ajout du joueur
   await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-    pseudo: myPseudo
+    pseudo: myPseudo,
     isSpectator: gameStarted // Marquer comme spectateur si la partie a commencé
   });
 
