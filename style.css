@@ -322,6 +322,32 @@ body {
 .card.dealing { animation:dealCard 0.5s ease-out; }
 @keyframes dealCard { from{transform:translateY(-100px) rotate(180deg); opacity:0;} to{transform:translateY(0) rotate(0deg); opacity:1;} }
 
+/* Cartes - couleurs basées sur le data-suit */
+.card[data-suit="Coeurs"] .corner span:last-child,
+.card[data-suit="Coeurs"] .suit.main,
+.card[data-suit="Carreaux"] .corner span:last-child,
+.card[data-suit="Carreaux"] .suit.main {
+  color: var(--card-red) !important;
+}
+
+.card[data-suit="Trèfles"] .corner span:last-child,
+.card[data-suit="Trèfles"] .suit.main,
+.card[data-suit="Piques"] .corner span:last-child,
+.card[data-suit="Piques"] .suit.main {
+  color: var(--card-black) !important;
+}
+
+/* Pour le joker display */
+.joker-display .card[data-suit="Coeurs"],
+.joker-display .card[data-suit="Carreaux"] {
+  color: var(--card-red) !important;
+}
+
+.joker-display .card[data-suit="Trèfles"],
+.joker-display .card[data-suit="Piques"] {
+  color: var(--card-black) !important;
+}
+
 /* Accessibilité */
 @media (prefers-reduced-motion:reduce) { *{animation-duration:0.01ms!important;transition-duration:0.01ms!important;} }
 .card:focus, .btn:focus, .room-input:focus { outline:2px solid var(--secondary); outline-offset:2px; }
