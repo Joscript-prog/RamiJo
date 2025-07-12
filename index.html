@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rami en ligne - Jeu de cartes multijoueur</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
   <link rel="stylesheet" href="style.css" />
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="game.js"></script>
 </head>
 <body>
   <div id="menu" class="menu-overlay">
@@ -18,58 +21,48 @@
       <div class="menu-section">
         <h2>Rejoindre une partie</h2>
         <div class="join-form">
-          <input type="text" id="roomCodeInput" placeholder="Code de partie" maxlength="7" pattern="RAMI\\d{3}" title="Un code de partie ressemble à RAMI123" />
+          <input
+            type="text"
+            id="roomCodeInput"
+            placeholder="Code de partie"
+            class="room-input"
+            maxlength="7"
+            pattern="RAMI\\d{3}"
+            title="Un code de partie ressemble à RAMI123"
+          />
           <button id="joinRoom" class="btn btn-secondary">Rejoindre</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div id="game" style="display:none">
+  <div id="game">
     <header class="game-header">
-      <div class="header-left">
-        <div id="status" class="game-status">Préparation de la partie...</div>
-        <div id="joker" class="joker-display"></div>
-      </div>
-      <div class="header-right">
-        <button id="toggleChat" class="chat-toggle">💬</button>
-      </div>
+      <div id="status" class="game-status">Préparation de la partie...</div>
+      <div id="joker" class="joker-display"></div>
     </header>
 
     <div class="game-main-content">
       <aside class="game-controls">
         <button id="declare7N" class="btn-special" disabled>7 Naturel</button>
         <button id="declareWin" class="btn-special" disabled>Déclarer Victoire</button>
-        <button id="endTurnBtn" class="btn-action" disabled>Terminer le tour</button>
+        <button id="drawCard" class="btn-action" disabled>Piocher</button>
       </aside>
 
       <main class="game-table">
         <div id="players" class="players-circle"></div>
+
         <div class="game-center">
-          <div class="table-center">
-            <div class="deck-area">
-              <div id="deck" class="deck-pile clickable"><div class="card back"></div></div>
-              <div class="deck-label">Pioche</div>
-            </div>
-            <div id="global-discard" class="discard-area">
-              <div class="discard-label">Défausse</div>
+          <div id="deck-area" class="game-zone">
+            <div class="deck-pile" id="deck">
+              <div class="card back"></div>
             </div>
           </div>
         </div>
+
         <div id="hand" class="player-hand"></div>
       </main>
     </div>
-
-    <div id="chat-container">
-      <div id="chat-messages"></div>
-      <form id="chat-form">
-        <input type="text" id="chat-input" placeholder="Message..." autocomplete="off" />
-        <button type="submit">Envoyer</button>
-      </form>
-    </div>
   </div>
-
-  <script type="module" src="firebase.js" defer></script>
-  <script type="module" src="game.js" defer></script>
 </body>
 </html>
