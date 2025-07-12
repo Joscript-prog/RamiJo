@@ -1,104 +1,383 @@
+
 :root {
   --primary: #2c3e50;
-  --secondary: #3498db;
+  --secondary: #2980b9;
   --accent: #e74c3c;
   --success: #27ae60;
   --warning: #f39c12;
-  --danger: #e74c3c;
   --text: #2d3436;
-  --text-light: #7f8c8d;
-  --text-white: #ffffff;
-  --bg: #f8f9fa;
-  --gradient-primary: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-  --gradient-success: linear-gradient(135deg, #27ae60 0%, #229954 100%);
-  --card-white: #ffffff;
+  --text-light: #636e72;
+  --bg: #f5f6fa;
+  --felt-green: #2e7d32;
+  --card-white: #fff;
   --card-red: #e74c3c;
-  --card-black: #2c3e50;
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.15);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.2);
-  --radius: 12px;
-  --radius-sm: 8px;
+  --card-black: #2d3436;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.15);
+  --shadow-lg: 0 8px 16px rgba(0,0,0,0.2);
+  --radius: 10px;
   --transition: all 0.3s ease;
-  --card-width: 80px;
-  --card-height: 120px;
-  --hand-bottom: 20px;
+  --card-width-base: 80px;
+  --card-height-base: 120px;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
   font-family: 'Roboto', sans-serif;
-  background: var(--bg);
+  background-color: var(--bg);
   color: var(--text);
+  line-height: 1.6;
   min-height: 100vh;
+  padding: 20px;
   overflow-x: hidden;
+}
+
+/* Menu */
+#menu {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.menu-content {
+  background: white;
+  padding: 2rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+
+.menu-section {
+  margin: 2rem 0;
+}
+
+/* Game layout */
+#game {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 40px);
+  background-color: var(--felt-green);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: rgba(0,0,0,0.1);
+  color: white;
+}
+
+.game-main-content {
+  flex: 1;
+  display: flex;
+  position: relative;
+}
+
+/* Controls */
+.game-controls {
+  width: 200px;
+  background: rgba(255,255,255,0.9);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 10;
+}
+
+.game-controls button {
+  padding: 0.75rem;
+  border: none;
+  border-radius: 5px;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.game-controls button:hover {
+  background: var(--secondary);
+}
+
+.game-controls button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-special {
+  background: var(--accent) !important;
+}
+
+/* Table de jeu */
+.game-table {
+  flex: 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Cercle des joueurs */
+.players-circle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.players-circle.two-players {
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.players-circle.two-players .player-badge {
+  position: static;
+  transform: none;
+  margin: 20px 0;
+}
+
+.player-badge {
+  position: absolute;
+  width: 160px;
+  padding: 1rem;
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+  transition: var(--transition);
+}
+
+.player-badge.current-player {
+  border: 2px solid var(--accent);
+}
+
+.player-badge.current-turn {
+  box-shadow: 0 0 0 3px var(--warning);
+}
+
+.player-name {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.player-score {
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+/* Main des adversaires */
+.opponent-hand {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 0.5rem;
+}
+
+.opponent-hand .card {
+  width: 30px;
+  height: 45px;
+  font-size: 0.7rem;
+  padding: 3px;
+}
+
+/* Défausses */
+.discard-pile {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 0.5rem;
+}
+
+.discard-card {
+  width: 30px;
+  height: 45px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.8rem;
+  background: white;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.discard-card.red { color: var(--card-red); }
+.discard-card.black { color: var(--card-black); }
+
+.discard-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Zone centrale */
+.game-center {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  gap: 2rem;
+  margin-top: 20px;
+}
+
+.game-zone {
+  width: var(--card-width-base);
+  height: var(--card-height-base);
 }
 
 /* Cartes */
 .card {
-  width: var(--card-width);
-  height: var(--card-height);
+  width: var(--card-width-base);
+  height: var(--card-height-base);
   background: var(--card-white);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   box-shadow: var(--shadow-md);
-  position: relative;
-  cursor: pointer;
-  transition: var(--transition);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 0.5rem;
+  padding: 10px;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
   user-select: none;
 }
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-lg);
+
+.card.red { color: var(--card-red); }
+.card.black { color: var(--card-black); }
+
+.card .corner {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  line-height: 1;
 }
+
+.card .corner.bottom {
+  align-self: flex-end;
+  transform: rotate(180deg);
+}
+
+.card .suit.main {
+  font-size: 2rem;
+  text-align: center;
+  margin: auto 0;
+}
+
 .card.back {
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #1e3a8a 100%);
-  border: 2px solid #1e40af;
-}
-.card.back::before {
-  content: '🂠';
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 3rem;
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 50%, var(--secondary) 100%);
   color: white;
-}
-
-.corner {
-  font-size: 0.7rem;
-  position: absolute;
-  padding: 0.25rem;
-}
-.corner.top { top: 0; left: 0; }
-.corner.bottom { bottom: 0; right: 0; transform: rotate(180deg); }
-
-.suit.main {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
   font-size: 2rem;
 }
-
-.card.red .corner span:last-child,
-.card.red .suit.main { color: var(--card-red); }
-.card.black .corner span:last-child,
-.card.black .suit.main { color: var(--card-black); }
 
 /* Main du joueur */
 .player-hand {
   position: absolute;
-  bottom: var(--hand-bottom);
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   gap: 0.5rem;
   padding: 1rem;
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(10px);
+  background: rgba(255,255,255,0.2);
   border-radius: var(--radius);
+  max-width: 90%;
   overflow-x: auto;
-  z-index: 20;
+  z-index: 10;
 }
-.player-hand .card { flex-shrink: 0; }
+
+.player-hand .card {
+  flex-shrink: 0;
+}
+
+.player-hand .card:hover {
+  transform: translateY(-20px);
+}
+
+/* Animations */
+.card.discarding {
+  animation: discardAnimation 0.5s forwards;
+}
+
+@keyframes discardAnimation {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.5) translateY(-100px); opacity: 0; }
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: var(--radius);
+  max-width: 500px;
+  width: 90%;
+}
+
+.modal-close {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  :root {
+    --card-width-base: 60px;
+    --card-height-base: 90px;
+  }
+  
+  .game-main-content {
+    flex-direction: column;
+  }
+  
+  .game-controls {
+    width: 100%;
+    order: 2;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .game-controls button {
+    flex: 1 1 45%;
+    min-width: 120px;
+  }
+  
+  .player-badge {
+    width: 120px;
+    padding: 0.5rem;
+  }
+  
+  .players-circle.two-players .player-badge {
+    margin: 10px 0;
+  }
+}
