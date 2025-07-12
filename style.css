@@ -298,6 +298,7 @@ body {
   display: flex;
   height: calc(100vh - 80px);
   position: relative;
+  overflow: visible; 
 }
 
 /* Contrôles de jeu */
@@ -571,8 +572,8 @@ body {
 
 /* Main du joueur - CORRECTION MAJEURE */
 .player-hand {
-  position: absolute;
-  bottom: var(--hand-bottom);
+  position: fixed;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -583,7 +584,7 @@ body {
   border-radius: var(--radius);
   max-width: 90%;
   overflow-x: auto;
-  z-index: 20;
+  z-index: 1000;
   border: 1px solid rgba(255,255,255,0.2);
   box-shadow: var(--shadow-lg);
 }
