@@ -98,6 +98,9 @@ body {
   position: relative;
   color: var(--text-light);
   font-weight: 500;
+  background: rgba(255,255,255,0.95);
+  padding: 0 1rem;
+  display: inline-block;
 }
 .separator::before {
   content: '';
@@ -108,11 +111,6 @@ body {
   height: 1px;
   background: linear-gradient(to right, transparent, var(--text-light), transparent);
   z-index: -1;
-}
-.separator {
-  background: rgba(255,255,255,0.95);
-  padding: 0 1rem;
-  display: inline-block;
 }
 .join-form {
   display: flex;
@@ -151,6 +149,9 @@ body {
   overflow: hidden;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  background: var(--secondary);
+  color: var(--text-white);
+  box-shadow: var(--shadow-md);
 }
 .btn::before {
   content: '';
@@ -168,10 +169,13 @@ body {
   width: 300px;
   height: 300px;
 }
+.btn:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+  box-shadow: none;
+}
 .btn-primary {
   background: var(--gradient-primary);
-  color: var(--text-white);
-  box-shadow: var(--shadow-md);
 }
 .btn-primary:focus {
   outline: 2px solid var(--accent);
@@ -183,8 +187,6 @@ body {
 }
 .btn-secondary {
   background: var(--gradient-success);
-  color: var(--text-white);
-  box-shadow: var(--shadow-md);
 }
 .btn-secondary:focus {
   outline: 2px solid var(--accent);
@@ -194,10 +196,15 @@ body {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg), 0 0 20px rgba(39,174,96,0.3);
 }
-.btn:disabled {
-  background: #bdc3c7;
-  cursor: not-allowed;
-  box-shadow: none;
+
+/* Boutons spécifiques */
+.btn-special, .btn-action {
+  background: var(--accent);
+  color: var(--text-white);
+  margin-bottom: 0.5rem;
+}
+.btn-action {
+  background: var(--warning);
 }
 
 /* Game layout */
@@ -210,38 +217,33 @@ body {
   overflow: hidden;
 }
 
-/* Nouveau conteneur pour la zone de jeu */
-.game-container {
+.game-container, .game-main-content {
   flex: 1;
   display: flex;
-  flex-direction: column;
   position: relative;
   height: 100%;
 }
 
-/* Table de jeu */
 .game-table {
-  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
+  position: relative;
   height: 100%;
 }
 
-/* Zone centrale repositionnée */
 .game-center {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  padding-bottom: 140px; /* Espace pour la main du joueur */
+  padding-bottom: 140px;
 }
 
-/* Main du joueur - positionnement révisé */
 .player-hand {
   position: absolute;
-  bottom: 20px;
+  bottom: var(--hand-bottom)px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -254,6 +256,53 @@ body {
   overflow-x: auto;
   z-index: 15;
   border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Players positions */
+.players-circle {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Deck et défausse */
+.deck-area, .discard-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.deck-pile, .discard-pile {
+  width: var(--card-width);
+  height: var(--card-height);
+  position: relative;
+}
+
+.card.back {
+  width: 100%;
+  height: 100%;
+  background: var(--card-black);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.deck-label, .discard-label {
+  font-size: 0.9rem;
+  color: var(--text-light);
+}
+
+/* Joker display */
+.joker-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.joker-display .card {
+  width: calc(var(--card-width) * 0.8);
+  height: calc(var(--card-height) * 0.8);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Chat */
@@ -282,6 +331,19 @@ body {
 #chat-form button { padding: 0.5rem 1rem; background: var(--gradient-primary); color: var(--text-white); border: none; border-radius: var(--radius); cursor: pointer; transition: var(--transition); font-size: 0.9rem; }
 #chat-form button:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
 
+/* Header */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+.game-status { font-size: 1rem; color: var(--text-light); }
+.chat-toggle { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+
 /* Modales */
 .modal { position: fixed; inset:0; background: rgba(0,0,0,0.7); display:flex; justify-content:center; align-items:center; z-index:2000; }
 .modal-content { background:white; padding:2rem; border-radius:var(--radius-lg); box-shadow:var(--shadow-xl); max-width:90%; width:500px; text-align:center; }
@@ -290,61 +352,25 @@ body {
 /* Animations */
 @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
 @keyframes slideUp { from{opacity:0;transform:translateY(30px);} to{opacity:1;transform:translateY(0);} }
+@keyframes dealCard { from{transform:translateY(-100px) rotate(180deg); opacity:0;} to{transform:translateY(0) rotate(0deg); opacity:1;} }
 
-/* Responsive Design */
-@media (max-width:768px) {
-  .menu-content { padding:2rem; margin:1rem; }
-  .menu-content h1 { font-size:2rem; }
-  .join-form { flex-direction:column; align-items:stretch; }
-  .game-controls { width:150px; padding:0.5rem; }
-  .game-header { padding:0.5rem 1rem; }
-  .table-center { gap:2rem; }
-  .player-hand { bottom:calc(var(--hand-bottom) * 1px); padding:0.5rem; }
-  .card { width:calc(var(--card-width)*0.8); height:calc(var(--card-height)*0.8); }
-}
-@media (max-width:480px) {
-  .menu-content { padding:1.5rem; }
-  .menu-content h1 { font-size:1.8rem; }
-  .game-controls { width:120px; padding:0.25rem; }
-  .game-header { padding:0.5rem; font-size:0.9rem; }
-  .table-center { gap:1.5rem; }
-  .player-hand { bottom:calc(var(--hand-bottom)*1px); padding:0.5rem; }
-  .card { width:calc(var(--card-width)*0.7); height:calc(var(--card-height)*0.7); }
-}
-
-/* Effets spéciaux pour les interactions */
+/* Drag & Drop */
 .card.dragging { opacity:0.7; transform:rotate(5deg); }
 .drop-zone { border:2px dashed rgba(52,152,219,0.5); background:rgba(52,152,219,0.1); }
 .drop-zone.valid { border-color:rgba(39,174,96,0.7); background:rgba(39,174,96,0.1); }
 .drop-zone.invalid { border-color:rgba(231,76,60,0.7); background:rgba(231,76,60,0.1); }
 
-/* Animations pour les cartes */
-.card.dealing { animation:dealCard 0.5s ease-out; }
-@keyframes dealCard { from{transform:translateY(-100px) rotate(180deg); opacity:0;} to{transform:translateY(0) rotate(0deg); opacity:1;} }
-
-/* Cartes - couleurs basées sur le data-suit */
+/* Couleurs des cartes */
 .card[data-suit="Coeurs"] .corner span:last-child,
 .card[data-suit="Coeurs"] .suit.main,
 .card[data-suit="Carreaux"] .corner span:last-child,
 .card[data-suit="Carreaux"] .suit.main {
   color: var(--card-red) !important;
 }
-
 .card[data-suit="Trèfles"] .corner span:last-child,
 .card[data-suit="Trèfles"] .suit.main,
 .card[data-suit="Piques"] .corner span:last-child,
 .card[data-suit="Piques"] .suit.main {
-  color: var(--card-black) !important;
-}
-
-/* Pour le joker display */
-.joker-display .card[data-suit="Coeurs"],
-.joker-display .card[data-suit="Carreaux"] {
-  color: var(--card-red) !important;
-}
-
-.joker-display .card[data-suit="Trèfles"],
-.joker-display .card[data-suit="Piques"] {
   color: var(--card-black) !important;
 }
 
