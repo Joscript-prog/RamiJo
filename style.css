@@ -269,7 +269,44 @@ body {
   align-items: center;
   gap: 0.75rem; /* Réduit de 1rem */
 }
+/* Ajoutez ceci dans votre CSS */
+#global-discard {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 1rem;
+  max-width: 100%;
+}
 
+.player-discard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 100px;
+}
+
+.player-discard .player-name {
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.discard-cards {
+  position: relative;
+  min-height: 135px; /* Hauteur de carte */
+}
+
+.discard-cards .card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: none;
+  margin: 0;
+}
 /* Contrôles du jeu */
 .game-controls {
   width: 200px;
