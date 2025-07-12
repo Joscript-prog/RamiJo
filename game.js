@@ -424,6 +424,7 @@ const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatMessages = document.getElementById('chat-messages');
 const endTurnBtn = document.getElementById('endTurnBtn');
+const startGameBtn = document.getElementById('startGameBtn'); // Nouveau bouton
 
 const deckPile = document.getElementById('deck');
 deckPile.classList.add('clickable');
@@ -557,12 +558,29 @@ function listenDiscard(room) {
 }
 
 function listenPlayers(room) {
-  onValue(ref(db, `rooms/${room}/players`), snap => {
+  onValue(ref(db, `rooms/${room}/players`), async (snap) => {
     const players = Object.entries(snap.val() || {}).map(([id, o]) => ({
       id,
       pseudo: o.pseudo
     }));
+    
+    // Vérifier si la partie a commencé
+    const stateSnap = await get(ref(db, `rooms/${room}/state`));
+    const gameStarted = stateSnap.val()?.started;
+    
     renderPlayers(players);
+    
+    // Afficher le bouton "Démarrer" uniquement au créateur si la partie n'a pas commencé
+    if (startGameBtn) {
+      const creatorSnap = await get(ref(db, `rooms/${room}/creator`));
+      const creatorId = creatorSnap.val();
+      
+      if (creatorId === playerId && !gameStarted) {
+        startGameBtn.style.display = 'block';
+      } else {
+        startGameBtn.style.display = 'none';
+      }
+    }
   });
 }
 
@@ -898,6 +916,7 @@ function enableChat() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   });
 }
+
 async function createRoom() {
   const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900);
   currentRoom = roomCode;
@@ -931,7 +950,7 @@ async function createRoom() {
   gameDiv.style.display = 'flex';
 
   actionCreateRoomPopup();
-} // Fin de la fonction - supprimer l'accolade supplémentaire
+}
 
 async function joinRoom() {
   const roomCode = roomInput.value.trim().toUpperCase();
@@ -949,10 +968,7 @@ async function joinRoom() {
 
   // Vérifier si la partie a déjà commencé
   const stateSnap = await get(ref(db, `rooms/${roomCode}/state`));
-  if (stateSnap.exists() && stateSnap.val()?.started) {
-    alert("La partie a déjà commencé.");
-    return;
-  }
+  const gameStarted = stateSnap.exists() && stateSnap.val()?.started;
 
   const playersSnap = await get(ref(db, `rooms/${roomCode}/players`));
   const players = playersSnap.val() || {};
@@ -969,7 +985,8 @@ async function joinRoom() {
 
   // Ajout du joueur
   await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-    pseudo: pseudo
+    pseudo: pseudo,
+    isSpectator: gameStarted // Marquer comme spectateur si la partie a commencé
   });
 
   currentRoom = roomCode;
@@ -988,25 +1005,54 @@ async function joinRoom() {
   menuDiv.style.display = 'none';
   gameDiv.style.display = 'block';
 
-  // Si le créateur est le joueur actuel, alors on démarre la partie
-  const creatorId = (await get(ref(db, `rooms/${roomCode}/creator`))).val();
-  if (creatorId === playerId) {
-    // Récupérer la liste mise à jour des joueurs
-    const updatedPlayersSnap = await get(ref(db, `rooms/${roomCode}/players`));
-    const updatedPlayers = updatedPlayersSnap.val() || {};
-    const playerIds = Object.keys(updatedPlayers);
-    await dealCards(roomCode, playerIds);
-    await set(ref(db, `rooms/${roomCode}/turn`), playerIds[0]);
+  // Afficher un message différent pour les spectateurs
+  if (gameStarted) {
+    showPopup(`<p>Connecté en tant que spectateur à la salle <b>${roomCode}</b></p>`);
+  } else {
+    showPopup(`<p>Connecté à la salle <b>${roomCode}</b></p>`);
   }
+}
 
-  showPopup(`<p>Connecté à la salle <b>${roomCode}</b></p>`);
-} // Fin de la fonction - supprimer l'accolade supplémentaire
+// Fonction pour démarrer la partie
+async function startGame() {
+  if (!currentRoom) return;
+  
+  // Récupérer la liste des joueurs
+  const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
+  const players = playersSnap.val() || {};
+  const playerIds = Object.keys(players);
+  
+  // Distribuer les cartes
+  await dealCards(currentRoom, playerIds);
+  
+  // Initialiser le tour au premier joueur
+  await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
+  
+  // Mettre à jour l'état de la partie
+  await update(ref(db, `rooms/${currentRoom}/state`), {
+    started: true
+  });
+  
+  // Cacher le bouton démarrer
+  if (startGameBtn) {
+    startGameBtn.style.display = 'none';
+  }
+  
+  // Mettre à jour tous les joueurs pour indiquer qu'ils ne sont plus spectateurs
+  playerIds.forEach(id => {
+    update(ref(db, `rooms/${currentRoom}/players/${id}`), {
+      isSpectator: false
+    });
+  });
+}
 
-
+// Ajout de l'écouteur pour le bouton "Démarrer la partie"
+if (startGameBtn) {
+  startGameBtn.addEventListener('click', startGame);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM chargé, initialisation du jeu');
-
 
   console.log('createRoomBtn ?', createRoomBtn, 'joinRoomBtn ?', joinRoomBtn, 'endTurnBtn ?', endTurnBtn);
 
@@ -1019,3 +1065,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (endTurnBtn) endTurnBtn.addEventListener('click', endTurn);
   else console.warn("Le bouton 'endTurnBtn' est introuvable, ajout manuel du DOM ?");
 });
+
+// Fonction pour mélanger le deck (manquante dans votre code)
+function shuffle(array) {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex > 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+  }
+  return array;
+}
