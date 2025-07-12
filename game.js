@@ -443,6 +443,23 @@ const chatMessages = document.getElementById('chat-messages');
 const endTurnBtn = document.getElementById('endTurnBtn');
 const startGameBtn = document.getElementById('startGameBtn'); // Nouveau bouton
 
+const remind7NBtn = document.getElementById('remind7NBtn');
+if (remind7NBtn) {
+  remind7NBtn.addEventListener('click', async () => {
+    // On récupère la main et on extrait le combo
+    const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+    const hand = handSnap.val() || [];
+    const sevenCombo = extractSevenCombo(hand);
+    if (sevenCombo.length === 7) {
+      // Envoi d'une notif de rappel (reminder: true)
+      await sendNotification('7N', true);
+    } else {
+      alert("Aucune combinaison de 7 cartes trouvée.");
+    }
+  });
+}
+
+
 const deckPile = document.getElementById('deck');
 deckPile.classList.add('clickable');
 deckPile.addEventListener('click', drawCard);
@@ -494,26 +511,49 @@ function listenNotifications(room) {
     const notif = snap.val();
     if (!notif) return;
 
-    const message = notif.type === '7N'
-      ? `🎉 ${notif.pseudo} a déclaré un 7 Naturel !`
-      : `🏆 ${notif.pseudo} a déclaré la victoire !`;
-
-    showGlobalPopup(message);
+    if (notif.type === '7N') {
+      const msg = notif.reminder
+        ? `📌 ${notif.pseudo} réaffiche son 7 Naturel :`
+        : `🎉 ${notif.pseudo} a déclaré un 7 Naturel !`;
+      showGlobalPopup(msg, notif.combo);
+    } else if (notif.type === 'win') {
+      showGlobalPopup(`🏆 ${notif.pseudo} a déclaré la victoire !`);
+    }
   });
 }
-function showGlobalPopup(message) {
+
+
+function showGlobalPopup(message, cards = null) {
   const overlay = document.createElement('div');
   overlay.className = 'global-popup-overlay';
 
   const box = document.createElement('div');
   box.className = 'global-popup-box';
-  box.textContent = message;
+
+  box.innerHTML = `<div class="notif-message">${message}</div>`;
+
+  // Ajouter cartes si fournies
+  if (cards && Array.isArray(cards)) {
+    const cardsDiv = document.createElement('div');
+    cardsDiv.className = 'notif-cards';
+    cards.forEach(card => {
+      const cardEl = document.createElement('div');
+      cardEl.className = `card ${card.color}`;
+      cardEl.innerHTML = `
+        <div class="corner top"><span>${card.rank}</span><span>${card.symbol}</span></div>
+        <div class="suit main">${card.symbol}</div>
+        <div class="corner bottom"><span>${card.rank}</span><span>${card.symbol}</span></div>
+      `;
+      cardsDiv.appendChild(cardEl);
+    });
+    box.appendChild(cardsDiv);
+  }
 
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 
-  // Auto-disparition après 4s ou clic
-  setTimeout(() => overlay.remove(), 4000);
+  // Auto-disparition après 3s
+  setTimeout(() => overlay.remove(), 3000);
   overlay.addEventListener('click', () => overlay.remove());
 }
 
@@ -672,43 +712,31 @@ function listenHand(room) {
   });
 }
 // 1. Fonction pour émettre la notification
-function sendNotification(type) {
+// 1. Fonction pour émettre la notification (déclaration ou rappel)
+async function sendNotification(type, isReminder = false) {
   const notifRef = ref(db, `rooms/${currentRoom}/notifications`);
-  return push(notifRef, {
+
+  let payload = {
     type,                   // '7N' ou 'win'
-    playerId,               // ton ID
-    pseudo: myPseudo,       // le pseudo du joueur
+    playerId,               
+    pseudo: myPseudo,       
     timestamp: Date.now(),
-  });
-}
-async function updateActionButtons(hand) {
-  const jokerSnap = await get(ref(db, `rooms/${currentRoom}/jokerSet`));
-  const jokerSet = jokerSnap.val()?.jokerSet || [];
+    reminder: isReminder    // true si c'est un rappel
+  };
 
-  declare7NBtn.disabled = !Rules.has7Naturel(hand);
-  declareWinBtn.disabled = !Rules.validateWinHandWithJoker(hand, jokerSet);
-}
-
-function listenTurn(room) {
-  onValue(ref(db, `rooms/${room}/turn`), snap => {
-    const turn = snap.val();
-    const myTurn = turn === playerId;
-    hasDrawnOrPicked = false;
-    hasDiscardedThisTurn = false;
-
-    status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente...";
-
-    document.querySelectorAll('.player-badge').forEach(badge => {
-      badge.classList.toggle('current-turn', badge.id === `badge-${turn}`);
-    });
-
-    deckPile.style.pointerEvents = myTurn ? 'auto' : 'none';
-    deckPile.style.opacity = myTurn ? '1' : '0.5';
-    if (endTurnBtn) {
-      endTurnBtn.disabled = !myTurn || !hasDrawnOrPicked || !hasDiscardedThisTurn;
+  // S’il s’agit d’un vrai 7N (pas un rappel), inclure les 7 cartes
+  if (type === '7N' && !isReminder) {
+    const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+    const hand = handSnap.val() || [];
+    const sevenCombo = extractSevenCombo(hand);
+    if (sevenCombo.length === 7) {
+      payload.combo = sevenCombo;
     }
-  });
+  }
+
+  return push(notifRef, payload);
 }
+
 
 async function terminateGame(winnerId) {
   const winnerPseudoSnap = await get(ref(db, `rooms/${currentRoom}/players/${winnerId}/pseudo`));
@@ -903,6 +931,15 @@ async function endTurn() {
     const current = playerId;
     const idx = players.indexOf(current);
     const next = players[(idx + 1) % players.length];
+
+    if (!players.includes(playerId)) {
+  console.warn("⚠️ Le joueur courant n'existe pas dans la liste des joueurs.");
+}
+if (players.length < 2) {
+  console.warn("⚠️ Moins de 2 joueurs. Impossible de passer au joueur suivant.");
+  return alert("Erreur : pas assez de joueurs actifs pour continuer.");
+}
+console.log("Joueurs trouvés :", players);
 
     // Met à jour le tour et l’état
     await Promise.all([
