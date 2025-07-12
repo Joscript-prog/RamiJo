@@ -4,10 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rami en ligne - Jeu de cartes multijoueur</title>
-  <link
-    rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Poppins:wght@600&display=swap"
-  />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -22,15 +18,7 @@
       <div class="menu-section">
         <h2>Rejoindre une partie</h2>
         <div class="join-form">
-          <input
-            type="text"
-            id="roomCodeInput"
-            placeholder="Code de partie"
-            class="room-input"
-            maxlength="7"
-            pattern="RAMI\\d{3}"
-            title="Un code de partie ressemble à RAMI123"
-          />
+          <input type="text" id="roomCodeInput" placeholder="Code de partie" maxlength="7" pattern="RAMI\\d{3}" title="Un code de partie ressemble à RAMI123" />
           <button id="joinRoom" class="btn btn-secondary">Rejoindre</button>
         </div>
       </div>
@@ -60,12 +48,10 @@
         <div class="game-center">
           <div class="table-center">
             <div class="deck-area">
-              <div class="deck-pile clickable" id="deck">
-                <div class="card back"></div>
-              </div>
+              <div id="deck" class="deck-pile clickable"><div class="card back"></div></div>
               <div class="deck-label">Pioche</div>
             </div>
-            <div class="discard-area" id="global-discard">
+            <div id="global-discard" class="discard-area">
               <div class="discard-label">Défausse</div>
             </div>
           </div>
@@ -77,18 +63,12 @@
     <div id="chat-container">
       <div id="chat-messages"></div>
       <form id="chat-form">
-        <input
-          type="text"
-          id="chat-input"
-          placeholder="Message..."
-          autocomplete="off"
-        />
+        <input type="text" id="chat-input" placeholder="Message..." autocomplete="off" />
         <button type="submit">Envoyer</button>
       </form>
     </div>
   </div>
 
-  <!-- Firebase doit être chargé avant game.js -->
   <script type="module" src="firebase.js" defer></script>
   <script type="module" src="game.js" defer></script>
 </body>
