@@ -517,29 +517,42 @@ function listenHandCounts(room) {
     });
   });
 }
+// Modifier la fonction listenDiscard
 function listenDiscard(room) {
   onValue(ref(db, `rooms/${room}/discard`), snap => {
     const discards = snap.val() || {};
+    const discardArea = document.getElementById('global-discard');
+    
+    // Vider la zone avant de reconstruire
+    while (discardArea.children.length > 1) {
+      discardArea.removeChild(discardArea.lastChild);
+    }
+
     Object.entries(discards).forEach(([pid, pile]) => {
-      const el = document.getElementById(`discard-${pid}`);
-      if (!el) return;
-      const top = pile.length ? pile[pile.length - 1] : null;
-      el.innerHTML = top ? `
-        <div class="discard-card ${top.color}"
-             data-card-id="${top.id}"
-             data-player-id="${pid}"
-             data-rank="${top.rank}"
-             data-symbol="${top.symbol}"
-             data-color="${top.color}"
-             data-suit="${top.suit}"
-             data-value="${top.value}">
-          ${top.rank}${top.symbol}
-        </div>
-      ` : '';
-      if (top) {
-        const cardEl = el.querySelector('.discard-card');
-        cardEl.style.cursor = 'pointer';
+      const playerDiscard = document.createElement('div');
+      playerDiscard.className = 'player-discard';
+      playerDiscard.id = `discard-${pid}`;
+      
+      const playerName = document.createElement('div');
+      playerName.className = 'player-name';
+      playerName.textContent = `Joueur ${pid === playerId ? 'vous' : pid.substring(7)}`;
+      
+      const cardContainer = document.createElement('div');
+      cardContainer.className = 'discard-cards';
+
+      if (pile.length > 0) {
+        const topCard = pile[pile.length - 1];
+        const cardEl = document.createElement('div');
+        cardEl.className = `card ${topCard.color}`;
+        cardEl.innerHTML = `
+          <div class="corner top"><span>${topCard.rank}</span><span>${topCard.symbol}</span></div>
+          <div class="suit main">${topCard.symbol}</div>
+          <div class="corner bottom"><span>${topCard.rank}</span><span>${topCard.symbol}</span></div>
+        `;
+        
+        // Rendre cliquable seulement si ce n'est pas la propre défausse du joueur
         if (pid !== playerId) {
+          cardEl.style.cursor = 'pointer';
           cardEl.onclick = async () => {
             const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
             if (turnSnap.val() === playerId) {
@@ -548,11 +561,14 @@ function listenDiscard(room) {
               alert("Ce n'est pas votre tour.");
             }
           };
-        } else {
-          cardEl.onclick = null;
-          cardEl.style.cursor = 'default';
         }
+        
+        cardContainer.appendChild(cardEl);
       }
+      
+      playerDiscard.appendChild(playerName);
+      playerDiscard.appendChild(cardContainer);
+      discardArea.appendChild(playerDiscard);
     });
   });
 }
