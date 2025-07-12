@@ -875,42 +875,58 @@ async function takeDiscardedCard(ownerId) {
 }
 
 async function endTurn() {
-  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-  if (turnSnap.val() !== playerId) {
-    return alert("Ce n'est pas votre tour.");
+  try {
+    // Vérifie si c’est bien le tour du joueur
+    const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+    if (turnSnap.val() !== playerId) {
+      return alert("Ce n'est pas votre tour.");
+    }
+
+    // Récupère l’état actuel de la partie
+    const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+    const state = stateSnap.val() || {};
+
+    // Doit avoir pioché ou pris une carte
+    if (!hasDrawnOrPicked) {
+      return alert("Vous devez piocher une carte (ou en prendre une de la défausse) avant de terminer votre tour.");
+    }
+
+    // Vérifie que le joueur a bien défaussé une carte pour avoir 13 cartes restantes
+    const currentHand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+    if (currentHand.length !== 13) {
+      return alert("Vous devez défausser une carte pour avoir 13 cartes en main avant de terminer votre tour.");
+    }
+
+    // Détermine le prochain joueur
+    const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
+    const players = Object.keys(playersSnap.val() || []);
+    const current = playerId;
+    const idx = players.indexOf(current);
+    const next = players[(idx + 1) % players.length];
+
+    // Met à jour le tour et l’état
+    await Promise.all([
+      set(ref(db, `rooms/${currentRoom}/turn`), next),
+      update(ref(db, `rooms/${currentRoom}/state`), {
+        lastDiscarder: current,
+        drawCount: 0
+      })
+    ]);
+
+    // Vérifie si la partie doit se terminer
+    await checkEndGame();
+
+    // Réinitialise les états locaux
+    hasDrawnOrPicked = false;
+    hasDiscardedThisTurn = false;
+
+    console.log(`Tour terminé. Prochain joueur : ${next}`);
+  } catch (err) {
+    console.error("Erreur lors de endTurn() :", err);
+    alert("Une erreur est survenue lors de la fin du tour.");
   }
-
-  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-  const state = stateSnap.val() || {};
-
-  if (!hasDrawnOrPicked) {
-    return alert("Vous devez piocher une carte (ou en prendre une de la défausse) avant de terminer votre tour.");
-  }
-
-  const currentHand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-  if (currentHand.length !== 13) {
-    return alert("Vous devez défausser une carte pour avoir 13 cartes en main avant de terminer votre tour.");
-  }
-
-  const players = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || []);
-  const current = playerId;
-
-  const idx = players.indexOf(current);
-  const next = players[(idx + 1) % players.length];
-
-  await Promise.all([
-    set(ref(db, `rooms/${currentRoom}/turn`), next),
-    update(ref(db, `rooms/${currentRoom}/state`), {
-      lastDiscarder: current,
-      drawCount: 0
-    })
-  ]);
-
-  await checkEndGame();
-
-  hasDrawnOrPicked = false;
-  hasDiscardedThisTurn = false;
 }
+
 
 function setupPlayerHandDiscardListener() {
   let lastClickTime = 0;
@@ -953,10 +969,16 @@ function setupPlayerHandDiscardListener() {
         set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
       ]);
 
-      hasDiscardedThisTurn = true;
+      // ✅ Ne marque le tour comme terminé qu'après succès
+      try {
+        await endTurn();
+        hasDiscardedThisTurn = true;
+        console.log("Carte défaussée et tour terminé.");
+      } catch (err) {
+        console.error("Erreur lors de la fin du tour :", err);
+        alert("Une erreur est survenue en terminant le tour.");
+      }
 
-      await endTurn();
-      
       // Réinitialiser pour éviter les actions multiples
       lastCardId = null;
       lastClickTime = 0;
@@ -967,6 +989,7 @@ function setupPlayerHandDiscardListener() {
     }
   });
 }
+
 function enableChat() {
   toggleChatBtn.addEventListener('click', () => {
     chatContainer.classList.toggle('open');
