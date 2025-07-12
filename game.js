@@ -491,9 +491,48 @@ function showPopup(content) {
       <button class="modal-close">Fermer</button>
     </div>`;
   document.body.append(modal);
-  modal.querySelector('.modal-close').onclick = () => modal.remove();
-}
 
+  // Gestion de la touche Échap
+  const keyHandler = (e) => {
+    if (e.key === 'Escape') modal.remove();
+  };
+  
+  document.addEventListener('keydown', keyHandler);
+  
+  // Piégeage du focus
+  const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (focusable.length > 0) {
+    const firstFocusable = focusable[0];
+    const lastFocusable = focusable[focusable.length - 1];
+    
+    firstFocusable.focus();
+    
+    const trapFocus = (e) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey && document.activeElement === firstFocusable) {
+          e.preventDefault();
+          lastFocusable.focus();
+        } else if (!e.shiftKey && document.activeElement === lastFocusable) {
+          e.preventDefault();
+          firstFocusable.focus();
+        }
+      }
+    };
+    
+    modal.addEventListener('keydown', trapFocus);
+  }
+
+  // Nettoyage
+  const closeModal = () => {
+    modal.remove();
+    document.removeEventListener('keydown', keyHandler);
+    if (focusable.length > 0) {
+      modal.removeEventListener('keydown', trapFocus);
+    }
+  };
+  
+  modal.querySelector('.modal-close').onclick = closeModal;
+}
 function actionCreateRoomPopup() {
   showPopup(`
     <h3>Salle créée</h3>
@@ -606,9 +645,15 @@ function listenDiscard(room) {
   onValue(ref(db, `rooms/${room}/discard`), async snap => {
     const discards = snap.val() || {};
     const discardArea = document.getElementById('global-discard');
-    const discardLabel = discardArea.querySelector('.discard-label');
     discardArea.innerHTML = '';
-    if (discardLabel) discardArea.appendChild(discardLabel);
+    
+    // Ajout du label une seule fois
+    if (!discardArea.querySelector('.discard-label')) {
+      const discardLabel = document.createElement('div');
+      discardLabel.className = 'discard-label';
+      discardLabel.textContent = 'Défausses';
+      discardArea.appendChild(discardLabel);
+    }
 
     const playersSnap = await get(ref(db, `rooms/${room}/players`));
     const players = playersSnap.val() || {};
@@ -638,13 +683,11 @@ function listenDiscard(room) {
         <div class="corner bottom"><span>${topCard.rank}</span><span>${topCard.symbol}</span></div>
       `;
 
-      // Rendre cliquable seulement si ce n'est pas la propre défausse
       if (ownerId !== playerId) {
         cardEl.style.cursor = 'pointer';
         cardEl.addEventListener('click', async () => {
           const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
           if (turnSnap.val() === playerId) {
-            // Vérifier que c'est bien la défausse du joueur précédent
             const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
             if (stateSnap.val()?.lastDiscarder === ownerId) {
               takeDiscardedCard(ownerId);
@@ -1228,10 +1271,52 @@ if (startGameBtn) {
   startGameBtn.addEventListener('click', startGame);
 }
 
+// Initialisation unique dans DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM chargé, initialisation du jeu');
 
   console.log('createRoomBtn ?', createRoomBtn, 'joinRoomBtn ?', joinRoomBtn, 'endTurnBtn ?', endTurnBtn);
+  
+  // Attachement unique des écouteurs
+  createRoomBtn?.addEventListener('click', createRoom);
+  joinRoomBtn?.addEventListener('click', joinRoom);
+  endTurnBtn?.addEventListener('click', endTurn);
+  startGameBtn?.addEventListener('click', startGame);
+  toggleChatBtn?.addEventListener('click', () => chatContainer.classList.toggle('open'));
+
+  // Boutons de déclaration
+  declare7NBtn?.addEventListener('click', async () => await sendNotification('7N'));
+  declareWinBtn?.addEventListener('click', async () => await sendNotification('win'));
+  
+  // Bouton de rappel 7N
+  remind7NBtn?.addEventListener('click', async () => {
+    const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+    const hand = handSnap.val() || [];
+    const sevenCombo = extractSevenCombo(hand);
+    if (sevenCombo.length === 7) {
+      await sendNotification('7N', true);
+    } else {
+      alert("Aucune combinaison de 7 cartes trouvée.");
+    }
+  });
+  // Chat
+  chatForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    const timestamp = Date.now();
+    const messageData = {
+      sender: playerId,
+      pseudo: myPseudo,
+      message: message,
+      timestamp: timestamp
+    };
+
+    const messageRef = ref(db, `rooms/${currentRoom}/chat/${timestamp}`);
+    await set(messageRef, messageData);
+    chatInput.value = '';
+  });
 
   if (createRoomBtn) createRoomBtn.addEventListener('click', createRoom);
   else console.warn("Bouton 'createRoom' introuvable");
