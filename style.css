@@ -1009,4 +1009,17 @@ body {
   max-width: 80%;
   text-align: center;
 }
+/* nouveau bloc pour la grille des 7 cartes */
+.notif-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+.notif-cards .card {
+  width: var(--card-width);
+  height: var(--card-height);
+  flex-shrink: 0;
+}
 
