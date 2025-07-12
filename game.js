@@ -361,27 +361,14 @@ function createDeck() {
     });
   }
 
-  deck.push(
-    { suit: 'Joker', symbol: '🃏', color: 'red', rank: 'Joker', value: 0, id: 'joker_red_1' },
-    { suit: 'Joker', symbol: '🃏', color: 'black', rank: 'Joker', value: 0, id: 'joker_black_1' },
-    { suit: 'Joker', symbol: '🃏', color: 'red', rank: 'Joker', value: 0, id: 'joker_red_2' },
-    { suit: 'Joker', symbol: '🃏', color: 'black', rank: 'Joker', value: 0, id: 'joker_black_2' }
-  );
+  // SUPPRIMER LES JOKERS ORIGINAUX
+  // Pas de jokers dans ce jeu
 
-  if (deck.length !== 108) {
-    console.error(`Erreur createDeck : attendu 108 cartes, trouvé ${deck.length}`);
+  if (deck.length !== 104) {
+    console.error(`Erreur createDeck : attendu 104 cartes, trouvé ${deck.length}`);
   }
   return deck;
 }
-
-function shuffle(deck) {
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-  return deck;
-}
-
 async function dealCards(roomId, playerIds) {
   let deck = shuffle(createDeck());
 
