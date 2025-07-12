@@ -1,3 +1,4 @@
+/* Variables CSS modernes pour le jeu Rami */
 :root {
   --primary: #2c3e50;
   --secondary: #3498db;
@@ -32,8 +33,6 @@
   --gradient-primary: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
   --gradient-success: linear-gradient(135deg, #27ae60 0%, #229954 100%);
   --gradient-felt: linear-gradient(135deg, #0d5016 0%, #1a7a28 50%, #0d5016 100%);
-  /* Hand offset: ajustez ici pour corriger l'affichage sur desktop */
-  --hand-bottom: 20px;
 }
 
 /* Reset et base */
@@ -512,37 +511,35 @@ body {
 /* Main du joueur */
 .player-hand {
   position: absolute;
-  bottom: var(--hand-bottom);
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  /* Utilisation de grid pour faciliter le wrapping et la visibilité sur mobile */
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  display: flex;
   gap: 0.5rem;
   padding: 1rem;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border-radius: var(--radius);
-  width: 90%;
-  max-width: 100%;
-  overflow-y: auto;
-  max-height: 50vh;
-  z-index: 10;
+  max-width: 90%;
+  overflow-x: auto;
+  z-index: 20;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Scrollbars pour la main */
 .player-hand::-webkit-scrollbar {
-  width: 6px;
+  height: 6px;
 }
+
 .player-hand::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
+
 .player-hand::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.3);
   border-radius: 3px;
 }
+
 .player-hand::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
 }
@@ -666,7 +663,7 @@ body {
 }
 
 /* Responsive Design */
-@media (min-width: 1024px) {
+@media (max-width: 768px) {
   .menu-content {
     padding: 2rem;
     margin: 1rem;
