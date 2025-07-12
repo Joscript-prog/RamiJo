@@ -989,3 +989,24 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
 }
+.global-popup-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.global-popup-box {
+  background: white;
+  padding: 1.5rem 2rem;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-family: 'Poppins', sans-serif;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  max-width: 80%;
+  text-align: center;
+}
+
