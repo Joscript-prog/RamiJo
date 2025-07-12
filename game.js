@@ -852,42 +852,49 @@ async function endTurn() {
 }
 
 function setupPlayerHandDiscardListener() {
+  let lastClickTime = 0;
+  
   playerHandDiv.addEventListener('click', async e => {
     const cardEl = e.target.closest('.card');
     if (!cardEl) return;
 
-    const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-    if (turnSnap.val() !== playerId) {
-      return alert("Ce n'est pas votre tour.");
+    const now = Date.now();
+    if (now - lastClickTime < 300) { // Double-clic détecté (300ms)
+      const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+      if (turnSnap.val() !== playerId) {
+        return alert("Ce n'est pas votre tour.");
+      }
+
+      if (hasDiscardedThisTurn) {
+        return alert("Vous avez déjà jeté une carte ce tour.");
+      }
+
+      const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+      const drawCount = stateSnap.val()?.drawCount || 0;
+      if (!hasDrawnOrPicked || drawCount === 0) {
+        return alert("Vous devez piocher ou prendre une carte avant de défausser.");
+      }
+
+      const cardId = cardEl.dataset.cardId;
+      let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+      const idx = hand.findIndex(c => c.id === cardId);
+      if (idx === -1) return;
+      const [card] = hand.splice(idx, 1);
+
+      let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
+      pile.push(card);
+
+      await Promise.all([
+        set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+        set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
+      ]);
+
+      hasDiscardedThisTurn = true;
+
+      await endTurn();
     }
-
-    if (hasDiscardedThisTurn) {
-      return alert("Vous avez déjà jeté une carte ce tour.");
-    }
-
-    const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-    const drawCount = stateSnap.val()?.drawCount || 0;
-    if (!hasDrawnOrPicked || drawCount === 0) {
-      return alert("Vous devez piocher ou prendre une carte avant de défausser.");
-    }
-
-    const cardId = cardEl.dataset.cardId;
-    let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-    const idx = hand.findIndex(c => c.id === cardId);
-    if (idx === -1) return;
-    const [card] = hand.splice(idx, 1);
-
-    let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
-    pile.push(card);
-
-    await Promise.all([
-      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
-      set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
-    ]);
-
-    hasDiscardedThisTurn = true;
-
-    await endTurn();
+    
+    lastClickTime = now;
   });
 }
 
