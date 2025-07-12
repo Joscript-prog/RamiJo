@@ -521,56 +521,57 @@ function listenDiscard(room) {
   onValue(ref(db, `rooms/${room}/discard`), async snap => {
     const discards = snap.val() || {};
     const discardArea = document.getElementById('global-discard');
-    
-    // Garder le label "Défausse"
     const discardLabel = discardArea.querySelector('.discard-label');
     discardArea.innerHTML = '';
     if (discardLabel) discardArea.appendChild(discardLabel);
 
-    // Récupérer les pseudos des joueurs
     const playersSnap = await get(ref(db, `rooms/${room}/players`));
     const players = playersSnap.val() || {};
 
-    Object.entries(discards).forEach(([playerId, pile]) => {
-      // Ne pas afficher les défausses vides
+    Object.entries(discards).forEach(([ownerId, pile]) => {
       if (!pile || pile.length === 0) return;
 
       const playerDiscard = document.createElement('div');
       playerDiscard.className = 'player-discard';
-      playerDiscard.id = `discard-${playerId}`;
-      
+      playerDiscard.id = `discard-${ownerId}`;
+
       const playerName = document.createElement('div');
       playerName.className = 'player-name';
-      playerName.textContent = players[playerId]?.pseudo || `Joueur ${playerId.substring(7)}`;
-      
+      playerName.textContent = players[ownerId]?.pseudo || `Joueur ${ownerId.substring(7)}`;
+
       const cardContainer = document.createElement('div');
       cardContainer.className = 'discard-cards';
 
-      // Afficher uniquement la dernière carte défaussée
       const topCard = pile[pile.length - 1];
       const cardEl = document.createElement('div');
       cardEl.className = `card ${topCard.color}`;
       cardEl.dataset.cardId = topCard.id;
-      cardEl.dataset.playerId = playerId;
+      cardEl.dataset.ownerId = ownerId;
       cardEl.innerHTML = `
         <div class="corner top"><span>${topCard.rank}</span><span>${topCard.symbol}</span></div>
         <div class="suit main">${topCard.symbol}</div>
         <div class="corner bottom"><span>${topCard.rank}</span><span>${topCard.symbol}</span></div>
       `;
-      
-      // Rendre cliquable seulement si ce n'est pas la propre défausse du joueur
-      if (playerId !== playerId) {
+
+      // Rendre cliquable seulement si ce n'est pas la propre défausse
+      if (ownerId !== playerId) {
         cardEl.style.cursor = 'pointer';
         cardEl.addEventListener('click', async () => {
           const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
           if (turnSnap.val() === playerId) {
-            takeDiscardedCard(playerId);
+            // Vérifier que c'est bien la défausse du joueur précédent
+            const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+            if (stateSnap.val()?.lastDiscarder === ownerId) {
+              takeDiscardedCard(ownerId);
+            } else {
+              alert("Vous ne pouvez prendre qu'une carte de la défausse du joueur précédent.");
+            }
           } else {
             alert("Ce n'est pas votre tour.");
           }
         });
       }
-      
+
       cardContainer.appendChild(cardEl);
       playerDiscard.appendChild(playerName);
       playerDiscard.appendChild(cardContainer);
@@ -578,6 +579,7 @@ function listenDiscard(room) {
     });
   });
 }
+
 function listenPlayers(room) {
   onValue(ref(db, `rooms/${room}/players`), async (snap) => {
     const players = Object.entries(snap.val() || {}).map(([id, o]) => ({
