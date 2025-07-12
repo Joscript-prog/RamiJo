@@ -1015,3 +1015,24 @@ body {
 .card[data-color="black"] {
   color: var(--card-black);
 }
+/* Ajouter à la fin du CSS */
+.player-discard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 10px;
+}
+
+.discard-cards {
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-discard .player-name {
+  color: white;
+  font-size: 0.8rem;
+  margin-bottom: 5px;
+  text-align: center;
+}
