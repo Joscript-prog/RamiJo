@@ -227,7 +227,7 @@ body {
   overflow: hidden;
 }
 
-/* Header du jeu */
+/* Header du jeu - CORRECTION AJOUTÉE */
 .game-header {
   display: flex;
   justify-content: space-between;
@@ -237,12 +237,22 @@ body {
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255,255,255,0.1);
   z-index: 50;
+  position: relative;
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: 2rem;
+}
+
+.header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--text-white);
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
 .header-right {
@@ -361,7 +371,7 @@ body {
   height: 100%;
 }
 
-/* Cercle des joueurs */
+/* Cercle des joueurs - CORRECTION MAJEURE */
 .players-circle {
   position: absolute;
   top: 20px;
@@ -370,6 +380,8 @@ body {
   display: flex;
   gap: 2rem;
   z-index: 30;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .player-info {
@@ -380,12 +392,24 @@ body {
   color: var(--text-white);
   font-weight: 500;
   border: 1px solid rgba(255,255,255,0.2);
+  min-width: 150px;
+  text-align: center;
 }
 
 .player-info.active {
   background: rgba(52,152,219,0.3);
   border-color: rgba(52,152,219,0.5);
   box-shadow: var(--shadow-glow);
+}
+
+.player-name {
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.player-hand-count {
+  font-size: 0.9rem;
+  opacity: 0.8;
 }
 
 /* Zone centrale du jeu */
@@ -466,11 +490,10 @@ body {
   backdrop-filter: blur(10px);
 }
 
-/* Cartes */
+/* Cartes - CORRECTION MAJEURE */
 .card {
   width: var(--card-width);
   height: var(--card-height);
-  background: var(--card-white);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-md);
   position: relative;
@@ -483,6 +506,7 @@ body {
   padding: 0.5rem;
   font-weight: 600;
   user-select: none;
+  background: var(--card-white);
 }
 
 .card:hover {
@@ -529,16 +553,23 @@ body {
   transform: translate(-50%, -50%);
   font-size: 2rem;
 }
+
 /* Couleurs des cartes selon la couleur */
 .card.red .corner span:last-child,
-.card.red .suit.main {
+.card.red .suit.main,
+.card[data-color="red"] .corner span:last-child,
+.card[data-color="red"] .suit.main {
   color: var(--card-red) !important;
 }
+
 .card.black .corner span:last-child,
-.card.black .suit.main {
+.card.black .suit.main,
+.card[data-color="black"] .corner span:last-child,
+.card[data-color="black"] .suit.main {
   color: var(--card-black) !important;
 }
-/* Main du joueur */
+
+/* Main du joueur - CORRECTION MAJEURE */
 .player-hand {
   position: absolute;
   bottom: var(--hand-bottom);
@@ -556,7 +587,10 @@ body {
   border: 1px solid rgba(255,255,255,0.2);
   box-shadow: var(--shadow-lg);
 }
-.player-hand .card { flex-shrink: 0; }
+.player-hand .card { 
+  flex-shrink: 0; 
+  background: white !important;
+}
 
 .player-hand .card:hover {
   transform: translateY(-10px);
@@ -833,6 +867,11 @@ body {
     flex-wrap: wrap;
     gap: 1rem;
   }
+
+  .player-info {
+    min-width: 120px;
+    padding: 0.5rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -878,6 +917,15 @@ body {
   
   .game-status {
     font-size: 0.9rem;
+  }
+
+  .players-circle {
+    gap: 0.5rem;
+  }
+
+  .player-info {
+    min-width: 100px;
+    font-size: 0.8rem;
   }
 }
 
@@ -947,4 +995,22 @@ body {
 
 .player-hand::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,0.5);
+}
+
+/* Correction supplémentaire pour la couleur des cartes */
+.card.red {
+  color: var(--card-red);
+}
+
+.card.black {
+  color: var(--card-black);
+}
+
+/* Correction pour les cartes avec data-color */
+.card[data-color="red"] {
+  color: var(--card-red);
+}
+
+.card[data-color="black"] {
+  color: var(--card-black);
 }
