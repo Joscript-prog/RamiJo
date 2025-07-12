@@ -223,14 +223,18 @@ body {
 
 /* Game layout */
 #game {
-  display: none;
+  display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--gradient-felt);
-  position: relative;
-  overflow: hidden;
 }
-
+/* Nouveau conteneur pour la zone de jeu */
+.game-play-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: auto;
+}
 /* Header du jeu */
 .game-header {
   position: relative;
@@ -446,7 +450,7 @@ body {
   justify-content: center;
   position: relative;
   padding: 1rem;
-  padding-bottom: 250px; /* Augmenté pour les nouvelles cartes */
+  padding-bottom: 20px; /* Augmenté pour les nouvelles cartes */
 }
 
 .table-center {
@@ -594,7 +598,7 @@ body {
 
 /* Main du joueur */
 .player-hand {
-  position: fixed;
+  position: relative;
   bottom: var(--hand-bottom);
   left: 50%;
   transform: translateX(-50%);
@@ -627,26 +631,47 @@ body {
   bottom: 0;
   right: 0;
   width: var(--chat-width);
+  height: 40px; /* Seul le header visible par défaut */
   background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(20px);
   border-top-left-radius: var(--radius);
   border-top-right-radius: var(--radius);
   display: flex;
   flex-direction: column;
-  transform: translateY(calc(100% - 40px));
-  transition: var(--transition);
-  z-index: 100;
+  z-index: 110;
   border: 1px solid rgba(255,255,255,0.2);
-  border-bottom: none;
   box-shadow: var(--shadow-xl);
   max-width: 90vw;
-  height: var(--chat-height);
+  transition: var(--transition);
+  overflow: hidden;
+}
+#chat-container .chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: var(--gradient-primary);
+  color: white;
+  cursor: pointer;
+}
+#chat-container .chat-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+#chat-container .chat-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 0;
+  opacity: 0;
+  transition: var(--transition);
 }
 
-#chat-container.open { 
-  transform: translateY(0); 
+#chat-container.open {
+  height: var(--chat-height);
+}
+#chat-container.open .chat-content {
   height: auto;
-  z-index: 110; /* Plus élevé que tout quand ouvert */
+  opacity: 1;
 }
 
 #chat-messages { 
@@ -655,7 +680,13 @@ body {
   padding: 1rem; 
   font-size: 0.9rem;
   line-height: 1.4;
-  max-height: calc(var(--chat-height) - 60px); /* Ajustement hauteur messages */
+  max-height: calc(var(--chat-height) - 100px);
+}
+#chat-form { 
+  display: flex; 
+  padding: 1rem; 
+  gap: 0.5rem; 
+  border-top: 1px solid rgba(0,0,0,0.1); 
 }
 
 #chat-messages .message {
