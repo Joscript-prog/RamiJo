@@ -671,6 +671,7 @@ function renderHand(hand) {
     div.dataset.color = c.color;
     div.dataset.suit = c.suit;
     div.dataset.value = c.value;
+    // Affichage des faces de carte avec coins et symbole
     div.innerHTML = `
       <div class="corner top"><span>${c.rank}</span><span>${c.symbol}</span></div>
       <div class="suit main">${c.symbol}</div>
