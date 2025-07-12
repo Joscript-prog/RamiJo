@@ -277,6 +277,9 @@ body {
   gap: 1.5rem;
   padding: 1rem;
   max-width: 100%;
+  margin-top: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius);
 }
 
 .player-discard {
@@ -297,7 +300,7 @@ body {
 
 .discard-cards {
   position: relative;
-  min-height: 135px; /* Hauteur de carte */
+  min-height: 135px;
 }
 
 .discard-cards .card {
@@ -306,6 +309,15 @@ body {
   left: 0;
   transform: none;
   margin: 0;
+}
+
+.discard-label {
+  color: var(--text-white);
+  font-weight: 600;
+  font-size: 1.2rem;
+  text-align: center;
+  width: 100%;
+  margin-bottom: 1rem;
 }
 /* Contrôles du jeu */
 .game-controls {
