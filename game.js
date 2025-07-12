@@ -899,7 +899,7 @@ function enableChat() {
   });
 }
 async function createRoom() {
-  const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900); // Exemple : RAMI938
+  const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900);
   currentRoom = roomCode;
 
   const roomRef = ref(db, `rooms/${roomCode}`);
@@ -914,6 +914,9 @@ async function createRoom() {
   });
 
   await set(ref(db, `rooms/${roomCode}/creator`), playerId);
+  
+  // Définir le tour sur le joueur actuel (le créateur)
+  await set(ref(db, `rooms/${roomCode}/turn`), playerId);
 
   listenPlayers(roomCode);
   listenScores(roomCode);
@@ -925,12 +928,11 @@ async function createRoom() {
   listenJokerCard(roomCode);
 
   menuDiv.style.display = 'none';
- gameDiv.style.display = 'flex'; 
+  gameDiv.style.display = 'flex';
 
   actionCreateRoomPopup();
-}
-  await set(ref(db, `rooms/${roomCode}/turn`), playerId);
-}
+} // Fin de la fonction - supprimer l'accolade supplémentaire
+
 async function joinRoom() {
   const roomCode = roomInput.value.trim().toUpperCase();
   if (!roomCode) {
@@ -986,18 +988,19 @@ async function joinRoom() {
   menuDiv.style.display = 'none';
   gameDiv.style.display = 'block';
 
-  // **---- NOUVEAU : démarrage automatique ----**
+  // Si le créateur est le joueur actuel, alors on démarre la partie
   const creatorId = (await get(ref(db, `rooms/${roomCode}/creator`))).val();
   if (creatorId === playerId) {
-    const playerIds = Object.keys(players);
+    // Récupérer la liste mise à jour des joueurs
+    const updatedPlayersSnap = await get(ref(db, `rooms/${roomCode}/players`));
+    const updatedPlayers = updatedPlayersSnap.val() || {};
+    const playerIds = Object.keys(updatedPlayers);
     await dealCards(roomCode, playerIds);
     await set(ref(db, `rooms/${roomCode}/turn`), playerIds[0]);
   }
-}
-  // ------------------------------------------
 
   showPopup(`<p>Connecté à la salle <b>${roomCode}</b></p>`);
-}
+} // Fin de la fonction - supprimer l'accolade supplémentaire
 
 
 
