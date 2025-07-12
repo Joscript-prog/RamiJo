@@ -378,7 +378,7 @@ body {
   gap: 3rem;
   align-items: center;
   justify-content: center;
-  z-index: 20; /* Priorité plus élevée */
+  z-index: 20;
 }
 
 .deck-area, .discard-area {
@@ -392,7 +392,7 @@ body {
   position: relative;
   min-height: var(--card-height);
   min-width: var(--card-width);
-  z-index: 25; /* Priorité la plus élevée pour la pioche */
+  z-index: 25;
 }
 
 .deck-pile.clickable {
@@ -441,11 +441,14 @@ body {
   color: var(--text-white);
 }
 
-.card.red {
+/* Couleurs des cartes */
+.card[data-suit="Coeurs"], 
+.card[data-suit="Carreaux"] {
   color: var(--card-red);
 }
 
-.card.black {
+.card[data-suit="Trèfles"], 
+.card[data-suit="Piques"] {
   color: var(--card-black);
 }
 
@@ -513,7 +516,7 @@ body {
 /* Main du joueur */
 .player-hand {
   position: absolute;
-  bottom: 20px; /* Position originale */
+  bottom: 80px; /* Position abaissée */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -524,7 +527,7 @@ body {
   border-radius: var(--radius);
   max-width: 90%;
   overflow-x: auto;
-  z-index: 15; /* Sous la pioche mais au-dessus du fond */
+  z-index: 15;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -694,7 +697,7 @@ body {
   }
   
   .player-hand {
-    bottom: 10px;
+    bottom: 60px; /* Position abaissée sur tablette */
     padding: 0.5rem;
   }
   
@@ -730,6 +733,11 @@ body {
   
   .table-center {
     gap: 1.5rem;
+  }
+  
+  .player-hand {
+    bottom: 50px; /* Position abaissée sur mobile */
+    padding: 0.5rem;
   }
   
   .card {
