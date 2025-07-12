@@ -9,6 +9,7 @@ import {
   update,
   get,
   onValue,
+  onChildAdded,
   onDisconnect,
   push,
   remove
@@ -39,6 +40,7 @@ export {
   update,
   get,
   onValue,
+  onChildAdded,
   onDisconnect,
   push,
   remove
