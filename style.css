@@ -393,15 +393,18 @@ body {
 }
 
 .players-circle {
+  position: relative; /* Changé pour le responsive */
+  top: 0;
+  left: 0;
+  transform: none;
   display: flex;
+  gap: 1rem; /* Réduit de 2rem */
+  z-index: 30;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 1rem;
-  z-index: 15; /* Inférieur à la défausse */
   padding: 1rem;
-  max-height: 30vh;
+  max-height: 30vh; /* Limite la hauteur */
   overflow-y: auto;
-  width: 100%; /* Prend toute la largeur */
 }
 
 .player-info {
@@ -443,7 +446,7 @@ body {
   justify-content: center;
   position: relative;
   padding: 1rem;
-  padding-bottom: 220px; /* Augmenté pour plus d'espace */
+  padding-bottom: 250px; /* Augmenté pour les nouvelles cartes */
 }
 
 .table-center {
@@ -606,8 +609,8 @@ body {
   z-index: 20; /* Inférieur à la défausse */
   border: 1px solid rgba(255,255,255,0.2);
   box-shadow: var(--shadow-lg);
+  max-height: calc(var(--card-height) + 50px); /* Limite la hauteur */
 }
-
 
 .player-hand .card { 
   flex-shrink: 0; 
@@ -618,7 +621,7 @@ body {
   transform: translateY(-10px);
 }
 
-/* Chat */
+/* Chat - Corrections importantes */
 #chat-container {
   position: fixed;
   bottom: 0;
@@ -637,20 +640,22 @@ body {
   border-bottom: none;
   box-shadow: var(--shadow-xl);
   max-width: 90vw;
-  height: var(--chat-height); /* Ajouté */
+  height: var(--chat-height);
 }
+
 #chat-container.open { 
   transform: translateY(0); 
-  height: auto; /* Modifié */
+  height: auto;
+  z-index: 110; /* Plus élevé que tout quand ouvert */
 }
 
 #chat-messages { 
   flex: 1; 
-  height: var(--chat-height); 
   overflow-y: auto; 
   padding: 1rem; 
   font-size: 0.9rem;
   line-height: 1.4;
+  max-height: calc(var(--chat-height) - 60px); /* Ajustement hauteur messages */
 }
 
 #chat-messages .message {
@@ -794,6 +799,7 @@ body {
   :root {
     --card-width: 75px;
     --card-height: 112px;
+    --chat-height: 220px; /* Réduit pour mobile */
   }
   
   .menu-content {
@@ -818,6 +824,10 @@ body {
   .suit.main {
     font-size: 2rem;
   }
+  
+  .game-center {
+    padding-bottom: 200px; /* Réduit pour mobile */
+  }
 }
 
 @media (max-width: 480px) {
@@ -825,6 +835,7 @@ body {
     --card-width: 65px;
     --card-height: 97px;
     --hand-bottom: 20px;
+    --chat-height: 180px; /* Réduit pour petits écrans */
   }
   
   .menu-content {
@@ -852,6 +863,10 @@ body {
   #chat-container {
     width: 100%;
     max-width: 100%;
+  }
+  
+  .game-center {
+    padding-bottom: 160px; /* Réduit pour petits écrans */
   }
 }
 
@@ -1035,4 +1050,3 @@ body {
   height: var(--card-height);
   flex-shrink: 0;
 }
-
