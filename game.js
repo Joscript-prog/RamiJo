@@ -1,7 +1,7 @@
-import { db, ref, set, update, get, onValue } from './firebase.js';
+import { db, ref, push, onChildAdded, set, update, get, onValue } from './firebase.js';
 import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/modular/sortable.esm.js';
 
-const pseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
+const myPseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
 let hasDrawnOrPicked = false;
@@ -471,6 +471,34 @@ function actionCreateRoomPopup() {
     alert('Code copié !');
   };
 }
+function listenNotifications(room) {
+  const notifRef = ref(db, `rooms/${room}/notifications`);
+  onChildAdded(notifRef, snap => {
+    const notif = snap.val();
+    if (!notif) return;
+
+    const message = notif.type === '7N'
+      ? `🎉 ${notif.pseudo} a déclaré un 7 Naturel !`
+      : `🏆 ${notif.pseudo} a déclaré la victoire !`;
+
+    showGlobalPopup(message);
+  });
+}
+function showGlobalPopup(message) {
+  const overlay = document.createElement('div');
+  overlay.className = 'global-popup-overlay';
+
+  const box = document.createElement('div');
+  box.className = 'global-popup-box';
+  box.textContent = message;
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  // Auto-disparition après 4s ou clic
+  setTimeout(() => overlay.remove(), 4000);
+  overlay.addEventListener('click', () => overlay.remove());
+}
 
 function enableDragDrop() {
   new Sortable(playerHandDiv, {
@@ -626,7 +654,16 @@ function listenHand(room) {
     updateActionButtons(hand);
   });
 }
-
+// 1. Fonction pour émettre la notification
+function sendNotification(type) {
+  const notifRef = ref(db, `rooms/${currentRoom}/notifications`);
+  return push(notifRef, {
+    type,                   // '7N' ou 'win'
+    playerId,               // ton ID
+    pseudo: myPseudo,       // le pseudo du joueur
+    timestamp: Date.now(),
+  });
+}
 async function updateActionButtons(hand) {
   const jokerSnap = await get(ref(db, `rooms/${currentRoom}/jokerSet`));
   const jokerSet = jokerSnap.val()?.jokerSet || [];
@@ -926,7 +963,7 @@ function enableChat() {
     const timestamp = Date.now();
     const messageData = {
       sender: playerId,
-      pseudo: pseudo,
+      pseudo: myPseudo,
       message: message,
       timestamp: timestamp
     };
@@ -967,7 +1004,7 @@ async function createRoom() {
   }
 
   await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-    pseudo: pseudo
+    pseudo: myPseudo,
   });
 
   await set(ref(db, `rooms/${roomCode}/creator`), playerId);
@@ -983,7 +1020,7 @@ async function createRoom() {
   setupPlayerHandDiscardListener();
   enableChat();
   listenJokerCard(roomCode);
-
+  listenNotifications(roomCode);
   menuDiv.style.display = 'none';
   gameDiv.style.display = 'flex';
 
@@ -1023,7 +1060,7 @@ async function joinRoom() {
 
   // Ajout du joueur
   await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-    pseudo: pseudo,
+    pseudo: myPseudo
     isSpectator: gameStarted // Marquer comme spectateur si la partie a commencé
   });
 
@@ -1038,6 +1075,7 @@ async function joinRoom() {
   setupPlayerHandDiscardListener();
   enableChat();
   listenJokerCard(roomCode);
+  listenNotifications(roomCode);
 
   // Affichage du jeu
   menuDiv.style.display = 'none';
@@ -1102,15 +1140,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (endTurnBtn) endTurnBtn.addEventListener('click', endTurn);
   else console.warn("Le bouton 'endTurnBtn' est introuvable, ajout manuel du DOM ?");
-});
 
-// Fonction pour mélanger le deck (manquante dans votre code)
-function shuffle(array) {
-  let currentIndex = array.length, randomIndex;
-  while (currentIndex > 0) {
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
-  }
-  return array;
-}
+  // ✅ Ajouter les écouteurs sur les boutons de déclaration ici UNE SEULE FOIS
+  declare7NBtn.addEventListener('click', async () => {
+    await sendNotification('7N');
+  });
+
+  declareWinBtn.addEventListener('click', async () => {
+    await sendNotification('win');
+  });
+
+});
