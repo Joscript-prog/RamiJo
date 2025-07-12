@@ -493,21 +493,29 @@ function enableDragDrop() {
 
 function renderPlayers(players) {
   playersDiv.innerHTML = '';
-  playersDiv.className = `players-circle ${players.length === 2 ? 'two-players' : ''}`;
-
   players.forEach((p, index) => {
     const badge = document.createElement('div');
-    badge.className = `player-badge ${p.id === playerId ? 'current-player' : ''}`;
-    badge.id = `badge-${p.id}`;
+    badge.className = `player-info ${p.id === playerId ? 'active' : ''}`;
     badge.innerHTML = `
       <div class="player-name">${p.pseudo} ${p.id === playerId ? '(Vous)' : ''}</div>
-      <div class="player-score" id="score-${p.id}">Score: 0</div>
-      <div class="opponent-hand" id="hand-${p.id}"></div>
-      <div class="discard-pile" id="discard-${p.id}"></div> `;
+      <div class="player-hand-count" id="hand-count-${p.id}">${p.id === playerId ? '13' : '?'} cartes</div>
+    `;
     playersDiv.append(badge);
   });
 }
 
+// Ajouter cette fonction pour écouter les comptes de cartes
+function listenHandCounts(room) {
+  onValue(ref(db, `rooms/${room}/hands`), snap => {
+    const hands = snap.val() || {};
+    Object.keys(hands).forEach(pid => {
+      const el = document.getElementById(`hand-count-${pid}`);
+      if (el) {
+        el.textContent = `${hands[pid]?.length || 0} cartes`;
+      }
+    });
+  });
+}
 function listenDiscard(room) {
   onValue(ref(db, `rooms/${room}/discard`), snap => {
     const discards = snap.val() || {};
@@ -921,6 +929,8 @@ async function createRoom() {
 
   actionCreateRoomPopup();
 }
+  await set(ref(db, `rooms/${roomCode}/turn`), playerId);
+}
 async function joinRoom() {
   const roomCode = roomInput.value.trim().toUpperCase();
   if (!roomCode) {
@@ -977,16 +987,13 @@ async function joinRoom() {
   gameDiv.style.display = 'block';
 
   // **---- NOUVEAU : démarrage automatique ----**
-  const updatedPlayersSnap = await get(ref(db, `rooms/${roomCode}/players`));
-  const updatedPlayers = Object.keys(updatedPlayersSnap.val() || {});
-  if (updatedPlayers.length >= 2) {
-    // Distribue les cartes
-    await dealCards(roomCode, updatedPlayers);
-    // Initialise le tour au premier joueur
-    await set(ref(db, `rooms/${roomCode}/turn`), updatedPlayers[0]);
-    // Marque la partie comme démarrée
-    await update(ref(db, `rooms/${roomCode}/state`), { started: true });
+  const creatorId = (await get(ref(db, `rooms/${roomCode}/creator`))).val();
+  if (creatorId === playerId) {
+    const playerIds = Object.keys(players);
+    await dealCards(roomCode, playerIds);
+    await set(ref(db, `rooms/${roomCode}/turn`), playerIds[0]);
   }
+}
   // ------------------------------------------
 
   showPopup(`<p>Connecté à la salle <b>${roomCode}</b></p>`);
