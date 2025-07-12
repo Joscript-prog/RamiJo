@@ -20,20 +20,20 @@
   --shadow-md: 0 4px 16px rgba(0,0,0,0.15);
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.2);
   --shadow-xl: 0 16px 64px rgba(0,0,0,0.25);
-  --shadow-glow: 0 0 20px rgba(52,152,219,0.3);
+  --shadow-glow: 0 0 20px rgba(52, 152, 219, 0.3);
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 16px;
-  --transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-  --transition-bounce: all 0.4s cubic-bezier(0.68,-0.55,0.265,1.55);
-  --card-width: 90px; /* Augmenté de 80px à 90px */
-  --card-height: 135px; /* Augmenté de 120px à 135px */
-  --hand-bottom: 30px; /* Augmenté de 20px à 30px */
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --card-width: 80px;
+  --card-height: 120px;
   --chat-width: 320px;
   --chat-height: 280px;
-  --gradient-primary: linear-gradient(135deg,#3498db 0%,#2980b9 100%);
-  --gradient-success: linear-gradient(135deg,#27ae60 0%,#229954 100%);
-  --gradient-felt: linear-gradient(135deg,#0d5016 0%,#1a7a28 50%,#0d5016 100%);
+  --gradient-primary: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  --gradient-success: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+  --gradient-felt: linear-gradient(135deg, #0d5016 0%, #1a7a28 50%, #0d5016 100%);
+  --hand-bottom: 20px;
 }
 
 /* Reset et base */
@@ -41,11 +41,10 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  touch-action: manipulation; /* Améliore le responsive mobile */
 }
 
 body {
-  font-family: 'Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.6;
@@ -57,33 +56,32 @@ body {
 .menu-overlay {
   position: fixed;
   inset: 0;
-  background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
   animation: fadeIn 0.6s ease-out;
-  padding: 1rem; /* Ajout pour le responsive */
 }
 
 .menu-content {
-  background: rgba(255,255,255,0.95);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
-  padding: 2rem; /* Réduit de 3rem à 2rem */
+  padding: 3rem;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   text-align: center;
-  max-width: min(500px, 90vw); /* Amélioration responsive */
-  width: 100%;
+  max-width: 500px;
+  width: 90%;
   border: 1px solid rgba(255,255,255,0.2);
   animation: slideUp 0.6s ease-out;
 }
 
 .menu-content h1 {
-  font-family: 'Poppins',sans-serif;
-  font-size: clamp(2rem, 5vw, 2.5rem); /* Responsive font size */
+  font-family: 'Poppins', sans-serif;
+  font-size: 2.5rem;
   color: var(--primary);
-  margin-bottom: 1.5rem; /* Réduit de 2rem à 1.5rem */
+  margin-bottom: 2rem;
   text-shadow: 0 2px 10px rgba(0,0,0,0.1);
   background: var(--gradient-primary);
   -webkit-background-clip: text;
@@ -91,18 +89,18 @@ body {
 }
 
 .menu-section {
-  margin: 1.5rem 0; /* Réduit de 2rem à 1.5rem */
+  margin: 2rem 0;
 }
 
 .menu-section h2 {
-  font-size: clamp(1.1rem, 3vw, 1.3rem); /* Responsive font size */
+  font-size: 1.3rem;
   color: var(--text);
-  margin-bottom: 0.75rem; /* Réduit de 1rem à 0.75rem */
+  margin-bottom: 1rem;
   font-weight: 500;
 }
 
 .separator {
-  margin: 1.5rem 0; /* Réduit de 2rem à 1.5rem */
+  margin: 2rem 0;
   position: relative;
   color: var(--text-light);
   font-weight: 500;
@@ -115,16 +113,16 @@ body {
   content: '';
   position: absolute;
   top: 50%;
-  left: -30px; /* Réduit de -50px */
-  right: -30px; /* Réduit de -50px */
+  left: -50px;
+  right: -50px;
   height: 1px;
-  background: linear-gradient(to right,transparent,var(--text-light),transparent);
+  background: linear-gradient(to right, transparent, var(--text-light), transparent);
   z-index: -1;
 }
 
 .join-form {
   display: flex;
-  gap: 0.75rem; /* Réduit de 1rem */
+  gap: 1rem;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -161,8 +159,6 @@ body {
   overflow: hidden;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  width: 100%; /* Pour le responsive */
-  max-width: 300px; /* Limite la largeur */
 }
 
 .btn::before {
@@ -231,57 +227,91 @@ body {
   overflow: hidden;
 }
 
-/* Header du jeu */
+/* Header du jeu - CORRECTION AJOUTÉE */
 .game-header {
-  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  padding: 1rem 2rem;
   background: rgba(0,0,0,0.3);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255,255,255,0.1);
   z-index: 50;
-  flex-wrap: wrap;
+  position: relative;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 1rem; /* Réduit de 2rem */
-  flex-wrap: wrap;
+  gap: 2rem;
 }
 
 .header-center {
-  position: static; /* Changé pour le responsive */
-  transform: none;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   color: var(--text-white);
   font-weight: 600;
-  font-size: clamp(0.9rem, 2.5vw, 1.1rem);
-  margin: 0.5rem 0;
-  text-align: center;
-  width: 100%; /* Prend toute la largeur */
-  order: 3; /* Place en bas */
+  font-size: 1.1rem;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 0.75rem; /* Réduit de 1rem */
+  gap: 1rem;
 }
 
-/* Contrôles du jeu */
+.game-status {
+  color: var(--text-white);
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
+.joker-display {
+  color: var(--text-white);
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  background: rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.chat-toggle {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: var(--text-white);
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: var(--transition);
+}
+
+.chat-toggle:hover {
+  background: rgba(255,255,255,0.3);
+  transform: scale(1.1);
+}
+
+/* Contenu principal du jeu */
+.game-main-content {
+  flex: 1;
+  display: flex;
+  height: calc(100vh - 80px);
+  position: relative;
+  overflow: visible; 
+}
+
+/* Contrôles de jeu */
 .game-controls {
   width: 200px;
-  padding: 0.75rem; /* Réduit de 1rem */
+  padding: 1rem;
   background: rgba(0,0,0,0.2);
   backdrop-filter: blur(10px);
   border-right: 1px solid rgba(255,255,255,0.1);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem; /* Réduit de 1rem */
+  gap: 1rem;
   z-index: 40;
-  overflow-y: auto; /* Scroll si nécessaire */
 }
 
 .btn-special {
@@ -294,7 +324,7 @@ body {
   font-weight: 500;
   transition: var(--transition);
   text-transform: uppercase;
-  font-size: clamp(0.8rem, 2vw, 0.9rem); /* Responsive font size */
+  font-size: 0.9rem;
 }
 
 .btn-special:hover:not(:disabled) {
@@ -309,7 +339,7 @@ body {
 }
 
 .btn-action {
-  padding: 0.75rem; /* Réduit de 1rem */
+  padding: 1rem;
   background: var(--gradient-success);
   color: var(--text-white);
   border: none;
@@ -318,7 +348,7 @@ body {
   font-weight: 600;
   transition: var(--transition);
   text-transform: uppercase;
-  font-size: clamp(0.9rem, 2.5vw, 1rem); /* Responsive font size */
+  font-size: 1rem;
   margin-top: auto;
 }
 
@@ -333,40 +363,38 @@ body {
   opacity: 0.6;
 }
 
-/* Zone de jeu principale */
+/* Table de jeu */
 .game-table {
   flex: 1;
   display: flex;
   flex-direction: column;
   position: relative;
+  height: 100%;
 }
 
+/* Cercle des joueurs - CORRECTION MAJEURE */
 .players-circle {
-  position: relative; /* Changé pour le responsive */
-  top: 0;
-  left: 0;
-  transform: none;
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  gap: 1rem; /* Réduit de 2rem */
+  gap: 2rem;
   z-index: 30;
   flex-wrap: wrap;
   justify-content: center;
-  padding: 1rem;
-  max-height: 30vh; /* Limite la hauteur */
-  overflow-y: auto;
 }
 
 .player-info {
   background: rgba(255,255,255,0.1);
   backdrop-filter: blur(10px);
-  padding: 0.5rem 0.75rem; /* Réduit */
+  padding: 0.75rem 1rem;
   border-radius: var(--radius);
   color: var(--text-white);
   font-weight: 500;
   border: 1px solid rgba(255,255,255,0.2);
-  min-width: 120px; /* Réduit de 150px */
+  min-width: 150px;
   text-align: center;
-  font-size: clamp(0.8rem, 2.5vw, 1rem); /* Responsive font size */
 }
 
 .player-info.active {
@@ -377,40 +405,37 @@ body {
 
 .player-name {
   font-weight: 600;
-  margin-bottom: 3px; /* Réduit de 5px */
-  font-size: 0.9em;
+  margin-bottom: 5px;
 }
 
 .player-hand-count {
-  font-size: 0.8em; /* Réduit */
+  font-size: 0.9rem;
   opacity: 0.8;
 }
 
-/* Centre du jeu */
+/* Zone centrale du jeu */
 .game-center {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: 1rem;
-  padding-bottom: 180px; /* Augmenté pour les nouvelles cartes */
+  padding-bottom: 160px;
 }
 
 .table-center {
   display: flex;
-  flex-wrap: wrap; /* Responsive */
-  gap: 2rem; /* Réduit de 4rem */
+  gap: 4rem;
   align-items: center;
   justify-content: center;
 }
 
-/* Deck et défausse */
-.deck-area, .discard-area {
+/* Zone de deck */
+.deck-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem; /* Réduit de 1rem */
+  gap: 1rem;
 }
 
 .deck-pile {
@@ -428,10 +453,10 @@ body {
   cursor: pointer;
 }
 
-.deck-label, .discard-label {
+.deck-label {
   color: var(--text-white);
   font-weight: 600;
-  font-size: clamp(0.8rem, 2.5vw, 1rem); /* Responsive font size */
+  font-size: 1rem;
   text-align: center;
   background: rgba(0,0,0,0.3);
   padding: 0.5rem 1rem;
@@ -439,10 +464,37 @@ body {
   backdrop-filter: blur(10px);
 }
 
-/* Cartes */
+/* Zone de défausse */
+.discard-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  min-height: 140px;
+}
+
+#global-discard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.discard-label {
+  color: var(--text-white);
+  font-weight: 600;
+  font-size: 1rem;
+  text-align: center;
+  background: rgba(0,0,0,0.3);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  backdrop-filter: blur(10px);
+}
+
+/* Cartes - CORRECTION MAJEURE */
 .card {
-  width: var(--card-width); /* Taille augmentée */
-  height: var(--card-height); /* Taille augmentée */
+  width: var(--card-width);
+  height: var(--card-height);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-md);
   position: relative;
@@ -500,13 +552,28 @@ body {
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 2.5rem; /* Augmenté de 2rem */
+  font-size: 2rem;
 }
 
-/* Main du joueur */
+/* Couleurs des cartes selon la couleur */
+.card.red .corner span:last-child,
+.card.red .suit.main,
+.card[data-color="red"] .corner span:last-child,
+.card[data-color="red"] .suit.main {
+  color: var(--card-red) !important;
+}
+
+.card.black .corner span:last-child,
+.card.black .suit.main,
+.card[data-color="black"] .corner span:last-child,
+.card[data-color="black"] .suit.main {
+  color: var(--card-black) !important;
+}
+
+/* Main du joueur - CORRECTION MAJEURE */
 .player-hand {
   position: fixed;
-  bottom: var(--hand-bottom); /* Position améliorée */
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -515,14 +582,12 @@ body {
   background: rgba(255,255,255,0.1);
   backdrop-filter: blur(10px);
   border-radius: var(--radius);
-  max-width: 95vw; /* Amélioration responsive */
+  max-width: 90%;
   overflow-x: auto;
-  z-index: 20;
+  z-index: 1000;
   border: 1px solid rgba(255,255,255,0.2);
   box-shadow: var(--shadow-lg);
-  scrollbar-width: thin; /* Scrollbar fine pour mobile */
 }
-
 .player-hand .card { 
   flex-shrink: 0; 
   background: white !important;
@@ -544,138 +609,120 @@ body {
   border-top-right-radius: var(--radius);
   display: flex;
   flex-direction: column;
-  transform: translateY(calc(100% - 40px));
+  transform: translateY(calc(100% - 50px));
   transition: var(--transition);
   z-index: 100;
   border: 1px solid rgba(255,255,255,0.2);
   border-bottom: none;
   box-shadow: var(--shadow-xl);
-  max-width: 90vw; /* Responsive */
 }
 
 #chat-container.open { 
   transform: translateY(0); 
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .game-main-content {
-    flex-direction: column; /* Empile les éléments sur petits écrans */
-  }
-  
-  .game-controls {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    border-right: none;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-  }
-  
-  .btn-special, .btn-action {
-    flex: 1;
-    min-width: 150px;
-    margin: 0.25rem;
-  }
-  
-  .table-center {
-    gap: 1rem;
-  }
+#chat-messages { 
+  flex: 1; 
+  height: var(--chat-height); 
+  overflow-y: auto; 
+  padding: 1rem; 
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
-@media (max-width: 768px) {
-  :root {
-    --card-width: 75px;
-    --card-height: 112px;
-  }
-  
-  .menu-content {
-    padding: 1.5rem;
-  }
-  
-  .game-header {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .header-left, .header-right {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .player-info {
-    min-width: 100px;
-    padding: 0.4rem 0.6rem;
-  }
-  
-  .suit.main {
-    font-size: 2rem;
-  }
+#chat-messages .message {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
 }
 
-@media (max-width: 480px) {
-  :root {
-    --card-width: 65px;
-    --card-height: 97px;
-    --hand-bottom: 20px;
-  }
-  
-  .menu-content {
-    padding: 1rem;
-  }
-  
-  .btn {
-    padding: 0.6rem 1rem;
-    font-size: 0.9rem;
-  }
-  
-  .player-hand {
-    padding: 0.5rem;
-    max-width: 100vw;
-  }
-  
-  .suit.main {
-    font-size: 1.5rem;
-  }
-  
-  .corner {
-    font-size: 0.6rem;
-  }
-  
-  #chat-container {
-    width: 100%;
-    max-width: 100%;
-  }
+#chat-messages .me { 
+  text-align: right; 
+  color: var(--secondary);
+  background: rgba(52,152,219,0.1);
 }
 
-@media (max-height: 700px) {
-  .game-center {
-    padding-bottom: 150px;
-  }
-  
-  .player-hand {
-    bottom: 10px;
-  }
+#chat-messages .other {
+  color: var(--text);
+  background: rgba(0,0,0,0.05);
 }
 
-/* Orientation paysage sur mobile */
-@media (max-width: 768px) and (orientation: landscape) {
-  .menu-overlay {
-    overflow-y: auto;
-  }
-  
-  .game-header {
-    padding: 0.5rem;
-    flex-wrap: nowrap;
-  }
-  
-  .player-hand {
-    max-height: 30vh;
-  }
-  
-  .game-center {
-    padding-bottom: 120px;
-  }
+#chat-form { 
+  display: flex; 
+  padding: 1rem; 
+  gap: 0.5rem; 
+  border-top: 1px solid rgba(0,0,0,0.1); 
+}
+
+#chat-input { 
+  flex: 1; 
+  padding: 0.5rem; 
+  border: 1px solid #e0e0e0; 
+  border-radius: var(--radius); 
+  font-size: 0.9rem;
+  transition: var(--transition);
+}
+
+#chat-input:focus {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+#chat-form button { 
+  padding: 0.5rem 1rem; 
+  background: var(--gradient-primary); 
+  color: var(--text-white); 
+  border: none; 
+  border-radius: var(--radius); 
+  cursor: pointer; 
+  transition: var(--transition); 
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+#chat-form button:hover { 
+  transform: translateY(-1px); 
+  box-shadow: var(--shadow-sm); 
+}
+
+/* Modales */
+.modal { 
+  position: fixed; 
+  inset: 0; 
+  background: rgba(0,0,0,0.7); 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  z-index: 2000;
+  backdrop-filter: blur(5px);
+}
+
+.modal-content { 
+  background: white; 
+  padding: 2rem; 
+  border-radius: var(--radius-lg); 
+  box-shadow: var(--shadow-xl); 
+  max-width: 90%; 
+  width: 500px; 
+  text-align: center;
+  animation: slideUp 0.3s ease-out;
+}
+
+.modal-close { 
+  margin-top: 1rem; 
+  padding: 0.75rem 1.5rem; 
+  background: var(--gradient-primary); 
+  color: white; 
+  border: none; 
+  border-radius: var(--radius); 
+  cursor: pointer;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.modal-close:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 /* Animations */
@@ -687,4 +734,305 @@ body {
 @keyframes slideUp { 
   from { opacity: 0; transform: translateY(30px); } 
   to { opacity: 1; transform: translateY(0); } 
+}
+
+@keyframes dealCard { 
+  from { transform: translateY(-100px) rotate(180deg); opacity: 0; } 
+  to { transform: translateY(0) rotate(0deg); opacity: 1; } 
+}
+
+/* Cartes - couleurs basées sur le data-suit */
+.card[data-suit="Coeurs"] .corner span:last-child,
+.card[data-suit="Coeurs"] .suit.main,
+.card[data-suit="Carreaux"] .corner span:last-child,
+.card[data-suit="Carreaux"] .suit.main {
+  color: var(--card-red) !important;
+}
+
+.card[data-suit="Trèfles"] .corner span:last-child,
+.card[data-suit="Trèfles"] .suit.main,
+.card[data-suit="Piques"] .corner span:last-child,
+.card[data-suit="Piques"] .suit.main {
+  color: var(--card-black) !important;
+}
+
+/* Pour le joker display */
+.joker-display .card[data-suit="Coeurs"],
+.joker-display .card[data-suit="Carreaux"] {
+  color: var(--card-red) !important;
+}
+
+.joker-display .card[data-suit="Trèfles"],
+.joker-display .card[data-suit="Piques"] {
+  color: var(--card-black) !important;
+}
+
+/* Effets spéciaux pour les interactions */
+.card.dragging { 
+  opacity: 0.7; 
+  transform: rotate(5deg) scale(1.05); 
+  z-index: 1000;
+}
+
+.drop-zone { 
+  border: 2px dashed rgba(52,152,219,0.5); 
+  background: rgba(52,152,219,0.1);
+  border-radius: var(--radius);
+  transition: var(--transition);
+}
+
+.drop-zone.valid { 
+  border-color: rgba(39,174,96,0.7); 
+  background: rgba(39,174,96,0.1); 
+}
+
+.drop-zone.invalid { 
+  border-color: rgba(231,76,60,0.7); 
+  background: rgba(231,76,60,0.1); 
+}
+
+/* Animations pour les cartes */
+.card.dealing { 
+  animation: dealCard 0.5s ease-out; 
+}
+
+.card.selected {
+  transform: translateY(-10px);
+  box-shadow: var(--shadow-lg), 0 0 0 2px var(--secondary);
+}
+
+/* States des cartes */
+.card.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card.highlighted {
+  box-shadow: var(--shadow-lg), 0 0 0 2px var(--warning);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .menu-content { 
+    padding: 2rem; 
+    margin: 1rem; 
+  }
+  
+  .menu-content h1 { 
+    font-size: 2rem; 
+  }
+  
+  .join-form { 
+    flex-direction: column; 
+    align-items: stretch; 
+  }
+  
+  .game-controls { 
+    width: 150px; 
+    padding: 0.5rem; 
+  }
+  
+  .game-header { 
+    padding: 0.5rem 1rem; 
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .table-center { 
+    gap: 2rem; 
+    flex-direction: column;
+  }
+  
+  .player-hand { 
+    bottom: 10px; 
+    padding: 0.5rem; 
+    max-width: 95%;
+  }
+  
+  .card { 
+    width: calc(var(--card-width) * 0.8); 
+    height: calc(var(--card-height) * 0.8); 
+  }
+  
+  #chat-container {
+    width: 280px;
+  }
+  
+  .players-circle {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .player-info {
+    min-width: 120px;
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .menu-content { 
+    padding: 1.5rem; 
+  }
+  
+  .menu-content h1 { 
+    font-size: 1.8rem; 
+  }
+  
+  .game-controls { 
+    width: 120px; 
+    padding: 0.25rem; 
+  }
+  
+  .game-header { 
+    padding: 0.5rem; 
+    font-size: 0.9rem; 
+  }
+  
+  .table-center { 
+    gap: 1.5rem; 
+  }
+  
+  .player-hand { 
+    bottom: 10px; 
+    padding: 0.5rem; 
+  }
+  
+  .card { 
+    width: calc(var(--card-width) * 0.7); 
+    height: calc(var(--card-height) * 0.7); 
+  }
+  
+  #chat-container {
+    width: 250px;
+  }
+  
+  .header-left, .header-right {
+    gap: 0.5rem;
+  }
+  
+  .game-status {
+    font-size: 0.9rem;
+  }
+
+  .players-circle {
+    gap: 0.5rem;
+  }
+
+  .player-info {
+    min-width: 100px;
+    font-size: 0.8rem;
+  }
+}
+
+/* Accessibilité */
+@media (prefers-reduced-motion: reduce) { 
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.card:focus, .btn:focus, .room-input:focus, .chat-toggle:focus { 
+  outline: 2px solid var(--secondary); 
+  outline-offset: 2px; 
+}
+
+/* Utilitaires */
+.hidden {
+  display: none !important;
+}
+
+.visible {
+  display: block !important;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.no-select {
+  user-select: none;
+}
+
+/* Scrollbar styling */
+#chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+#chat-messages::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
+}
+
+#chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.3);
+  border-radius: 3px;
+}
+
+#chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.5);
+}
+
+.player-hand::-webkit-scrollbar {
+  height: 6px;
+}
+
+.player-hand::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+}
+
+.player-hand::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 3px;
+}
+
+.player-hand::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.5);
+}
+
+/* Correction supplémentaire pour la couleur des cartes */
+.card.red {
+  color: var(--card-red);
+}
+
+.card.black {
+  color: var(--card-black);
+}
+
+/* Correction pour les cartes avec data-color */
+.card[data-color="red"] {
+  color: var(--card-red);
+}
+
+.card[data-color="black"] {
+  color: var(--card-black);
+}
+/* Ajouter à la fin du CSS */
+.player-discard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 10px;
+}
+
+.discard-cards {
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-discard .player-name {
+  color: white;
+  font-size: 0.8rem;
+  margin-bottom: 5px;
+  text-align: center;
 }
