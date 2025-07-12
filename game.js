@@ -492,22 +492,27 @@ function showPopup(content) {
     </div>`;
   document.body.append(modal);
 
+  // Déclarer trapFocus à un niveau supérieur
+  let trapFocus = null;
+
   // Gestion de la touche Échap
   const keyHandler = (e) => {
-    if (e.key === 'Escape') modal.remove();
+    if (e.key === 'Escape') closeModal();
   };
   
   document.addEventListener('keydown', keyHandler);
   
   // Piégeage du focus
   const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  
   if (focusable.length > 0) {
     const firstFocusable = focusable[0];
     const lastFocusable = focusable[focusable.length - 1];
     
     firstFocusable.focus();
     
-    const trapFocus = (e) => {
+    // Assigner la fonction à la variable trapFocus
+    trapFocus = (e) => {
       if (e.key === 'Tab') {
         if (e.shiftKey && document.activeElement === firstFocusable) {
           e.preventDefault();
@@ -522,11 +527,13 @@ function showPopup(content) {
     modal.addEventListener('keydown', trapFocus);
   }
 
-  // Nettoyage
+  // Fonction de fermeture
   const closeModal = () => {
     modal.remove();
     document.removeEventListener('keydown', keyHandler);
-    if (focusable.length > 0) {
+    
+    // Retirer trapFocus seulement si elle a été définie
+    if (trapFocus) {
       modal.removeEventListener('keydown', trapFocus);
     }
   };
