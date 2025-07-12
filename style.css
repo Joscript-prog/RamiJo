@@ -510,33 +510,38 @@ body {
 .corner {
   font-size: 0.7rem;
   line-height: 1;
-}
-
-.corner.top-left {
   position: absolute;
-  top: 0.25rem;
-  left: 0.25rem;
+  padding: 0.25rem;
 }
-
-.corner.bottom-right {
-  position: absolute;
-  bottom: 0.25rem;
-  right: 0.25rem;
+.corner.top {
+  top: 0;
+  left: 0;
+}
+.corner.bottom {
+  bottom: 0;
+  right: 0;
   transform: rotate(180deg);
 }
 
 .suit.main {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   font-size: 2rem;
 }
-
+/* Couleurs des cartes selon la couleur */
+.card.red .corner span:last-child,
+.card.red .suit.main {
+  color: var(--card-red) !important;
+}
+.card.black .corner span:last-child,
+.card.black .suit.main {
+  color: var(--card-black) !important;
+}
 /* Main du joueur */
 .player-hand {
   position: absolute;
-  bottom: 20px;
+  bottom: var(--hand-bottom);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -551,10 +556,7 @@ body {
   border: 1px solid rgba(255,255,255,0.2);
   box-shadow: var(--shadow-lg);
 }
-
-.player-hand .card {
-  flex-shrink: 0;
-}
+.player-hand .card { flex-shrink: 0; }
 
 .player-hand .card:hover {
   transform: translateY(-10px);
