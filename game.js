@@ -1075,55 +1075,54 @@ async function discardCard(cardId) {
 
 async function endTurn() {
   try {
+    // S'assurer que c'est bien votre tour
     const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
     if (turnSnap.val() !== playerId) {
       return alert("Ce n'est pas votre tour.");
     }
 
-    const stateRef = ref(db, `rooms/${currentRoom}/state`); // Obtenir la référence
+    const stateRef = ref(db, `rooms/${currentRoom}/state`);
     const stateSnap = await get(stateRef);
-    let state = stateSnap.val() || {}; // Utiliser 'let'
+    const state = stateSnap.val() || {};
 
-    // Doit avoir pioché ou pris une carte
-    if (!state.hasDrawnOrPicked) { // Vérifie l'état Firebase
+    // Vérifier que vous avez pioché ou pris une carte
+    if (!state.hasDrawnOrPicked) {
       return alert("Vous devez piocher une carte (ou en prendre une de la défausse) avant de terminer votre tour.");
     }
 
-    // Doit avoir 13 cartes en main après la défausse
+    // Vérifier que vous avez défaussé pour revenir à 13 cartes
     const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
     const hand = handSnap.val() || [];
     if (hand.length !== 13) {
       return alert("Votre main doit contenir 13 cartes pour terminer le tour (vous devez défausser une carte).");
     }
-
-    // Doit avoir défaussé une carte
-    if (!state.hasDiscardedThisTurn) { // Vérifie l'état Firebase
+    if (!state.hasDiscardedThisTurn) {
       return alert("Vous devez défausser une carte.");
     }
 
-    // Déterminer le prochain joueur
+    // Calcul du prochain joueur
     const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
     const players = Object.keys(playersSnap.val() || {});
     const currentIndex = players.indexOf(playerId);
-    const nextIndex = (currentIndex + 1) % players.length;
-    const nextPlayerId = players[nextIndex];
+    const nextPlayerId = players[(currentIndex + 1) % players.length];
 
-    // Réinitialisation des drapeaux pour le prochain tour dans l'objet state
-    state.hasDrawnOrPicked = false;
-    state.hasDiscardedThisTurn = false;
-    state.drawCount = 0; // Réinitialiser le compteur de pioche pour le nouveau tour
+    // Réinitialisation des flags dans state
+    const newState = {
+      hasDrawnOrPicked: false,
+      hasDiscardedThisTurn: false,
+      drawCount: 0,
+      lastDiscarder: state.lastDiscarder
+    };
 
-    // Mettre à jour l'état de la partie pour le prochain tour
-    await update(stateRef, {
-      turn: nextPlayerId,
-      drawCount: state.drawCount,
-      lastDiscarder: state.lastDiscarder, // Maintenir le dernier défausseur mis à jour par discardCard
-      hasDrawnOrPicked: state.hasDrawnOrPicked,
-      hasDiscardedThisTurn: state.hasDiscardedThisTurn
-    });
+    // On met à jour en parallèle : 
+    // 1) l’état (sans le champ turn)
+    // 2) la racine turn pour passer au joueur suivant
+    await Promise.all([
+      update(stateRef, newState),
+      set(ref(db, `rooms/${currentRoom}/turn`), nextPlayerId)
+    ]);
 
     console.log(`Tour terminé. C'est le tour de ${nextPlayerId}.`);
-
   } catch (error) {
     console.error("Erreur lors de la fin du tour:", error);
     alert("Une erreur est survenue lors de la fin du tour.");
@@ -1133,64 +1132,64 @@ async function endTurn() {
 function setupPlayerHandDiscardListener() {
   let lastClickTime = 0;
   let lastCardId = null;
-  
+
   playerHandDiv.addEventListener('click', async e => {
     const cardEl = e.target.closest('.card');
     if (!cardEl) return;
-    
+
     const cardId = cardEl.dataset.cardId;
     const now = Date.now();
-    
-    // Double-clic détecté (300ms sur la même carte)
+
+    // Détection du double‑clic (300ms sur la même carte)
     if (lastCardId === cardId && now - lastClickTime < 300) {
+      // Vérifier que c'est bien votre tour
       const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
       if (turnSnap.val() !== playerId) {
         return alert("Ce n'est pas votre tour.");
       }
 
+      // Vérifier que vous n'avez pas déjà défaussé
       if (hasDiscardedThisTurn) {
         return alert("Vous avez déjà jeté une carte ce tour.");
       }
 
+      // Vérifier que vous avez pioché ou pris avant de défausser
       const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-      const drawCount = stateSnap.val()?.drawCount || 0;
-      if (!hasDrawnOrPicked || drawCount === 0) {
+      const { drawCount = 0, hasDrawnOrPicked: got } = stateSnap.val() || {};
+      if (!got || drawCount === 0) {
         return alert("Vous devez piocher ou prendre une carte avant de défausser.");
       }
 
-      let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-      const idx = hand.findIndex(c => c.id === cardId);
-      if (idx === -1) return;
-      const [card] = hand.splice(idx, 1);
+      // On délègue la défausse à la fonction dédiée
+      try {
+        await discardCard(cardId);
+        // On marque la défausse dans l’état local
+        hasDiscardedThisTurn = true;
+      } catch (err) {
+        console.error("Erreur lors de la défausse :", err);
+        return alert("Impossible de défausser cette carte.");
+      }
 
-      let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
-      pile.push(card);
-
-      await Promise.all([
-        set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
-        set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile)
-      ]);
-
-      // ✅ Ne marque le tour comme terminé qu'après succès
+      // Puis on termine le tour
       try {
         await endTurn();
-        hasDiscardedThisTurn = true;
         console.log("Carte défaussée et tour terminé.");
       } catch (err) {
         console.error("Erreur lors de la fin du tour :", err);
         alert("Une erreur est survenue en terminant le tour.");
       }
 
-      // Réinitialiser pour éviter les actions multiples
+      // Réinitialiser la détection de clic
       lastCardId = null;
       lastClickTime = 0;
     } else {
-      // Premier clic ou nouvelle carte
+      // Premier clic ou clic sur une autre carte
       lastCardId = cardId;
       lastClickTime = now;
     }
   });
 }
+
 
 function enableChat() {
   toggleChatBtn.addEventListener('click', () => {
