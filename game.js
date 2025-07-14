@@ -4,6 +4,9 @@ import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/modular/sor
 const myPseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
+let hasDrawnOrPicked    = false;
+let hasDiscardedThisTurn = false;
+
 const Rules = {
   isQuadri(hand) {
     const vals = hand.map(c => c.value);
@@ -899,57 +902,70 @@ function renderHand(hand) {
   enableDragDrop();
 }
 
+// ─────────── Fonction pour piocher une carte ───────────
 async function drawCard() {
   if (!currentRoom) return;
 
+  // 1) Vérifie que c’est votre tour
   const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
   if (turnSnap.val() !== playerId) {
     return alert("Ce n'est pas votre tour.");
   }
 
+  // 2) Récupère et initialise state depuis Firebase
   const stateRef = ref(db, `rooms/${currentRoom}/state`);
-  let state = (await get(stateRef)).val() || { drawCount: 0 };
+  let state = (await get(stateRef)).val() || { drawCount: 0, hasDrawnOrPicked: false };
 
-  if (state.drawCount >= 1) {
+  // 3) Empêche de piocher plus d’une fois
+  if (state.drawCount >= 1 || state.hasDrawnOrPicked) {
     return alert('Vous avez déjà pioché ou pris une carte ce tour.');
   }
 
-  let [deckSnap, handSnap, jokerSetSnap] = await Promise.all([
+  // 4) Récupère deck, main et jokers simultanément
+  const [deckSnap, handSnap, jokerSetSnap] = await Promise.all([
     get(ref(db, `rooms/${currentRoom}/deck`)),
     get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)),
     get(ref(db, `rooms/${currentRoom}/jokerSet`))
   ]);
-  let deck = deckSnap.val() || [];
-  let hand = handSnap.val() || [];
+  const deck = deckSnap.val() || [];
+  const hand = handSnap.val() || [];
   const jokerSet = jokerSetSnap.val()?.jokerSet || [];
 
   if (!deck.length) {
-    return alert('Deck vide');
+    return alert('Deck vide.');
   }
 
+  // 5) Pioche la carte et l’ajoute à la main
   const card = deck.shift();
   hand.push(card);
 
+  // 6) Si un joker apparaît dans la main alors que le deck est presque vide, on le défausse automatiquement
   const playersCount = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {}).length;
-  if (deck.length < playersCount && hand.some(c => jokerSet.includes(c.id))) {
+  if (deck.length < playersCount) {
     const idx = hand.findIndex(c => jokerSet.includes(c.id));
     if (idx !== -1) {
       const [jok] = hand.splice(idx, 1);
-      let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
+      const pileRef = ref(db, `rooms/${currentRoom}/discard/${playerId}`);
+      const pile = (await get(pileRef)).val() || [];
       pile.push(jok);
-      await set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), pile);
+      await set(pileRef, pile);
       showPopup('Joker défaussé automatiquement.');
     }
   }
 
-  state.drawCount++; // Incrémente le compteur de pioches
-  state.hasDrawnOrPicked = true; // Indique qu'une carte a été piochée/prise
+  // 7) Met à jour state et drapeaux global/local
+  state.drawCount++;
+  state.hasDrawnOrPicked = true;
+  hasDrawnOrPicked = true;  // flag local
 
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/deck`), deck),
     set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
-    // Mettre à jour les deux drapeaux dans Firebase
-    update(stateRef, { drawCount: state.drawCount, started: true, hasDrawnOrPicked: state.hasDrawnOrPicked })
+    update(stateRef, {
+      drawCount: state.drawCount,
+      hasDrawnOrPicked: state.hasDrawnOrPicked,
+      started: true
+    })
   ]);
 }
 
@@ -1000,53 +1016,62 @@ async function takeDiscardedCard(ownerId) {
     update(stateRef, { hasDrawnOrPicked: state.hasDrawnOrPicked, drawCount: state.drawCount })
   ]);
 }
-// cardId est l'ID de la carte que le joueur souhaite défausser
+// ─────────── Fonction pour défausser une carte ───────────
 async function discardCard(cardId) {
-    const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-    if (turnSnap.val() !== playerId) {
-        return alert("Ce n'est pas votre tour.");
-    }
+  // 1) Vérifie que c’est votre tour
+  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+  if (turnSnap.val() !== playerId) {
+    return alert("Ce n'est pas votre tour.");
+  }
 
-    const stateRef = ref(db, `rooms/${currentRoom}/state`);
-    let state = (await get(stateRef)).val() || { hasDrawnOrPicked: false, hasDiscardedThisTurn: false };
+  // 2) Récupère et initialise state depuis Firebase
+  const stateRef = ref(db, `rooms/${currentRoom}/state`);
+  let state = (await get(stateRef)).val() || { hasDrawnOrPicked: false, hasDiscardedThisTurn: false };
 
-    // Vérifie si le joueur a pioché ou pris une carte ce tour
-    if (!state.hasDrawnOrPicked) {
-        return alert("Vous devez piocher ou prendre une carte avant de défausser.");
-    }
+  // 3) Doit avoir pioché ou pris une carte avant de défausser
+  if (!state.hasDrawnOrPicked) {
+    return alert("Vous devez piocher ou prendre une carte avant de défausser.");
+  }
 
-    // Vérifie si le joueur a déjà défaussé ce tour
-    if (state.hasDiscardedThisTurn) {
-        return alert("Vous avez déjà défaussé une carte ce tour.");
-    }
+  // 4) Empêche la défausse multiple
+  if (state.hasDiscardedThisTurn) {
+    return alert("Vous avez déjà défaussé une carte ce tour.");
+  }
 
-    let handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
-    let hand = handSnap.val() || [];
+  // 5) Retire la carte de la main
+  const handRef = ref(db, `rooms/${currentRoom}/hands/${playerId}`);
+  const handSnap = await get(handRef);
+  const hand = handSnap.val() || [];
+  const cardIndex = hand.findIndex(c => c.id === cardId);
+  if (cardIndex === -1) {
+    return alert("Erreur : Cette carte n'est pas dans votre main.");
+  }
+  const [cardToDiscard] = hand.splice(cardIndex, 1);
 
-    const cardIndex = hand.findIndex(c => c.id === cardId);
-    if (cardIndex === -1) {
-        return alert("Erreur : Cette carte n'est pas dans votre main.");
-    }
+  // 6) Ajoute la carte à la pile de défausse du joueur
+  const discardPileRef = ref(db, `rooms/${currentRoom}/discard/${playerId}`);
+  const discardPileSnap = await get(discardPileRef);
+  const discardPile = discardPileSnap.val() || [];
+  discardPile.push(cardToDiscard);
 
-    const [cardToDiscard] = hand.splice(cardIndex, 1); // Retire la carte de la main
+  // 7) Met à jour state et drapeaux global/local
+  state.hasDiscardedThisTurn = true;
+  state.lastDiscarder = playerId;
+  hasDiscardedThisTurn = true;  // flag local
 
-    let discardPileRef = ref(db, `rooms/${currentRoom}/discard/${playerId}`);
-    let discardPileSnap = await get(discardPileRef);
-    let discardPile = discardPileSnap.val() || [];
-    discardPile.push(cardToDiscard); // Ajoute la carte à la pile de défausse
+  await Promise.all([
+    set(handRef, hand),
+    set(discardPileRef, discardPile),
+    update(stateRef, {
+      hasDiscardedThisTurn: state.hasDiscardedThisTurn,
+      lastDiscarder: state.lastDiscarder
+    })
+  ]);
 
-    state.hasDiscardedThisTurn = true; // Marque la défausse pour ce tour
-    state.lastDiscarder = playerId; // Met à jour le dernier défausseur
-
-    await Promise.all([
-        set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand), // Met à jour la main sans la carte
-        set(discardPileRef, discardPile), // Met à jour la pile de défausse
-        update(stateRef, { hasDiscardedThisTurn: state.hasDiscardedThisTurn, lastDiscarder: state.lastDiscarder }) // Met à jour l'état dans Firebase
-    ]);
-
-    // re-render la main après la défausse, si non fait automatiquement par le listener Firebase
-    renderHand(hand);
+  // 8) Ré-affiche la main si nécessaire
+  renderHand(hand);
 }
+
 
 async function endTurn() {
   try {
