@@ -1130,66 +1130,53 @@ async function endTurn() {
 }
 
 function setupPlayerHandDiscardListener() {
-  let lastClickTime = 0;
-  let lastCardId = null;
-
-  playerHandDiv.addEventListener('click', async e => {
+  playerHandDiv.addEventListener('dblclick', async e => {
     const cardEl = e.target.closest('.card');
     if (!cardEl) return;
+    e.stopPropagation();
 
     const cardId = cardEl.dataset.cardId;
-    const now = Date.now();
 
-    // Détection du double‑clic (300ms sur la même carte)
-    if (lastCardId === cardId && now - lastClickTime < 300) {
-      // Vérifier que c'est bien votre tour
-      const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-      if (turnSnap.val() !== playerId) {
-        return alert("Ce n'est pas votre tour.");
-      }
+    // 1) Vérifier que c'est bien votre tour
+    const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+    if (turnSnap.val() !== playerId) {
+      return alert("Ce n'est pas votre tour.");
+    }
 
-      // Vérifier que vous n'avez pas déjà défaussé
-      if (hasDiscardedThisTurn) {
-        return alert("Vous avez déjà jeté une carte ce tour.");
-      }
+    // 2) Récupérer l'état pour vérifier draw & discard
+    const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+    const {
+      drawCount = 0,
+      hasDrawnOrPicked = false,
+      hasDiscardedThisTurn = false
+    } = stateSnap.val() || {};
 
-      // Vérifier que vous avez pioché ou pris avant de défausser
-      const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-      const { drawCount = 0, hasDrawnOrPicked: got } = stateSnap.val() || {};
-      if (!got || drawCount === 0) {
-        return alert("Vous devez piocher ou prendre une carte avant de défausser.");
-      }
+    if (!hasDrawnOrPicked || drawCount === 0) {
+      return alert("Vous devez piocher ou prendre une carte avant de défausser.");
+    }
+    if (hasDiscardedThisTurn) {
+      return alert("Vous avez déjà défaussé ce tour.");
+    }
 
-      // On délègue la défausse à la fonction dédiée
-      try {
-        await discardCard(cardId);
-        // On marque la défausse dans l’état local
-        hasDiscardedThisTurn = true;
-      } catch (err) {
-        console.error("Erreur lors de la défausse :", err);
-        return alert("Impossible de défausser cette carte.");
-      }
+    // 3) On appelle discardCard()
+    try {
+      await discardCard(cardId);
+    } catch (err) {
+      // Si la carte n'était plus dans la main, on sort sans alerter l'utilisateur
+      console.warn("Discard skipped:", err);
+      return;
+    }
 
-      // Puis on termine le tour
-      try {
-        await endTurn();
-        console.log("Carte défaussée et tour terminé.");
-      } catch (err) {
-        console.error("Erreur lors de la fin du tour :", err);
-        alert("Une erreur est survenue en terminant le tour.");
-      }
-
-      // Réinitialiser la détection de clic
-      lastCardId = null;
-      lastClickTime = 0;
-    } else {
-      // Premier clic ou clic sur une autre carte
-      lastCardId = cardId;
-      lastClickTime = now;
+    // 4) Puis on termine le tour
+    try {
+      await endTurn();
+      console.log("Carte défaussée et tour terminé.");
+    } catch (err) {
+      console.error("Erreur en fin de tour :", err);
+      alert("Une erreur est survenue lors de la fin du tour.");
     }
   });
 }
-
 
 function enableChat() {
   toggleChatBtn.addEventListener('click', () => {
