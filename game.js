@@ -656,9 +656,9 @@ function renderDiscardPiles(players, discards) {
       pileDiv.classList.add('player-discard');
       document.getElementById('players-discard-circle').appendChild(pileDiv);
     }
-    pileDiv.style.position   = 'absolute';
-    pileDiv.style.left       = `${x}%`;
-    pileDiv.style.top        = `${y}%`;
+    pileDiv.style.position    = 'absolute';
+    pileDiv.style.left        = `${x}%`;
+    pileDiv.style.top         = `${y}%`;
     pileDiv.innerHTML = `
       <div class="player-name">${playerId}</div>
       <div class="discard-cards">
@@ -667,9 +667,7 @@ function renderDiscardPiles(players, discards) {
     `;
   });
 }
-pileDiv.querySelectorAll('.card').forEach(cardEl => {
-  cardEl.addEventListener('click', () => takeDiscardedCard(playerId));
-});
+
 // Ajouter cette fonction pour écouter les comptes de cartes
 function listenHandCounts(room) {
   onValue(ref(db, `rooms/${room}/hands`), snap => {
