@@ -4,8 +4,6 @@ import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/modular/sor
 const myPseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
-let hasDrawnOrPicked = false;
-let hasDiscardedThisTurn = false;
 
 const Rules = {
   isQuadri(hand) {
@@ -414,6 +412,8 @@ async function dealCards(roomId, playerIds) {
       started: false,
       drawCount: 0,
       lastDiscarder: null,
+      hasDrawnOrPicked: false,
+      hasDiscardedThisTurn: false,
       sevenPlayed: false,
       winDeclared: false,
       sevenCombo: null,
@@ -462,7 +462,7 @@ if (remind7NBtn) {
 
 const deckPile = document.getElementById('deck');
 deckPile.classList.add('clickable');
-deckPile.addEventListener('click', drawCard);
+deckPile.addEventListener('dblclick', drawCard);
 
 if (endTurnBtn) {
   endTurnBtn.addEventListener('click', endTurn);
@@ -724,7 +724,7 @@ function listenDiscard(room) {
 
       if (ownerId !== playerId) {
         cardEl.style.cursor = 'pointer';
-        cardEl.addEventListener('click', async () => {
+        cardEl.addEventListener('dblclick', async () => {
           const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
           if (turnSnap.val() === playerId) {
             const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
@@ -894,6 +894,7 @@ function renderHand(hand) {
       <div class="suit main">${c.symbol}</div>
       <div class="corner bottom"><span>${c.rank}</span><span>${c.symbol}</span></div>
     `;
+    div.addEventListener('dblclick', () => discardCard(c.id));
     playerHandDiv.append(div);
   });
   enableDragDrop();
@@ -942,21 +943,22 @@ async function drawCard() {
     }
   }
 
-  state.drawCount++;
+  state.drawCount++; // Incrémente le compteur de pioches
+  state.hasDrawnOrPicked = true; // Indique qu'une carte a été piochée/prise
 
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/deck`), deck),
     set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
-    update(stateRef, { drawCount: state.drawCount, started: true })
+    // Mettre à jour les deux drapeaux dans Firebase
+    update(stateRef, { drawCount: state.drawCount, started: true, hasDrawnOrPicked: state.hasDrawnOrPicked })
   ]);
-
-  hasDrawnOrPicked = true;
 }
 
 async function takeDiscardedCard(ownerId) {
   // 1) Récupère d'abord le state pour connaître lastDiscarder
-  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-  const state = stateSnap.val() || {};
+  const stateRef = ref(db, `rooms/${currentRoom}/state`); // Obtenir la référence ici
+  const stateSnap = await get(stateRef);
+  let state = stateSnap.val() || {}; // Utiliser 'let' pour pouvoir modifier l'objet state
 
   // 2) Seule la défausse du joueur précédent peut être piochée
   if (ownerId !== state.lastDiscarder) {
@@ -967,6 +969,11 @@ async function takeDiscardedCard(ownerId) {
   const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
   if (turnSnap.val() !== playerId) {
     return alert("Ce n'est pas votre tour.");
+  }
+
+  // Vérifie si le joueur a déjà pioché/pris une carte
+  if (state.drawCount >= 1) { // || state.hasDrawnOrPicked) { // Optionnel: vérifier le flag aussi ici
+    return alert('Vous avez déjà pioché ou pris une carte ce tour.');
   }
 
   // 4) Récupère la pile de défausse du propriétaire
@@ -982,78 +989,122 @@ async function takeDiscardedCard(ownerId) {
   const hand = handSnap.val() || [];
   hand.push(card);
 
+  // Mettre à jour les drapeaux et le compteur de pioches dans l'objet state
+  state.hasDrawnOrPicked = true;
+  state.drawCount++; // IMPORTANT: Incrémenter drawCount pour la cohérence
+
   // 6) Mise à jour atomique
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), pile),
-    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand)
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+    // Mettre à jour les drapeaux dans Firebase
+    update(stateRef, { hasDrawnOrPicked: state.hasDrawnOrPicked, drawCount: state.drawCount })
   ]);
+}
+// cardId est l'ID de la carte que le joueur souhaite défausser
+async function discardCard(cardId) {
+    const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+    if (turnSnap.val() !== playerId) {
+        return alert("Ce n'est pas votre tour.");
+    }
 
-  hasDrawnOrPicked = true;
+    const stateRef = ref(db, `rooms/${currentRoom}/state`);
+    let state = (await get(stateRef)).val() || { hasDrawnOrPicked: false, hasDiscardedThisTurn: false };
+
+    // Vérifie si le joueur a pioché ou pris une carte ce tour
+    if (!state.hasDrawnOrPicked) {
+        return alert("Vous devez piocher ou prendre une carte avant de défausser.");
+    }
+
+    // Vérifie si le joueur a déjà défaussé ce tour
+    if (state.hasDiscardedThisTurn) {
+        return alert("Vous avez déjà défaussé une carte ce tour.");
+    }
+
+    let handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+    let hand = handSnap.val() || [];
+
+    const cardIndex = hand.findIndex(c => c.id === cardId);
+    if (cardIndex === -1) {
+        return alert("Erreur : Cette carte n'est pas dans votre main.");
+    }
+
+    const [cardToDiscard] = hand.splice(cardIndex, 1); // Retire la carte de la main
+
+    let discardPileRef = ref(db, `rooms/${currentRoom}/discard/${playerId}`);
+    let discardPileSnap = await get(discardPileRef);
+    let discardPile = discardPileSnap.val() || [];
+    discardPile.push(cardToDiscard); // Ajoute la carte à la pile de défausse
+
+    state.hasDiscardedThisTurn = true; // Marque la défausse pour ce tour
+    state.lastDiscarder = playerId; // Met à jour le dernier défausseur
+
+    await Promise.all([
+        set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand), // Met à jour la main sans la carte
+        set(discardPileRef, discardPile), // Met à jour la pile de défausse
+        update(stateRef, { hasDiscardedThisTurn: state.hasDiscardedThisTurn, lastDiscarder: state.lastDiscarder }) // Met à jour l'état dans Firebase
+    ]);
+
+    // re-render la main après la défausse, si non fait automatiquement par le listener Firebase
+    renderHand(hand);
 }
 
 async function endTurn() {
   try {
-    // Vérifie si c’est bien le tour du joueur
     const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
     if (turnSnap.val() !== playerId) {
       return alert("Ce n'est pas votre tour.");
     }
 
-    // Récupère l’état actuel de la partie
-    const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-    const state = stateSnap.val() || {};
+    const stateRef = ref(db, `rooms/${currentRoom}/state`); // Obtenir la référence
+    const stateSnap = await get(stateRef);
+    let state = stateSnap.val() || {}; // Utiliser 'let'
 
     // Doit avoir pioché ou pris une carte
-    if (!hasDrawnOrPicked) {
+    if (!state.hasDrawnOrPicked) { // Vérifie l'état Firebase
       return alert("Vous devez piocher une carte (ou en prendre une de la défausse) avant de terminer votre tour.");
     }
 
-    // Vérifie que le joueur a bien défaussé une carte pour avoir 13 cartes restantes
-    const currentHand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-    if (currentHand.length !== 13) {
-      return alert("Vous devez défausser une carte pour avoir 13 cartes en main avant de terminer votre tour.");
+    // Doit avoir 13 cartes en main après la défausse
+    const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+    const hand = handSnap.val() || [];
+    if (hand.length !== 13) {
+      return alert("Votre main doit contenir 13 cartes pour terminer le tour (vous devez défausser une carte).");
     }
 
-    // Détermine le prochain joueur
+    // Doit avoir défaussé une carte
+    if (!state.hasDiscardedThisTurn) { // Vérifie l'état Firebase
+      return alert("Vous devez défausser une carte.");
+    }
+
+    // Déterminer le prochain joueur
     const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
     const players = Object.keys(playersSnap.val() || {});
-    const current = playerId;
-    const idx = players.indexOf(current);
-    const next = players[(idx + 1) % players.length];
+    const currentIndex = players.indexOf(playerId);
+    const nextIndex = (currentIndex + 1) % players.length;
+    const nextPlayerId = players[nextIndex];
 
-    if (!players.includes(playerId)) {
-      console.warn("⚠️ Le joueur courant n'existe pas dans la liste des joueurs.");
-    }
-    if (players.length < 2) {
-      console.warn("⚠️ Moins de 2 joueurs. Impossible de passer au joueur suivant.");
-      return alert("Erreur : pas assez de joueurs actifs pour continuer.");
-    }
-    console.log("Joueurs trouvés :", players);
+    // Réinitialisation des drapeaux pour le prochain tour dans l'objet state
+    state.hasDrawnOrPicked = false;
+    state.hasDiscardedThisTurn = false;
+    state.drawCount = 0; // Réinitialiser le compteur de pioche pour le nouveau tour
 
-    // Met à jour le tour et l’état
-    await Promise.all([
-      set(ref(db, `rooms/${currentRoom}/turn`), next),
-      update(ref(db, `rooms/${currentRoom}/state`), {
-        lastDiscarder: current,
-        drawCount: 0
-      })
-    ]);
+    // Mettre à jour l'état de la partie pour le prochain tour
+    await update(stateRef, {
+      turn: nextPlayerId,
+      drawCount: state.drawCount,
+      lastDiscarder: state.lastDiscarder, // Maintenir le dernier défausseur mis à jour par discardCard
+      hasDrawnOrPicked: state.hasDrawnOrPicked,
+      hasDiscardedThisTurn: state.hasDiscardedThisTurn
+    });
 
-    // Vérifie si la partie doit se terminer
-    await checkEndGame();
+    console.log(`Tour terminé. C'est le tour de ${nextPlayerId}.`);
 
-    // → Réinitialisation CORRECTE des flags une fois le tour terminé
-    hasDrawnOrPicked     = false;
-    hasDiscardedThisTurn = false;
-
-    console.log(`Tour terminé. Prochain joueur : ${next}`);
-  } catch (err) {
-    console.error("Erreur lors de endTurn() :", err);
+  } catch (error) {
+    console.error("Erreur lors de la fin du tour:", error);
     alert("Une erreur est survenue lors de la fin du tour.");
   }
 }
-
-
 
 function setupPlayerHandDiscardListener() {
   let lastClickTime = 0;
