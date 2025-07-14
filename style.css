@@ -26,9 +26,9 @@
   --radius-lg: 16px;
   --transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
   --transition-bounce: all 0.4s cubic-bezier(0.68,-0.55,0.265,1.55);
-  --card-width: 90px; /* Augmenté de 80px à 90px */
-  --card-height: 135px; /* Augmenté de 120px à 135px */
-  --hand-bottom: 30px; /* Augmenté de 20px à 30px */
+  --card-width: 90px;
+  --card-height: 135px;
+  --hand-bottom: 30px;
   --chat-width: 320px;
   --chat-height: 280px;
   --gradient-primary: linear-gradient(135deg,#3498db 0%,#2980b9 100%);
@@ -41,16 +41,22 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  touch-action: manipulation; /* Améliore le responsive mobile */
+  touch-action: manipulation;
 }
 
 body {
   font-family: 'Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  background: var(--bg);
   color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+/* Fond vert de table */
+body #game {
+  background: var(--felt-green);
+  background-image: var(--gradient-felt);
+  height: 100vh;
 }
 
 /* Menu principal */
@@ -63,17 +69,17 @@ body {
   align-items: center;
   z-index: 1000;
   animation: fadeIn 0.6s ease-out;
-  padding: 1rem; /* Ajout pour le responsive */
+  padding: 1rem;
 }
 
 .menu-content {
   background: rgba(255,255,255,0.95);
   backdrop-filter: blur(20px);
-  padding: 2rem; /* Réduit de 3rem à 2rem */
+  padding: 2rem;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   text-align: center;
-  max-width: min(500px, 90vw); /* Amélioration responsive */
+  max-width: min(500px, 90vw);
   width: 100%;
   border: 1px solid rgba(255,255,255,0.2);
   animation: slideUp 0.6s ease-out;
@@ -81,9 +87,9 @@ body {
 
 .menu-content h1 {
   font-family: 'Poppins',sans-serif;
-  font-size: clamp(2rem, 5vw, 2.5rem); /* Responsive font size */
+  font-size: clamp(2rem, 5vw, 2.5rem);
   color: var(--primary);
-  margin-bottom: 1.5rem; /* Réduit de 2rem à 1.5rem */
+  margin-bottom: 1.5rem;
   text-shadow: 0 2px 10px rgba(0,0,0,0.1);
   background: var(--gradient-primary);
   -webkit-background-clip: text;
@@ -91,18 +97,18 @@ body {
 }
 
 .menu-section {
-  margin: 1.5rem 0; /* Réduit de 2rem à 1.5rem */
+  margin: 1.5rem 0;
 }
 
 .menu-section h2 {
-  font-size: clamp(1.1rem, 3vw, 1.3rem); /* Responsive font size */
+  font-size: clamp(1.1rem, 3vw, 1.3rem);
   color: var(--text);
-  margin-bottom: 0.75rem; /* Réduit de 1rem à 0.75rem */
+  margin-bottom: 0.75rem;
   font-weight: 500;
 }
 
 .separator {
-  margin: 1.5rem 0; /* Réduit de 2rem à 1.5rem */
+  margin: 1.5rem 0;
   position: relative;
   color: var(--text-light);
   font-weight: 500;
@@ -115,8 +121,8 @@ body {
   content: '';
   position: absolute;
   top: 50%;
-  left: -30px; /* Réduit de -50px */
-  right: -30px; /* Réduit de -50px */
+  left: -30px;
+  right: -30px;
   height: 1px;
   background: linear-gradient(to right,transparent,var(--text-light),transparent);
   z-index: -1;
@@ -124,7 +130,7 @@ body {
 
 .join-form {
   display: flex;
-  gap: 0.75rem; /* Réduit de 1rem */
+  gap: 0.75rem;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -161,8 +167,8 @@ body {
   overflow: hidden;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  width: 100%; /* Pour le responsive */
-  max-width: 300px; /* Limite la largeur */
+  width: 100%;
+  max-width: 300px;
 }
 
 .btn::before {
@@ -227,7 +233,7 @@ body {
   flex-direction: column;
   height: 100vh;
 }
-/* Nouveau conteneur pour la zone de jeu */
+
 .game-play-area {
   flex: 1;
   display: flex;
@@ -235,6 +241,7 @@ body {
   position: relative;
   overflow: auto;
 }
+
 /* Header du jeu */
 .game-header {
   position: relative;
@@ -252,28 +259,29 @@ body {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 1rem; /* Réduit de 2rem */
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
 .header-center {
-  position: static; /* Changé pour le responsive */
+  position: static;
   transform: none;
   color: var(--text-white);
   font-weight: 600;
   font-size: clamp(0.9rem, 2.5vw, 1.1rem);
   margin: 0.5rem 0;
   text-align: center;
-  width: 100%; /* Prend toute la largeur */
-  order: 3; /* Place en bas */
+  width: 100%;
+  order: 3;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 0.75rem; /* Réduit de 1rem */
+  gap: 0.75rem;
 }
-/* Ajoutez ceci dans votre CSS */
+
+/* Zone de défausse */
 #global-discard {
   display: flex;
   flex-wrap: wrap;
@@ -281,11 +289,10 @@ body {
   gap: 1.5rem;
   padding: 1rem;
   max-width: 100%;
-  margin-top: 20px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: var(--radius);
   position: relative;
-  z-index: 25; /* Supérieur à la main */
+  z-index: 25;
 }
 
 .player-discard {
@@ -325,18 +332,19 @@ body {
   width: 100%;
   margin-bottom: 1rem;
 }
+
 /* Contrôles du jeu */
 .game-controls {
   width: 200px;
-  padding: 0.75rem; /* Réduit de 1rem */
+  padding: 0.75rem;
   background: rgba(0,0,0,0.2);
   backdrop-filter: blur(10px);
   border-right: 1px solid rgba(255,255,255,0.1);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem; /* Réduit de 1rem */
+  gap: 0.75rem;
   z-index: 40;
-  overflow-y: auto; /* Scroll si nécessaire */
+  overflow-y: auto;
 }
 
 .btn-special {
@@ -349,7 +357,7 @@ body {
   font-weight: 500;
   transition: var(--transition);
   text-transform: uppercase;
-  font-size: clamp(0.8rem, 2vw, 0.9rem); /* Responsive font size */
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
 }
 
 .btn-special:hover:not(:disabled) {
@@ -364,7 +372,7 @@ body {
 }
 
 .btn-action {
-  padding: 0.75rem; /* Réduit de 1rem */
+  padding: 0.75rem;
   background: var(--gradient-success);
   color: var(--text-white);
   border: none;
@@ -373,7 +381,7 @@ body {
   font-weight: 600;
   transition: var(--transition);
   text-transform: uppercase;
-  font-size: clamp(0.9rem, 2.5vw, 1rem); /* Responsive font size */
+  font-size: clamp(0.9rem, 2.5vw, 1rem);
   margin-top: auto;
 }
 
@@ -397,31 +405,31 @@ body {
 }
 
 .players-circle {
-  position: relative; /* Changé pour le responsive */
+  position: relative;
   top: 0;
   left: 0;
   transform: none;
   display: flex;
-  gap: 1rem; /* Réduit de 2rem */
+  gap: 1rem;
   z-index: 30;
   flex-wrap: wrap;
   justify-content: center;
   padding: 1rem;
-  max-height: 30vh; /* Limite la hauteur */
+  max-height: 30vh;
   overflow-y: auto;
 }
 
 .player-info {
   background: rgba(255,255,255,0.1);
   backdrop-filter: blur(10px);
-  padding: 0.5rem 0.75rem; /* Réduit */
+  padding: 0.5rem 0.75rem;
   border-radius: var(--radius);
   color: var(--text-white);
   font-weight: 500;
   border: 1px solid rgba(255,255,255,0.2);
-  min-width: 120px; /* Réduit de 150px */
+  min-width: 120px;
   text-align: center;
-  font-size: clamp(0.8rem, 2.5vw, 1rem); /* Responsive font size */
+  font-size: clamp(0.8rem, 2.5vw, 1rem);
 }
 
 .player-info.active {
@@ -432,41 +440,46 @@ body {
 
 .player-name {
   font-weight: 600;
-  margin-bottom: 3px; /* Réduit de 5px */
+  margin-bottom: 3px;
   font-size: 0.9em;
 }
 
 .player-hand-count {
-  font-size: 0.8em; /* Réduit */
+  font-size: 0.8em;
   opacity: 0.8;
 }
 
-/* Centre du jeu */
+/* Centre du jeu - NOUVELLE STRUCTURE */
 .game-center {
-  flex: 1;
-  display: flex;
-  flex-direction: column; /* Changé à column */
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  padding: 1rem;
-  padding-bottom: 20px; /* Augmenté pour les nouvelles cartes */
+  display: grid;
+  grid-template-areas:
+    "players players"
+    "deck discards";
+  gap: 20px;
+  padding-top: 50px;
 }
 
-.table-center {
+.table-center { 
+  grid-area: deck; 
   display: flex;
-  flex-wrap: wrap; /* Responsive */
-  gap: 2rem; /* Réduit de 4rem */
-  align-items: center;
   justify-content: center;
 }
+
+#global-discard { 
+  grid-area: discards; 
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.players-circle { grid-area: players; }
 
 /* Deck et défausse */
 .deck-area, .discard-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem; /* Réduit de 1rem */
+  gap: 0.75rem;
 }
 
 .deck-pile {
@@ -487,7 +500,7 @@ body {
 .deck-label, .discard-label {
   color: var(--text-white);
   font-weight: 600;
-  font-size: clamp(0.8rem, 2.5vw, 1rem); /* Responsive font size */
+  font-size: clamp(0.8rem, 2.5vw, 1rem);
   text-align: center;
   background: rgba(0,0,0,0.3);
   padding: 0.5rem 1rem;
@@ -497,8 +510,8 @@ body {
 
 /* Cartes */
 .card {
-  width: var(--card-width); /* Taille augmentée */
-  height: var(--card-height); /* Taille augmentée */
+  width: var(--card-width);
+  height: var(--card-height);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-md);
   position: relative;
@@ -556,7 +569,7 @@ body {
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 2.5rem; /* Augmenté de 2rem */
+  font-size: 2.5rem;
 }
 
 /* Correction des couleurs des cartes */
@@ -596,42 +609,46 @@ body {
   color: var(--card-black) !important;
 }
 
-/* Main du joueur */
+/* Main du joueur - POSITION FIXE ET CHEVAUCHEMENT */
 .player-hand {
-  position: relative;
-  bottom: var(--hand-bottom);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
-  gap: 0.5rem;
+  justify-content: center;
   padding: 1rem;
   background: rgba(255,255,255,0.1);
   backdrop-filter: blur(10px);
-  border-radius: var(--radius);
-  max-width: 95vw;
-  overflow-x: auto;
-  z-index: 20; /* Inférieur à la défausse */
-  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: var(--radius) var(--radius) 0 0;
+  z-index: 100;
+  border-top: 1px solid rgba(255,255,255,0.2);
   box-shadow: var(--shadow-lg);
-  max-height: calc(var(--card-height) + 50px); /* Limite la hauteur */
+  max-height: calc(var(--card-height) + 50px);
+  overflow-x: auto;
+  transform: none !important;
 }
 
 .player-hand .card { 
   flex-shrink: 0; 
   background: white !important;
+  margin-right: -40px; /* Chevauchement */
+  transition: transform 0.3s, margin 0.3s;
 }
 
 .player-hand .card:hover {
-  transform: translateY(-10px);
+  transform: translateY(-15px);
+  margin-right: 0;
+  z-index: 10;
 }
 
-/* Chat - Corrections importantes */
+/* Chat */
 #chat-container {
   position: fixed;
   bottom: 0;
   right: 0;
   width: var(--chat-width);
-  height: 40px; /* Seul le header visible par défaut */
+  height: 40px;
   background: rgba(255,255,255,0.95);
   border-top-left-radius: var(--radius);
   border-top-right-radius: var(--radius);
@@ -704,13 +721,6 @@ body {
 #chat-messages .other {
   color: var(--text);
   background: rgba(0,0,0,0.05);
-}
-
-#chat-form { 
-  display: flex; 
-  padding: 1rem; 
-  gap: 0.5rem; 
-  border-top: 1px solid rgba(0,0,0,0.1); 
 }
 
 #chat-input { 
@@ -803,7 +813,7 @@ body {
 /* Responsive Design */
 @media (max-width: 1024px) {
   .game-main-content {
-    flex-direction: column; /* Empile les éléments sur petits écrans */
+    flex-direction: column;
   }
   
   .game-controls {
@@ -830,7 +840,7 @@ body {
   :root {
     --card-width: 75px;
     --card-height: 112px;
-    --chat-height: 220px; /* Réduit pour mobile */
+    --chat-height: 220px;
   }
   
   .menu-content {
@@ -856,8 +866,8 @@ body {
     font-size: 2rem;
   }
   
-  .game-center {
-    padding-bottom: 200px; /* Réduit pour mobile */
+  .player-hand .card {
+    margin-right: -30px;
   }
 }
 
@@ -866,7 +876,7 @@ body {
     --card-width: 65px;
     --card-height: 97px;
     --hand-bottom: 20px;
-    --chat-height: 180px; /* Réduit pour petits écrans */
+    --chat-height: 180px;
   }
   
   .menu-content {
@@ -880,7 +890,6 @@ body {
   
   .player-hand {
     padding: 0.5rem;
-    max-width: 100vw;
   }
   
   .suit.main {
@@ -896,16 +905,12 @@ body {
     max-width: 100%;
   }
   
-  .game-center {
-    padding-bottom: 160px; /* Réduit pour petits écrans */
+  .player-hand .card {
+    margin-right: -25px;
   }
 }
 
 @media (max-height: 700px) {
-  .game-center {
-    padding-bottom: 150px;
-  }
-  
   .player-hand {
     bottom: 10px;
   }
@@ -924,10 +929,6 @@ body {
   
   .player-hand {
     max-height: 30vh;
-  }
-  
-  .game-center {
-    padding-bottom: 120px;
   }
 }
 
@@ -1068,7 +1069,7 @@ body {
   max-width: 80%;
   text-align: center;
 }
-/* nouveau bloc pour la grille des 7 cartes */
+
 .notif-cards {
   display: flex;
   flex-wrap: wrap;
