@@ -4,7 +4,6 @@ import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/modular/sor
 const myPseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
-
 const Rules = {
   isQuadri(hand) {
     const vals = hand.map(c => c.value);
