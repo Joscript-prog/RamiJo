@@ -667,7 +667,9 @@ function renderDiscardPiles(players, discards) {
     `;
   });
 }
-
+pileDiv.querySelectorAll('.card').forEach(cardEl => {
+  cardEl.addEventListener('click', () => takeDiscardedCard(playerId));
+});
 // Ajouter cette fonction pour écouter les comptes de cartes
 function listenHandCounts(room) {
   onValue(ref(db, `rooms/${room}/hands`), snap => {
@@ -954,30 +956,35 @@ async function drawCard() {
 }
 
 async function takeDiscardedCard(ownerId) {
-  // 1) Seule la défausse du joueur précédent peut être piochée
+  // 1) Récupère d'abord le state pour connaître lastDiscarder
+  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+  const state = stateSnap.val() || {};
+
+  // 2) Seule la défausse du joueur précédent peut être piochée
   if (ownerId !== state.lastDiscarder) {
     return alert("Vous ne pouvez prendre qu'une carte de la défausse du joueur précédent.");
   }
 
+  // 3) Vérifie que c'est votre tour
   const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
   if (turnSnap.val() !== playerId) {
     return alert("Ce n'est pas votre tour.");
   }
 
-  // Récupère la pile de défausse du propriétaire
+  // 4) Récupère la pile de défausse du propriétaire
   const pileSnap = await get(ref(db, `rooms/${currentRoom}/discard/${ownerId}`));
   const pile = pileSnap.val() || [];
   if (pile.length === 0) {
     return alert("La défausse est vide.");
   }
 
-  // On retire la carte du sommet de la défausse et on l'ajoute à la main
+  // 5) Déplace la carte du sommet vers la main
   const card = pile.pop();
   const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
   const hand = handSnap.val() || [];
   hand.push(card);
 
-  // Mise à jour en base
+  // 6) Mise à jour atomique
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), pile),
     set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand)
@@ -985,7 +992,6 @@ async function takeDiscardedCard(ownerId) {
 
   hasDrawnOrPicked = true;
 }
-
 
 async function endTurn() {
   try {
@@ -1154,6 +1160,19 @@ function enableChat() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   });
 }
+// Dès que le DOM est prêt
+document.addEventListener('DOMContentLoaded', () => {
+  const toggleBtn = document.getElementById('toggleChat');
+  const chatContainer = document.getElementById('chat-container');
+  const chatHeader    = chatContainer.querySelector('.chat-header');
+
+  // Bascule l’affichage quand on clique sur l’icône ou le header
+  [toggleBtn, chatHeader].forEach(el =>
+    el.addEventListener('click', () => {
+      chatContainer.classList.toggle('open');
+    })
+  );
+});
 
 async function createRoom() {
   const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900);
