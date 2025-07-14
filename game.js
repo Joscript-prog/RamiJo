@@ -635,6 +635,38 @@ function renderPlayers(players) {
     playersDiv.append(badge);
   });
 }
+/**
+ * Positionne chaque pile de défausse en cercle autour du centre.
+ * @param {Array} players — liste des pseudos ou IDs des joueurs
+ * @param {Object} discards — objet { playerId: [cartes…], … }
+ */
+function renderDiscardPiles(players, discards) {
+  // centre = 50% / 50%, R = 40% du container (ajuste selon besoin)
+  players.forEach((playerId, index) => {
+    const angleDeg = (index / players.length) * 360;
+    const angleRad = angleDeg * Math.PI / 180;
+    const x = 50 + 40 * Math.cos(angleRad);
+    const y = 50 + 40 * Math.sin(angleRad);
+
+    // on récupère (ou crée) la div de défausse pour ce joueur
+    let pileDiv = document.getElementById(`discard-${playerId}`);
+    if (!pileDiv) {
+      pileDiv = document.createElement('div');
+      pileDiv.id = `discard-${playerId}`;
+      pileDiv.classList.add('player-discard');
+      document.getElementById('players-discard-circle').appendChild(pileDiv);
+    }
+    pileDiv.style.position   = 'absolute';
+    pileDiv.style.left       = `${x}%`;
+    pileDiv.style.top        = `${y}%`;
+    pileDiv.innerHTML = `
+      <div class="player-name">${playerId}</div>
+      <div class="discard-cards">
+        ${ (discards[playerId] || []).map(c => `<div class="card" data-card-id="${c.id}"></div>`).join('') }
+      </div>
+    `;
+  });
+}
 
 // Ajouter cette fonction pour écouter les comptes de cartes
 function listenHandCounts(room) {
@@ -922,39 +954,38 @@ async function drawCard() {
 }
 
 async function takeDiscardedCard(ownerId) {
-  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-  if (turnSnap.val() !== playerId)
-    return alert("Ce n'est pas votre tour.");
-
-  const stateRef = ref(db, `rooms/${currentRoom}/state`);
-  let state = (await get(stateRef)).val() || { drawCount: 0, lastDiscarder: null };
-
-  if (state.drawCount >= 1)
-    return alert('Vous avez déjà pioché ou pris une carte ce tour.');
-
+  // 1) Seule la défausse du joueur précédent peut être piochée
   if (ownerId !== state.lastDiscarder) {
     return alert("Vous ne pouvez prendre qu'une carte de la défausse du joueur précédent.");
   }
 
-  let pile = (await get(ref(db, `rooms/${currentRoom}/discard/${ownerId}`))).val() || [];
-  if (!pile.length)
-    return alert('Défausse vide.');
+  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
+  if (turnSnap.val() !== playerId) {
+    return alert("Ce n'est pas votre tour.");
+  }
 
+  // Récupère la pile de défausse du propriétaire
+  const pileSnap = await get(ref(db, `rooms/${currentRoom}/discard/${ownerId}`));
+  const pile = pileSnap.val() || [];
+  if (pile.length === 0) {
+    return alert("La défausse est vide.");
+  }
+
+  // On retire la carte du sommet de la défausse et on l'ajoute à la main
   const card = pile.pop();
-
-  let hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+  const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+  const hand = handSnap.val() || [];
   hand.push(card);
 
-  state.drawCount++;
-
+  // Mise à jour en base
   await Promise.all([
-    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
     set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), pile),
-    update(stateRef, { drawCount: state.drawCount, started: true })
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand)
   ]);
 
   hasDrawnOrPicked = true;
 }
+
 
 async function endTurn() {
   try {
@@ -981,19 +1012,19 @@ async function endTurn() {
 
     // Détermine le prochain joueur
     const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
-    const players = Object.keys(playersSnap.val() || []);
+    const players = Object.keys(playersSnap.val() || {});
     const current = playerId;
     const idx = players.indexOf(current);
     const next = players[(idx + 1) % players.length];
 
     if (!players.includes(playerId)) {
-  console.warn("⚠️ Le joueur courant n'existe pas dans la liste des joueurs.");
-}
-if (players.length < 2) {
-  console.warn("⚠️ Moins de 2 joueurs. Impossible de passer au joueur suivant.");
-  return alert("Erreur : pas assez de joueurs actifs pour continuer.");
-}
-console.log("Joueurs trouvés :", players);
+      console.warn("⚠️ Le joueur courant n'existe pas dans la liste des joueurs.");
+    }
+    if (players.length < 2) {
+      console.warn("⚠️ Moins de 2 joueurs. Impossible de passer au joueur suivant.");
+      return alert("Erreur : pas assez de joueurs actifs pour continuer.");
+    }
+    console.log("Joueurs trouvés :", players);
 
     // Met à jour le tour et l’état
     await Promise.all([
@@ -1007,8 +1038,8 @@ console.log("Joueurs trouvés :", players);
     // Vérifie si la partie doit se terminer
     await checkEndGame();
 
-    // Réinitialise les états locaux
-    hasDrawnOrPicked = false;
+    // → Réinitialisation CORRECTE des flags une fois le tour terminé
+    hasDrawnOrPicked     = false;
     hasDiscardedThisTurn = false;
 
     console.log(`Tour terminé. Prochain joueur : ${next}`);
@@ -1017,6 +1048,7 @@ console.log("Joueurs trouvés :", players);
     alert("Une erreur est survenue lors de la fin du tour.");
   }
 }
+
 
 
 function setupPlayerHandDiscardListener() {
