@@ -662,8 +662,6 @@ function listenNotifications(room) {
     }
   });
 }
-  setupHandDisplayOptions();
-}
 
 
 function showGlobalPopup(message, cards = null) {
