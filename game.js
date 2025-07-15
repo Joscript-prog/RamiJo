@@ -382,7 +382,9 @@ async function dealCards(roomId, playerIds) {
     hands[pid] = deck.splice(0, 13);
   });
   const revealedJokerCard = deck.shift();
-  const jokerSet = deck.filter(c => c.value === revealedJokerCard.value).map(c => c.id);
+  const jokerSet = deck
+  .filter(c => c.value === revealedJokerCard.value && c.color !== revealedJokerCard.color)
+  .map(c => c.id);
 
   await Promise.all([
     set(ref(db, `rooms/${roomId}/deck`), deck),
@@ -682,22 +684,38 @@ async function declare7Naturel() {
   const playerSnap = await get(playerRef);
   const playerData = playerSnap.val() || {};
 
-  // Si déjà déclaré, on renvoie juste la notification (sans points)
-  if (playerData.hasDeclared7N) {
+  // Si déjà déclaré ou si un autre l'a déjà fait, on n'autorise pas
+  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+  const state = stateSnap.val() || {};
+  if (state.sevenDeclared) {
     return sendNotification('7N', true);
   }
 
-  // Sinon, première déclaration
-  await update(playerRef, { hasDeclared7N: true });
+  // Extraction du combo naturel
+  const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+  const hand = handSnap.val() || [];
+  const combo = extractSevenCombo(hand);
+  if (combo.length !== 7) {
+    return showPopup("Vous n'avez pas un 7‑naturel valide.", true);
+  }
 
-  // On ajoute 0.5 point
+  // 1. On met à jour le joueur et son score
+  await update(playerRef, { hasDeclared7N: true });
   const scoresRef = ref(db, `rooms/${currentRoom}/scores/${playerId}`);
   const currentScore = (await get(scoresRef)).val() || 0;
   await set(scoresRef, currentScore + 0.5);
 
-  // On envoie la notification
-  await sendNotification('7N');
+  // 2. On marque dans l'état qu'un 7N a été déclaré, par qui, et on conserve le combo
+  await update(ref(db, `rooms/${currentRoom}/state`), {
+    sevenDeclared: true,
+    sevenDeclarant: playerId,
+    sevenCombo: combo
+  });
+
+  // 3. On notifie tout le monde en ajoutant le combo à la payload
+  return sendNotification('7N');
 }
+
 
 // ─── 2. Écoute des scores et mise à jour de l'affichage ─────────────────────────
 function listenScores(room) {
@@ -888,19 +906,35 @@ function listenJokerCard(room) {
 
 function listenNotifications(room) {
   const notifRef = ref(db, `rooms/${room}/notifications`);
-  onChildAdded(notifRef, snap => {
+  onChildAdded(notifRef, async snap => {
     const notif = snap.val();
     if (!notif) return;
 
     if (notif.type === '7N') {
-      const msg = notif.reminder ? `📌 ${notif.pseudo} réaffiche son 7 Naturel :` : `🎉 ${notif.pseudo} a déclaré un 7 Naturel !`;
-      showGlobalPopup(msg, notif.combo);
+      // Récupère la combinaison de 7 cartes depuis l'état du jeu
+      const comboSnap = await get(ref(db, `rooms/${room}/state/sevenCombo`));
+      const combo = comboSnap.val() || notif.combo || [];
+
+      // Message selon création ou rappel
+      const msg = notif.reminder
+        ? `📌 ${notif.pseudo} ré-affiche son 7 Naturel :`
+        : `🎉 ${notif.pseudo} a déclaré un 7 Naturel !`;
+
+      // Affiche le popup avec les 7 cartes
+      showGlobalPopup(msg, combo);
+
+      // Désactive le bouton déclarer 7N pour tous
+      document.querySelectorAll('#declare7N').forEach(btn => {
+        btn.disabled = true;
+      });
+
     } else if (notif.type === 'win') {
       showGlobalPopup(`🏆 ${notif.pseudo} a déclaré la victoire !`);
       terminateGame(notif.playerId);
     }
   });
 }
+
 
 async function sendNotification(type, isReminder = false) {
   const notifRef = ref(db, `rooms/${currentRoom}/notifications`);
@@ -925,11 +959,21 @@ async function sendNotification(type, isReminder = false) {
 }
 
 async function updateActionButtons(hand) {
+  // Si un 7N est déjà déclaré, on reste tous désactivés
+  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state/sevenDeclared`));
+  if (stateSnap.val()) {
+    document.getElementById('declare7N').disabled = true;
+  } else {
+    // Sinon, logique habituelle
+    document.getElementById('declare7N').disabled = !Rules.has7Naturel(hand);
+  }
+
+  // Gestion du bouton victoire inchangée
   const jokerSnap = await get(ref(db, `rooms/${currentRoom}/jokerSet`));
   const jokerSet = jokerSnap.val()?.jokerSet || [];
-  document.getElementById('declare7N').disabled = !Rules.has7Naturel(hand);
   document.getElementById('declareWin').disabled = !Rules.validateWinHandWithJoker(hand, jokerSet);
 }
+
 
 async function terminateGame(winnerId) {
   const winnerPseudoSnap = await get(ref(db, `rooms/${currentRoom}/players/${winnerId}/pseudo`));
