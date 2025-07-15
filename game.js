@@ -1209,21 +1209,41 @@ function askPseudo() {
 document.addEventListener('DOMContentLoaded', () => {
   askPseudo();
   setupHandDisplayOptions();
-  document.getElementById('createRoom').addEventListener('click', createRoom);
-  document.getElementById('joinRoom').addEventListener('click', joinRoom);
-  document.getElementById('startGameBtn').addEventListener('click', startGame);
-  document.getElementById('endTurnBtn').addEventListener('click', endTurn);
-  document.getElementById('declare7N').addEventListener('click', () => sendNotification('7N'));
-  document.getElementById('declareWin').addEventListener('click', () => sendNotification('win'));
-  document.getElementById('remind7NBtn').addEventListener('click', async () => {
-    const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
-    const hand = handSnap.val() || [];
-    const sevenCombo = extractSevenCombo(hand);
-    if (sevenCombo.length === 7) {
-      await sendNotification('7N', true);
-    } else {
-      showPopup("Aucune combinaison de 7 cartes trouvée.", true);
-    }
-  });
-  document.getElementById('deck').addEventListener('dblclick', drawCard);
+
+  const btnCreate = document.getElementById('createRoom');
+  if (btnCreate) btnCreate.addEventListener('click', createRoom);
+  else console.warn('⚠️ #createRoom introuvable');
+
+  const btnJoin = document.getElementById('joinRoom');
+  if (btnJoin) btnJoin.addEventListener('click', joinRoom);
+  else console.warn('⚠️ #joinRoom introuvable');
+
+  const btnStart = document.getElementById('startGameBtn');
+  if (btnStart) btnStart.addEventListener('click', startGame);
+
+  const btnEnd = document.getElementById('endTurnBtn');
+  if (btnEnd) btnEnd.addEventListener('click', endTurn);
+
+  const btn7N = document.getElementById('declare7N');
+  if (btn7N) btn7N.addEventListener('click', () => sendNotification('7N'));
+
+  const btnWin = document.getElementById('declareWin');
+  if (btnWin) btnWin.addEventListener('click', () => sendNotification('win'));
+
+  const btnRemind = document.getElementById('remind7NBtn');
+  if (btnRemind) {
+    btnRemind.addEventListener('click', async () => {
+      const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+      const hand = handSnap.val() || [];
+      const sevenCombo = extractSevenCombo(hand);
+      if (sevenCombo.length === 7) {
+        await sendNotification('7N', true);
+      } else {
+        showPopup("Aucune combinaison de 7 cartes trouvée.", true);
+      }
+    });
+  }
+
+  const deckEl = document.getElementById('deck');
+  if (deckEl) deckEl.addEventListener('dblclick', drawCard);
 });
