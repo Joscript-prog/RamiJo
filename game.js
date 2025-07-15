@@ -542,6 +542,29 @@ function showPopup(content) {
   
   modal.querySelector('.modal-close').onclick = closeModal;
 }
+// ─────────── Écoute du changement de tour ───────────
+function listenTurn(room) {
+  onValue(ref(db, `rooms/${room}/turn`), snap => {
+    const turn = snap.val();
+    const myTurn = turn === playerId;
+    hasDrawnOrPicked = false;
+    hasDiscardedThisTurn = false;
+
+    status.textContent = myTurn
+      ? "⭐ C'est votre tour !"
+      : "En attente…";
+
+    // Activation / désactivation du deck
+    deckPile.style.pointerEvents = myTurn ? 'auto' : 'none';
+    deckPile.style.opacity       = myTurn ? '1'    : '0.5';
+
+    // Bouton “Terminer” uniquement si pioché+défaussé
+    if (endTurnBtn) {
+      endTurnBtn.disabled = !myTurn || !hasDrawnOrPicked || !hasDiscardedThisTurn;
+    }
+  });
+}
+
 function actionCreateRoomPopup() {
   showPopup(`
     <h3>Salle créée</h3>
@@ -1239,9 +1262,11 @@ function enableChat() {
 
 // Exemple de createRoom (inchangé, on retire le enableChat() d'ici)
 async function createRoom() {
+  // Génère un code unique du type "RAMIXYZ"
   const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900);
   currentRoom = roomCode;
 
+  // Vérifie qu'elle n'existe pas déjà
   const roomRef = ref(db, `rooms/${roomCode}`);
   const snapshot = await get(roomRef);
   if (snapshot.exists()) {
@@ -1249,26 +1274,31 @@ async function createRoom() {
     return;
   }
 
+  // Crée la salle et initialise le créateur
   await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-    pseudo: myPseudo,
+    pseudo: myPseudo
   });
   await set(ref(db, `rooms/${roomCode}/creator`), playerId);
   await set(ref(db, `rooms/${roomCode}/turn`), playerId);
 
+  // Active tous les listeners Firebase (watchers de données)
   listenPlayers(roomCode);
   listenScores(roomCode);
   listenDiscard(roomCode);
   listenHand(roomCode);
-  listenTurn(roomCode);
+  listenTurn(roomCode);               // ← Écoute du tour, doit être défini AVANT
   setupPlayerHandDiscardListener();
-  // ← on ne met plus enableChat() ici
   listenJokerCard(roomCode);
   listenNotifications(roomCode);
 
+  // Affiche le jeu et masque le menu d'accueil
   menuDiv.style.display = 'none';
   gameDiv.style.display = 'flex';
+
+  // Affiche le popup de confirmation de création
   actionCreateRoomPopup();
 }
+
 
 async function joinRoom() {
   const roomCode = roomInput.value.trim().toUpperCase();
