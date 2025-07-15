@@ -1236,30 +1236,6 @@ function enableChat() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   });
 }
-  } else {
-    console.warn("Bouton 'joinRoom' introuvable");
-  }
-
-  // Fin de tour
-  if (endTurnBtn) {
-    endTurnBtn.addEventListener('click', endTurn);
-  } else {
-    console.warn("Le bouton 'endTurnBtn' est introuvable, ajout manuel du DOM ?");
-  }
-
-  // Déclarations 7N / Win
-  declare7NBtn.addEventListener('click', async () => {
-    await sendNotification('7N');
-  });
-  declareWinBtn.addEventListener('click', async () => {
-    await sendNotification('win');
-  });
-
-  // Si on recharge la page déjà dans une room
-  if (currentRoom) {
-    enableChat(currentRoom);
-  }
-});
 
 // Exemple de createRoom (inchangé, on retire le enableChat() d'ici)
 async function createRoom() {
