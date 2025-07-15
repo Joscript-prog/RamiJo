@@ -486,6 +486,7 @@ function askPseudo() {
 document.addEventListener('DOMContentLoaded', () => {
   // on demande le pseudo avant tout
   askPseudo();
+
   // options d’affichage de la main
   setupHandDisplayOptions();
 
@@ -499,13 +500,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnJoin) btnJoin.addEventListener('click', joinRoom);
   else console.warn('⚠️ #joinRoom introuvable');
 
-  // autres boutons
+  // bouton Démarrer la partie (seulement visible par le créateur)
   const btnStart = document.getElementById('startGameBtn');
   if (btnStart) btnStart.addEventListener('click', startGame);
 
+  // bouton Terminer le tour
   const btnEnd = document.getElementById('endTurnBtn');
   if (btnEnd) btnEnd.addEventListener('click', endTurn);
 
+  // déclarations/spam 7 naturel et victoire
   document.getElementById('declare7N')?.addEventListener('click', declare7Naturel);
   document.getElementById('declareWin')?.addEventListener('click', () => sendNotification('win'));
   document.getElementById('remind7NBtn')?.addEventListener('click', async () => {
@@ -515,7 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
     else showPopup("Aucune combinaison de 7 cartes trouvée.", true);
   });
 
-  // double‑click pour piocher
+  // double‑clic pour piocher
   document.getElementById('deck')?.addEventListener('dblclick', drawCard);
 });
 
@@ -673,37 +676,30 @@ function listenPlayers(room) {
     }
   });
 }
-// Remplacer les fonctions liées au 7N
+// ─── 1. Fonction de déclaration du 7 Naturel ───────────────────────────────────
 async function declare7Naturel() {
   const playerRef = ref(db, `rooms/${currentRoom}/players/${playerId}`);
   const playerSnap = await get(playerRef);
   const playerData = playerSnap.val() || {};
-  
-  // Vérifier si déjà déclaré
+
+  // Si déjà déclaré, on renvoie juste la notification (sans points)
   if (playerData.hasDeclared7N) {
-    return sendNotification('7N', true); // Rappel sans points
+    return sendNotification('7N', true);
   }
-  
-  // Première déclaration
+
+  // Sinon, première déclaration
   await update(playerRef, { hasDeclared7N: true });
-  
-  // Ajouter 0.5 point
+
+  // On ajoute 0.5 point
   const scoresRef = ref(db, `rooms/${currentRoom}/scores/${playerId}`);
   const currentScore = (await get(scoresRef)).val() || 0;
   await set(scoresRef, currentScore + 0.5);
-  
-  // Envoyer notification
+
+  // On envoie la notification
   await sendNotification('7N');
 }
 
-// Initialiser dans joinRoom/createRoom
-await set(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
-  pseudo: myPseudo,
-  hasDeclared7N: false // Add this field
-});
-
-// Mettre à jour l'écouteur du bouton
-document.getElementById('declare7N').addEventListener('click', declare7Naturel);
+// ─── 2. Écoute des scores et mise à jour de l'affichage ─────────────────────────
 function listenScores(room) {
   onValue(ref(db, `rooms/${room}/scores`), snap => {
     const scores = snap.val() || {};
@@ -715,6 +711,106 @@ function listenScores(room) {
     });
   });
 }
+
+async function createRoom() {
+  const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900);
+  currentRoom = roomCode;
+
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  if ((await get(roomRef)).exists()) {
+    showPopup("La salle existe déjà, réessayez.", true);
+    return;
+  }
+
+  // 1️⃣ On initialise hasDeclared7N ici
+  await Promise.all([
+    set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+      pseudo: myPseudo,
+      hasDeclared7N: false
+    }),
+    set(ref(db, `rooms/${roomCode}/creator`), playerId),
+    set(ref(db, `rooms/${roomCode}/turn`), playerId)
+  ]);
+
+  // 2️⃣ On lance tous les listeners (sans setupPlayerHandDiscardListener())
+  listenPlayers(roomCode);
+  listenScores(roomCode);
+  listenDiscard(roomCode);
+  listenHand(roomCode);
+  listenTurn(roomCode);
+  listenJokerCard(roomCode);
+  listenNotifications(roomCode);
+  // Si vous voulez mettre à jour automatiquement le compteur de mains :
+  // listenHandCounts(roomCode);
+
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('game').style.display = 'flex';
+  showPopup(`
+    <h3>Salle créée</h3>
+    <p>Code de la salle : <b>${roomCode}</b></p>
+    <button id="copyRoomCode">Copier</button>
+  `);
+  document.getElementById('copyRoomCode').addEventListener('click', () => {
+    navigator.clipboard.writeText(roomCode);
+    showPopup('Code copié !');
+  });
+
+  enableChat();
+}
+
+async function joinRoom() {
+  const roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+  if (!/^RAMI\d{3}$/.test(roomCode)) {
+    showPopup("Code de salle invalide. Il doit être au format RAMI123.", true);
+    return;
+  }
+
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  const snapshot = await get(roomRef);
+  if (!snapshot.exists()) {
+    showPopup("Cette salle n'existe pas.", true);
+    return;
+  }
+
+  const stateSnap = await get(ref(db, `rooms/${roomCode}/state`));
+  const gameStarted = stateSnap.exists() && stateSnap.val().started;
+  const players = (await get(ref(db, `rooms/${roomCode}/players`))).val() || {};
+
+  if (Object.keys(players).length >= 5) {
+    showPopup("Cette salle est déjà complète (5 joueurs max).", true);
+    return;
+  }
+  if (players[playerId]) {
+    showPopup("Vous êtes déjà dans cette salle.", true);
+    return;
+  }
+
+  // 1️⃣ On initialise hasDeclared7N ici aussi
+  await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+    pseudo: myPseudo,
+    hasDeclared7N: false,
+    isSpectator: gameStarted
+  });
+  currentRoom = roomCode;
+
+  // 2️⃣ On relance les mêmes listeners
+  listenPlayers(roomCode);
+  listenScores(roomCode);
+  listenDiscard(roomCode);
+  listenHand(roomCode);
+  listenTurn(roomCode);
+  listenJokerCard(roomCode);
+  listenNotifications(roomCode);
+  // listenHandCounts(roomCode);
+
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('game').style.display = 'flex';
+  showPopup(`<p>Connecté à la salle <b>${roomCode}</b>${gameStarted ? ' en tant que spectateur' : ''}</p>`);
+
+  enableChat();
+}
+
+
 function arrangeCardsInSemiCircle() {
   const cards = document.getElementById('hand').querySelectorAll('.card');
   const cardCount = cards.length;
@@ -906,14 +1002,39 @@ function renderHand(hand) {
 
 
 function setupHandDisplayOptions() {
-  document.querySelectorAll('.hand-display-btn').forEach(button => {
+  const buttons = Array.from(document.querySelectorAll('.hand-display-btn'));
+  const handContainer = document.getElementById('hand');
+
+  // Initialisation : active le bouton correspondant et applique la classe sur la main
+  buttons.forEach(btn => {
+    if (btn.dataset.display === handDisplayType) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  if (handContainer) {
+    handContainer.className = `player-hand ${handDisplayType}`;
+    if (handDisplayType === 'semi-circle') {
+      arrangeCardsInSemiCircle();
+    }
+  }
+
+  // Événements au clic
+  buttons.forEach(button => {
     button.addEventListener('click', function() {
-      document.querySelectorAll('.hand-display-btn').forEach(btn => btn.classList.remove('active'));
+      // Retire l’état actif de tous
+      buttons.forEach(b => b.classList.remove('active'));
+      // Définit l’actif sur celui cliqué
       this.classList.add('active');
+
+      // Met à jour le type d’affichage et la classe du container
       handDisplayType = this.dataset.display;
-      document.getElementById('hand').className = `player-hand ${handDisplayType}`;
-      if (handDisplayType === 'semi-circle') {
-        arrangeCardsInSemiCircle();
+      if (handContainer) {
+        handContainer.className = `player-hand ${handDisplayType}`;
+        if (handDisplayType === 'semi-circle') {
+          arrangeCardsInSemiCircle();
+        }
       }
     });
   });
@@ -1271,63 +1392,3 @@ function setupPlayerHandDiscardListener() {
     await endTurn();
   });
 }
-
-function askPseudo() {
-  showPopup(`
-    <h3>Entrez votre pseudo</h3>
-    <input id="pseudoInput" type="text" placeholder="Votre pseudo" aria-label="Pseudo" />
-    <button id="pseudoSubmit" class="btn btn-primary">Valider</button>
-  `);
-  document.getElementById('pseudoSubmit').addEventListener('click', () => {
-    const val = document.getElementById('pseudoInput').value.trim();
-    myPseudo = val || 'Anonyme';
-    document.querySelector('.modal-close').click();
-  });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  askPseudo();
-  setupHandDisplayOptions();
-
-  const btnCreate = document.getElementById('createRoom');
-  if (btnCreate) btnCreate.addEventListener('click', createRoom);
-  else console.warn('⚠️ #createRoom introuvable');
-
-  const btnJoin = document.getElementById('joinRoom');
-  if (btnJoin) btnJoin.addEventListener('click', joinRoom);
-  else console.warn('⚠️ #joinRoom introuvable');
-
-  const btnStart = document.getElementById('startGameBtn');
-  if (btnStart) btnStart.addEventListener('click', startGame);
-
-  const btnEnd = document.getElementById('endTurnBtn');
-  if (btnEnd) btnEnd.addEventListener('click', endTurn);
-
-  const btn7N = document.getElementById('declare7N');
-  if (btn7N) btn7N.addEventListener('click', declare7Naturel);
-
-  const btnWin = document.getElementById('declareWin');
-  if (btnWin) btnWin.addEventListener('click', () => sendNotification('win'));
-
-  const btnRemind = document.getElementById('remind7NBtn');
-  if (btnRemind) {
-    btnRemind.addEventListener('click', async () => {
-      const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
-      const hand = handSnap.val() || [];
-      const sevenCombo = extractSevenCombo(hand);
-      if (sevenCombo.length === 7) {
-        await sendNotification('7N', true);
-      } else {
-        showPopup("Aucune combinaison de 7 cartes trouvée.", true);
-      }
-    });
-  }
-
-  const deckEl = document.getElementById('deck');
-  if (deckEl) deckEl.addEventListener('dblclick', drawCard);
-});
-window.addEventListener('resize', () => {
-  if (handDisplayType === 'semi-circle') {
-    arrangeCardsInSemiCircle();
-  }
-});
