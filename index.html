@@ -253,17 +253,16 @@
 
     /* Header du jeu */
     .game-header {
-      position: relative;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.5rem;
-      background: rgba(0,0,0,0.3);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-      z-index: 50;
-      flex-wrap: wrap;
-    }
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 100;
+}
+    /* Pour ne pas masquer le contenu sous le header fixe */
+#game .game-play-area {
+  padding-top: 60px;  /* ajustez à la hauteur réelle de .game-header */
+}
 
     .header-left {
       display: flex;
@@ -471,11 +470,11 @@
 
     /* Joker positionné en haut à gauche */
     .joker-display {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 100;
-    }
+  position: fixed !important;
+  top: 10px;
+  left: 10px;
+  z-index: 200;
+}
 
     .player-info {
       background: rgba(255,255,255,0.1);
@@ -623,13 +622,14 @@
 
     /* Main joueur */
     #hand-container {
-      width: 100%;
-      overflow-x: auto;
-      padding-bottom: 20px;
-      margin-top: auto;
-      position: relative;
-      z-index: 60;
-    }
+  position: fixed !important;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  z-index: 100;
+  background: transparent;
+}
 
     #hand {
       display: flex;
@@ -970,13 +970,12 @@
         order: unset;
       }
 
-      .game-controls {
-        position: relative;
-        top: initial;
-        right: initial;
-        width: 100%;
-        margin: 10px 0;
-      }
+    .game-controls {
+  position: fixed !important;
+  top: 80px;        /* ou la hauteur de votre header */
+  right: 20px;
+  z-index: 150;
+}
       @media (max-width: 768px) {
   #hand {
     gap: -30px !important;
