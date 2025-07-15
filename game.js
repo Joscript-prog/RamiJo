@@ -628,7 +628,37 @@ function listenPlayers(room) {
     }
   });
 }
+// Remplacer les fonctions liées au 7N
+async function declare7Naturel() {
+  const playerRef = ref(db, `rooms/${currentRoom}/players/${playerId}`);
+  const playerSnap = await get(playerRef);
+  const playerData = playerSnap.val() || {};
+  
+  // Vérifier si déjà déclaré
+  if (playerData.hasDeclared7N) {
+    return sendNotification('7N', true); // Rappel sans points
+  }
+  
+  // Première déclaration
+  await update(playerRef, { hasDeclared7N: true });
+  
+  // Ajouter 0.5 point
+  const scoresRef = ref(db, `rooms/${currentRoom}/scores/${playerId}`);
+  const currentScore = (await get(scoresRef)).val() || 0;
+  await set(scoresRef, currentScore + 0.5);
+  
+  // Envoyer notification
+  await sendNotification('7N');
+}
 
+// Initialiser dans joinRoom/createRoom
+await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+  pseudo: myPseudo,
+  hasDeclared7N: false // Ajouter ce champ
+});
+
+// Mettre à jour l'écouteur du bouton
+document.getElementById('declare7N').addEventListener('click', declare7Naturel);
 function listenScores(room) {
   onValue(ref(db, `rooms/${room}/scores`), snap => {
     const scores = snap.val() || {};
@@ -640,7 +670,22 @@ function listenScores(room) {
     });
   });
 }
+function arrangeCardsInSemiCircle() {
+  const cards = document.getElementById('hand').querySelectorAll('.card');
+  const cardCount = cards.length;
+  const radius = Math.min(150, window.innerWidth / 5);
+  const maxAngle = 60; // Degrés
+  const angleStep = maxAngle / (cardCount - 1);
 
+  cards.forEach((card, index) => {
+    const angle = (index * angleStep) - (maxAngle / 2);
+    const angleRad = angle * Math.PI / 180;
+    const x = Math.sin(angleRad) * radius;
+    const y = -Math.abs(Math.cos(angleRad)) * 20; // Léger décalage vertical
+    card.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+    card.style.zIndex = index;
+  });
+}
 function listenHand(room) {
   onValue(ref(db, `rooms/${room}/hands/${playerId}`), snap => {
     const hand = snap.val() || [];
@@ -1142,8 +1187,11 @@ async function startGame() {
 function enableChat() {
   const toggleChatBtn = document.getElementById('toggleChat');
   const chatContainer = document.getElementById('chat-container');
+  const chatToggleIcon = document.querySelector('.chat-header span');
+  
   toggleChatBtn.addEventListener('click', () => {
-    chatContainer.classList.toggle('open');
+    chatContainer.classList.toggle('collapsed');
+    chatToggleIcon.textContent = chatContainer.classList.contains('collapsed') ? '▲' : '▼';
   });
 
   document.getElementById('chat-form').addEventListener('submit', async (e) => {
@@ -1246,4 +1294,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const deckEl = document.getElementById('deck');
   if (deckEl) deckEl.addEventListener('dblclick', drawCard);
+});
+window.addEventListener('resize', () => {
+  if (handDisplayType === 'semi-circle') {
+    arrangeCardsInSemiCircle();
+  }
 });
