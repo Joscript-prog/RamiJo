@@ -1236,40 +1236,6 @@ function enableChat() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   });
 }
-// Dès que le DOM est prêt
-document.addEventListener('DOMContentLoaded', () => {
-  const toggleBtn     = document.getElementById('toggleChat');
-  const chatContainer = document.getElementById('chat-container');
-  const chatHeader    = chatContainer.querySelector('.chat-header');
-  const createRoomBtn = document.getElementById('createRoom');
-  const joinRoomBtn   = document.getElementById('joinRoom');
-  const endTurnBtn    = document.getElementById('endTurn');
-  const declare7NBtn  = document.getElementById('declare7N');
-  const declareWinBtn = document.getElementById('declareWin');
-
-  // Bascule l’affichage du chat
-  [toggleBtn, chatHeader].forEach(el =>
-    el.addEventListener('click', () => {
-      chatContainer.classList.toggle('open');
-    })
-  );
-
-  // Création de salle + initialisation du chat
-  if (createRoomBtn) {
-    createRoomBtn.addEventListener('click', async () => {
-      await createRoom();
-      enableChat(currentRoom);
-    });
-  } else {
-    console.warn("Bouton 'createRoom' introuvable");
-  }
-
-  // Rejoindre une salle + initialisation du chat
-  if (joinRoomBtn) {
-    joinRoomBtn.addEventListener('click', async () => {
-      await joinRoom();
-      enableChat(currentRoom);
-    });
   } else {
     console.warn("Bouton 'joinRoom' introuvable");
   }
@@ -1428,24 +1394,55 @@ if (startGameBtn) {
   startGameBtn.addEventListener('click', startGame);
 }
 
-// Initialisation unique dans DOMContentLoaded
+// —————————————
+// Initialisation au chargement du DOM
+// —————————————
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM chargé, initialisation du jeu');
+  const toggleBtn     = document.getElementById('toggleChat');
+  const chatContainer = document.getElementById('chat-container');
+  const chatHeader    = chatContainer.querySelector('.chat-header');
+  const createRoomBtn = document.getElementById('createRoom');
+  const joinRoomBtn   = document.getElementById('joinRoom');
+  const startGameBtn  = document.getElementById('startGameBtn');
+  const endTurnBtn    = document.getElementById('endTurnBtn');
+  const declare7NBtn  = document.getElementById('declare7N');
+  const declareWinBtn = document.getElementById('declareWin');
+  const remind7NBtn   = document.getElementById('remind7NBtn');
 
-  console.log('createRoomBtn ?', createRoomBtn, 'joinRoomBtn ?', joinRoomBtn, 'endTurnBtn ?', endTurnBtn);
-  
-  // Attachement unique des écouteurs
-  createRoomBtn?.addEventListener('click', createRoom);
-  joinRoomBtn?.addEventListener('click', joinRoom);
-  endTurnBtn?.addEventListener('click', endTurn);
+  // Basculer l’affichage du chat
+  [toggleBtn, chatHeader].forEach(el =>
+    el.addEventListener('click', () => {
+      chatContainer.classList.toggle('open');
+    })
+  );
+
+  // Création de salle + chat
+  createRoomBtn?.addEventListener('click', async () => {
+    await createRoom();
+    enableChat(currentRoom);
+  });
+
+  // Rejoindre une salle + chat
+  joinRoomBtn?.addEventListener('click', async () => {
+    await joinRoom();
+    enableChat(currentRoom);
+  });
+
+  // Démarrer la partie
   startGameBtn?.addEventListener('click', startGame);
-  toggleChatBtn?.addEventListener('click', () => chatContainer.classList.toggle('open'));
 
-  // Boutons de déclaration
-  declare7NBtn?.addEventListener('click', async () => await sendNotification('7N'));
-  declareWinBtn?.addEventListener('click', async () => await sendNotification('win'));
-  
-  // Bouton de rappel 7N
+  // Fin de tour
+  endTurnBtn?.addEventListener('click', endTurn);
+
+  // Déclarations 7N / Win
+  declare7NBtn?.addEventListener('click', async () => {
+    await sendNotification('7N');
+  });
+  declareWinBtn?.addEventListener('click', async () => {
+    await sendNotification('win');
+  });
+
+  // Rappel 7N
   remind7NBtn?.addEventListener('click', async () => {
     const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
     const hand = handSnap.val() || [];
@@ -1456,31 +1453,9 @@ document.addEventListener('DOMContentLoaded', () => {
       alert("Aucune combinaison de 7 cartes trouvée.");
     }
   });
-// Chat (désactivé ici, géré dans enableChat())
 
-if (createRoomBtn) {
-  createRoomBtn.addEventListener('click', createRoom);
-} else {
-  console.warn("Bouton 'createRoom' introuvable");
-}
-
-if (joinRoomBtn) {
-  joinRoomBtn.addEventListener('click', joinRoom);
-} else {
-  console.warn("Bouton 'joinRoom' introuvable");
-}
-
-if (endTurnBtn) {
-  endTurnBtn.addEventListener('click', endTurn);
-} else {
-  console.warn("Le bouton 'endTurnBtn' est introuvable, ajout manuel du DOM ?");
-}
-
-// ✅ Ajouter les écouteurs sur les boutons de déclaration ici UNE SEULE FOIS
-declare7NBtn.addEventListener('click', async () => {
-  await sendNotification('7N');
-});
-
-declareWinBtn.addEventListener('click', async () => {
-  await sendNotification('win');
+  // Si on recharge déjà dans une room : on initialise le chat une seule fois
+  if (currentRoom) {
+    enableChat(currentRoom);
+  }
 });
