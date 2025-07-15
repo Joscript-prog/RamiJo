@@ -567,6 +567,12 @@ function listenTurn(room) {
     }
   });
 }
+function listenJokerCard(room) {
+  onValue(ref(db, `rooms/${room}/jokerCard`), snap => {
+    const card = snap.val();
+    showJoker(card);
+  });
+}
 async function joinRoom() {
   // Récupère et formate le code saisi
   const roomCode = roomInput.value.trim().toUpperCase();
