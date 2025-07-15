@@ -6,6 +6,8 @@ const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
 let hasDrawnOrPicked    = false;
 let hasDiscardedThisTurn = false;
+let handDisplayType = 'horizontal';
+let currentHand = [];
 
 const Rules = {
   isQuadri(hand) {
@@ -474,15 +476,16 @@ if (endTurnBtn) {
 
 function showJoker(jokerCard) {
   if (jokerCard?.rank) {
-    jokerDiv.innerHTML = `<div class="card ${jokerCard.color}">JOKER: ${jokerCard.rank}${jokerCard.symbol}</div>`;
+    jokerDiv.innerHTML = `
+      <div class="card ${jokerCard.color}">
+        <div class="corner top"><span>${jokerCard.rank}</span><span>${jokerCard.symbol}</span></div>
+        <div class="suit main">${jokerCard.symbol}</div>
+        <div class="corner bottom"><span>${jokerCard.rank}</span><span>${jokerCard.symbol}</span></div>
+      </div>
+    `;
   } else {
     jokerDiv.innerHTML = '';
   }
-}
-function listenJokerCard(room) {
-  onValue(ref(db, `rooms/${room}/jokerCard`), snap => {
-    showJoker(snap.val());
-  });
 }
 function showPopup(content) {
   const modal = document.createElement('div');
@@ -630,7 +633,8 @@ async function joinRoom() {
     showPopup(`<p>Connecté à la salle <b>${roomCode}</b></p>`);
   }
 }
-
+setupHandDisplayOptions();
+}
 function actionCreateRoomPopup() {
   showPopup(`
     <h3>Salle créée</h3>
@@ -657,6 +661,8 @@ function listenNotifications(room) {
       showGlobalPopup(`🏆 ${notif.pseudo} a déclaré la victoire !`);
     }
   });
+}
+  setupHandDisplayOptions();
 }
 
 
@@ -988,6 +994,8 @@ async function newRound(message) {
 
 function renderHand(hand) {
   playerHandDiv.innerHTML = '';
+  currentHand = hand; // Garder une copie de la main
+  
   hand.forEach(c => {
     const div = document.createElement('div');
     div.className = `card ${c.color}`;
@@ -997,16 +1005,62 @@ function renderHand(hand) {
     div.dataset.color = c.color;
     div.dataset.suit = c.suit;
     div.dataset.value = c.value;
-    // Affichage des faces de carte avec coins et symbole
+    
     div.innerHTML = `
       <div class="corner top"><span>${c.rank}</span><span>${c.symbol}</span></div>
       <div class="suit main">${c.symbol}</div>
       <div class="corner bottom"><span>${c.rank}</span><span>${c.symbol}</span></div>
     `;
+    
+    div.addEventListener('dblclick', () => discardCard(c.id));
     playerHandDiv.append(div);
   });
+  
+  // Réappliquer le type d'affichage
+  playerHandDiv.className = `player-hand ${handDisplayType}`;
+  
+  if (handDisplayType === 'semi-circle') {
+    arrangeCardsInSemiCircle();
+  }
+  
   enableDragDrop();
 }
+// Modifiez la fonction arrangeCardsInSemiCircle
+function arrangeCardsInSemiCircle() {
+  const cards = playerHandDiv.querySelectorAll('.card');
+  const cardCount = cards.length;
+  const radius = 200; // Rayon réduit pour un meilleur chevauchement
+  const angleStep = 30; // Angle entre les cartes
+  
+  cards.forEach((card, index) => {
+    const angle = (index - (cardCount - 1) / 2) * angleStep;
+    const angleRad = angle * Math.PI / 180;
+    const x = Math.sin(angleRad) * radius;
+    
+    card.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
+    card.style.zIndex = index;
+  });
+}
+
+// Ajoutez cette fonction pour gérer le changement d'affichage
+function setupHandDisplayOptions() {
+  document.querySelectorAll('.hand-display-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      document.querySelectorAll('.hand-display-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      this.classList.add('active');
+      
+      handDisplayType = this.dataset.display;
+      playerHandDiv.className = `player-hand ${handDisplayType}`;
+      
+      if (handDisplayType === 'semi-circle') {
+        arrangeCardsInSemiCircle();
+      }
+    });
+  });
+}
+
 
 // ─────────── Fonction pour piocher une carte ───────────
 async function drawCard() {
