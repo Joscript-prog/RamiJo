@@ -1238,18 +1238,64 @@ function enableChat() {
 }
 // Dès que le DOM est prêt
 document.addEventListener('DOMContentLoaded', () => {
-  const toggleBtn = document.getElementById('toggleChat');
+  const toggleBtn     = document.getElementById('toggleChat');
   const chatContainer = document.getElementById('chat-container');
   const chatHeader    = chatContainer.querySelector('.chat-header');
+  const createRoomBtn = document.getElementById('createRoom');
+  const joinRoomBtn   = document.getElementById('joinRoom');
+  const endTurnBtn    = document.getElementById('endTurn');
+  const declare7NBtn  = document.getElementById('declare7N');
+  const declareWinBtn = document.getElementById('declareWin');
 
-  // Bascule l’affichage quand on clique sur l’icône ou le header
+  // Bascule l’affichage du chat
   [toggleBtn, chatHeader].forEach(el =>
     el.addEventListener('click', () => {
       chatContainer.classList.toggle('open');
     })
   );
+
+  // Création de salle + initialisation du chat
+  if (createRoomBtn) {
+    createRoomBtn.addEventListener('click', async () => {
+      await createRoom();
+      enableChat(currentRoom);
+    });
+  } else {
+    console.warn("Bouton 'createRoom' introuvable");
+  }
+
+  // Rejoindre une salle + initialisation du chat
+  if (joinRoomBtn) {
+    joinRoomBtn.addEventListener('click', async () => {
+      await joinRoom();
+      enableChat(currentRoom);
+    });
+  } else {
+    console.warn("Bouton 'joinRoom' introuvable");
+  }
+
+  // Fin de tour
+  if (endTurnBtn) {
+    endTurnBtn.addEventListener('click', endTurn);
+  } else {
+    console.warn("Le bouton 'endTurnBtn' est introuvable, ajout manuel du DOM ?");
+  }
+
+  // Déclarations 7N / Win
+  declare7NBtn.addEventListener('click', async () => {
+    await sendNotification('7N');
+  });
+  declareWinBtn.addEventListener('click', async () => {
+    await sendNotification('win');
+  });
+
+  // Si on recharge la page déjà dans une room
+  if (currentRoom) {
+    enableChat(currentRoom);
+  }
 });
 
+// Exemple de createRoom (inchangé, on retire le enableChat() d'ici)
 async function createRoom() {
   const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900);
   currentRoom = roomCode;
@@ -1264,46 +1310,23 @@ async function createRoom() {
   await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
     pseudo: myPseudo,
   });
-
   await set(ref(db, `rooms/${roomCode}/creator`), playerId);
-  
-  // Définir le tour sur le joueur actuel (le créateur)
   await set(ref(db, `rooms/${roomCode}/turn`), playerId);
 
-listenPlayers(roomCode);
-listenScores(roomCode);
-listenDiscard(roomCode);
-listenHand(roomCode);
-listenTurn(roomCode);    // ← maintenant défini
-setupPlayerHandDiscardListener();
-enableChat();
-listenJokerCard(roomCode);
-listenNotifications(roomCode);
+  listenPlayers(roomCode);
+  listenScores(roomCode);
+  listenDiscard(roomCode);
+  listenHand(roomCode);
+  listenTurn(roomCode);
+  setupPlayerHandDiscardListener();
+  // ← on ne met plus enableChat() ici
+  listenJokerCard(roomCode);
+  listenNotifications(roomCode);
+
   menuDiv.style.display = 'none';
   gameDiv.style.display = 'flex';
-
   actionCreateRoomPopup();
 }
-function listenTurn(room) {
-  onValue(ref(db, `rooms/${room}/turn`), snap => {
-    const turn = snap.val();
-    const myTurn = turn === playerId;
-    hasDrawnOrPicked = false;
-    hasDiscardedThisTurn = false;
-
-    status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente…";
-
-    // Activ/ désactive la pioche
-    deckPile.style.pointerEvents = myTurn ? 'auto' : 'none';
-    deckPile.style.opacity       = myTurn ? '1'    : '0.5';
-
-    // Bouton "Terminer" n’apparaît que si c’est ton tour ET que tu as pioché ET défaussé
-    if (endTurnBtn) {
-      endTurnBtn.disabled = !myTurn || !hasDrawnOrPicked || !hasDiscardedThisTurn;
-    }
-  });
-}
-
 
 async function joinRoom() {
   const roomCode = roomInput.value.trim().toUpperCase();
@@ -1433,41 +1456,31 @@ document.addEventListener('DOMContentLoaded', () => {
       alert("Aucune combinaison de 7 cartes trouvée.");
     }
   });
-  // Chat
-  chatForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const message = chatInput.value.trim();
-    if (!message) return;
+// Chat (désactivé ici, géré dans enableChat())
 
-    const timestamp = Date.now();
-    const messageData = {
-      sender: playerId,
-      pseudo: myPseudo,
-      message: message,
-      timestamp: timestamp
-    };
+if (createRoomBtn) {
+  createRoomBtn.addEventListener('click', createRoom);
+} else {
+  console.warn("Bouton 'createRoom' introuvable");
+}
 
-    const messageRef = ref(db, `rooms/${currentRoom}/chat/${timestamp}`);
-    await set(messageRef, messageData);
-    chatInput.value = '';
-  });
+if (joinRoomBtn) {
+  joinRoomBtn.addEventListener('click', joinRoom);
+} else {
+  console.warn("Bouton 'joinRoom' introuvable");
+}
 
-  if (createRoomBtn) createRoomBtn.addEventListener('click', createRoom);
-  else console.warn("Bouton 'createRoom' introuvable");
+if (endTurnBtn) {
+  endTurnBtn.addEventListener('click', endTurn);
+} else {
+  console.warn("Le bouton 'endTurnBtn' est introuvable, ajout manuel du DOM ?");
+}
 
-  if (joinRoomBtn) joinRoomBtn.addEventListener('click', joinRoom);
-  else console.warn("Bouton 'joinRoom' introuvable");
+// ✅ Ajouter les écouteurs sur les boutons de déclaration ici UNE SEULE FOIS
+declare7NBtn.addEventListener('click', async () => {
+  await sendNotification('7N');
+});
 
-  if (endTurnBtn) endTurnBtn.addEventListener('click', endTurn);
-  else console.warn("Le bouton 'endTurnBtn' est introuvable, ajout manuel du DOM ?");
-
-  // ✅ Ajouter les écouteurs sur les boutons de déclaration ici UNE SEULE FOIS
-  declare7NBtn.addEventListener('click', async () => {
-    await sendNotification('7N');
-  });
-
-  declareWinBtn.addEventListener('click', async () => {
-    await sendNotification('win');
-  });
-
+declareWinBtn.addEventListener('click', async () => {
+  await sendNotification('win');
 });
