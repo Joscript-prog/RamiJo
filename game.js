@@ -122,7 +122,7 @@ const Rules = {
           }
         }
 
-        if (currentSequenceLength (>= len) {
+        if (currentSequenceLength >= len) {
           return true;
         }
       }
