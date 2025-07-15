@@ -977,6 +977,32 @@
         width: 100%;
         margin: 10px 0;
       }
+      @media (max-width: 768px) {
+  #hand {
+    gap: -30px !important;
+  }
+
+  #hand .card {
+    margin-right: -30px !important;
+    transform: none !important;
+  }
+
+  .hand-display-options {
+    top: -40px;
+    right: 10px;
+  }
+}
+
+@media (max-height: 700px) {
+  :root {
+    --card-width: 100px;
+    --card-height: 150px;
+  }
+  
+  .game-play-area {
+    padding: 10px !important;
+  }
+}
 
       #chat-container {
         right: 0;
@@ -1053,9 +1079,6 @@
         </button>
         <button id="declare7N" class="btn-special" disabled>
           Déclarer 7 Naturel
-        </button>
-        <button id="remind7NBtn" class="btn-special">
-          Rappeler 7 Naturel
         </button>
         <button id="declareWin" class="btn-special" disabled>
           Déclarer Victoire
