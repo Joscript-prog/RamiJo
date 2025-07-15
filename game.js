@@ -844,7 +844,7 @@ async function terminateGame(winnerId) {
     winDeclared: true,
     winnerId: winnerId,
     winnerPseudo: winnerPseudo,
-    winCombos: winCombos
+    winCombos: winCombos,
     has7Naturel: has7
   });
 }
