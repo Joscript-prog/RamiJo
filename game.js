@@ -914,7 +914,6 @@ function renderHand(hand) {
       <div class="suit main">${c.symbol}</div>
       <div class="corner bottom"><span>${c.rank}</span><span>${c.symbol}</span></div>
     `;
-    div.addEventListener('dblclick', () => discardCard(c.id));
     playerHandDiv.append(div);
   });
   enableDragDrop();
