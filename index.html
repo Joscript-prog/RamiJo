@@ -963,98 +963,146 @@
   </style>
 </head>
 <body>
-  <div class="menu-overlay">
-    <div class="modal-content">
+  <!-- Menu de connexion/création -->
+  <div id="menu" class="menu-overlay">
+    <div class="menu-content">
       <h1>Bienvenue au Rami !</h1>
+
+      <!-- Saisie du pseudo -->
       <div class="menu-section">
         <h2>Entrez votre pseudo</h2>
-        <input type="text" id="pseudoInput" class="room-input" placeholder="Votre pseudo" aria-label="Pseudo" />
-        <button id="pseudoSubmit" class="btn btn-primary">Valider</button>
+        <input
+          id="pseudoInput"
+          class="room-input"
+          type="text"
+          placeholder="Votre pseudo"
+          aria-label="Pseudo"
+        />
+        <button id="pseudoSubmit" class="btn btn-primary">
+          Valider
+        </button>
       </div>
-      <div class="menu-section">
-        <button id="createRoom" class="btn btn-primary">Créer une nouvelle partie</button>
-      </div>
+
       <div class="separator">OU</div>
+
+      <!-- Création de partie -->
       <div class="menu-section">
-        <h2>Rejoindre une partie existante</h2>
+        <button id="createRoom" class="btn btn-primary">
+          Créer une nouvelle partie
+        </button>
+      </div>
+
+      <div class="separator">OU</div>
+
+      <!-- Rejoindre une partie -->
+      <div class="menu-section">
+        <h2>Rejoindre une partie</h2>
         <div class="join-form">
-          <input type="text" id="roomIdInput" class="room-input" placeholder="ID de la salle" />
-          <button id="joinRoom" class="btn btn-secondary">Rejoindre</button>
+          <input
+            id="roomCodeInput"
+            class="room-input"
+            type="text"
+            maxlength="7"
+            placeholder="Code de partie (RAMI123)"
+            pattern="RAMI\\d{3}"
+          />
+          <button id="joinRoom" class="btn btn-secondary">
+            Rejoindre
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <div id="game" style="display: none;"> <header class="game-header">
+  <!-- Plateau de jeu -->
+  <div id="game" style="display: none;">
+    <header class="game-header">
       <div class="header-left">
-        <span id="roomIdDisplay" style="color: white; font-weight: bold;"></span>
-        <button id="startGameBtn" class="btn btn-primary">Démarrer la partie</button>
+        <span id="status" class="game-status">
+          Préparation de la partie...
+        </span>
+        <span id="roomCodeDisplay" style="margin-left:1rem;color:white;"></span>
       </div>
-      <div class="header-center" id="status-message">En attente de joueurs...</div>
+      <div class="header-center">
+        <span id="turnIndicator">Tour du joueur...</span>
+      </div>
       <div class="header-right">
-        <span id="playerCount" style="color: white;"></span>
+        <button id="toggleChat">💬</button>
       </div>
     </header>
 
     <div class="game-play-area">
-      <div class="game-table-container">
-        <div class="players-circle" id="players-container">
-          </div>
+      <!-- Contrôles -->
+      <aside class="game-controls">
+        <button id="startGameBtn" class="btn-action" disabled>
+          Démarrer la partie
+        </button>
+        <button id="endTurnBtn" class="btn-action" disabled>
+          Terminer le tour
+        </button>
+        <button id="declare7N" class="btn-special" disabled>
+          Déclarer 7 Naturel
+        </button>
+        <button id="remind7NBtn" class="btn-special">
+          Rappeler 7 Naturel
+        </button>
+        <button id="declareWin" class="btn-special" disabled>
+          Déclarer Victoire
+        </button>
+      </aside>
 
-        <div class="joker-display" id="joker">
-          </div>
-        
+      <!-- Liste des joueurs -->
+      <div id="players" class="players-list"></div>
+
+      <!-- Plateau central -->
+      <div class="game-table-container">
+        <div id="players-container" class="players-circle"></div>
+        <div id="joker" class="joker-display"></div>
+
         <div class="table-center">
-            <div class="deck-area">
-                <div class="card back deck-pile clickable" id="deck-pile"></div>
-                <div class="deck-label">Pioche</div>
+          <div class="deck-area">
+            <div id="deck" class="deck-pile clickable">
+              <div class="card back"></div>
             </div>
-            <div class="discard-area">
-                <div class="card" id="discard-pile"></div>
-                <div class="discard-label">Défausse</div>
-            </div>
+            <div class="deck-label">Pioche</div>
+          </div>
+          <div class="discard-area">
+            <div id="discard" class="discard-pile clickable"></div>
+            <div class="discard-label">Défausse</div>
+          </div>
         </div>
 
-        <div id="global-discard">
-            </div>
+        <div id="global-discard"></div>
       </div>
 
+      <!-- Main du joueur -->
       <div id="hand-container">
-        <div id="hand" class="horizontal">
-          </div>
+        <div id="hand" class="player-hand horizontal"></div>
       </div>
     </div>
 
-    <div class="game-controls">
-      <button id="endTurnBtn" class="btn-action">Terminer le tour</button>
-      <button id="declare7N" class="btn-special">Déclarer 7 Naturel</button>
-      <button id="remind7NBtn" class="btn-special">Rappeler 7 Naturel</button>
-      <button id="declareWin" class="btn-special">Déclarer Victoire</button>
-      <button id="toggleHandDisplay" class="btn-special">Changer l'affichage de la main</button>
-    </div>
-
+    <!-- Chat -->
     <div id="chat-container">
       <div class="chat-header">
-        <h3>Chat</h3>
-        <span>▼</span>
+        <h3>Chat</h3><span>▼</span>
       </div>
       <div class="chat-content">
         <div id="chat-messages"></div>
         <form id="chat-form">
           <input
-            type="text"
             id="chat-input"
-            placeholder="Message..."
+            type="text"
+            placeholder="Message…"
             autocomplete="off"
           />
           <button type="submit">Envoyer</button>
         </form>
       </div>
     </div>
-
   </div>
 
-  <script type="module" src="game.js"></script>
-  <script type="module" src="firebase.js"></script> 
+  <!-- Inclusion des scripts -->
+  <script type="module" src="./game.js"></script>
 </body>
+
 </html>
