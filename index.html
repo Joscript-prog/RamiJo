@@ -305,12 +305,11 @@
     }
 
     .game-table-container {
-.game-table-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-}
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
 
     .game-center {
       display: flex;
@@ -321,14 +320,13 @@
       width: 100%;
     }
 
-/* Zone de défausse centrale */
-.table-center {
-  display: flex;
-  justify-content: center;
-  gap: 50px;
-  margin-top: 20px;
-}
-
+    /* Zone de défausse centrale */
+    .table-center {
+      display: flex;
+      justify-content: center;
+      gap: 50px;
+      margin-top: 20px;
+    }
 
     /* Zone de défausse */
     #global-discard {
@@ -392,9 +390,12 @@
 
     /* Contrôles du jeu */
     .game-controls {
+      position: absolute;
+      top: 80px;
+      right: 20px;
       width: 240px;
       padding: 1rem;
-      background: rgba(0,0,0,0.2);
+      background: rgba(0,0,0,0.7);
       backdrop-filter: blur(10px);
       border-radius: var(--radius);
       display: flex;
@@ -402,7 +403,6 @@
       gap: 0.75rem;
       z-index: 40;
       overflow-y: auto;
-      margin-right: 20px;
     }
 
     .btn-special {
@@ -466,15 +466,14 @@
     }
 
     .players-circle {
-.players-circle {
-  position: absolute;
-  top: 10px;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-around;
-  z-index: 30;
-}
+      position: absolute;
+      top: 10px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-around;
+      z-index: 30;
+    }
 
     /* Joker positionné en haut à gauche */
     .joker-display {
@@ -942,9 +941,11 @@
       }
 
       .game-controls {
+        position: relative;
+        top: initial;
+        right: initial;
         width: 100%;
-        margin-right: 0;
-        margin-top: 10px;
+        margin: 10px 0;
       }
 
       #chat-container {
@@ -977,6 +978,7 @@
           type="text"
           placeholder="Votre pseudo"
           aria-label="Pseudo"
+          value="Joueur1"
         />
         <button id="pseudoSubmit" class="btn btn-primary">
           Valider
@@ -1005,6 +1007,7 @@
             maxlength="7"
             placeholder="Code de partie (RAMI123)"
             pattern="RAMI\\d{3}"
+            value="RAMI123"
           />
           <button id="joinRoom" class="btn btn-secondary">
             Rejoindre
@@ -1021,7 +1024,7 @@
         <span id="status" class="game-status">
           Préparation de la partie...
         </span>
-        <span id="roomCodeDisplay" style="margin-left:1rem;color:white;"></span>
+        <span id="roomCodeDisplay" style="margin-left:1rem;color:white;">RAMI123</span>
       </div>
       <div class="header-center">
         <span id="turnIndicator">Tour du joueur...</span>
@@ -1034,7 +1037,7 @@
     <div class="game-play-area">
       <!-- Contrôles -->
       <aside class="game-controls">
-        <button id="startGameBtn" class="btn-action" disabled>
+        <button id="startGameBtn" class="btn-action">
           Démarrer la partie
         </button>
         <button id="endTurnBtn" class="btn-action" disabled>
@@ -1052,12 +1055,27 @@
       </aside>
 
       <!-- Liste des joueurs -->
-      <div id="players" class="players-list"></div>
+      <div id="players" class="players-list">
+        <div class="player-info active">
+          <div class="player-name">Joueur1 (Vous)</div>
+          <div class="player-hand-count">13 cartes</div>
+        </div>
+        <div class="player-info">
+          <div class="player-name">Joueur2</div>
+          <div class="player-hand-count">? cartes</div>
+        </div>
+      </div>
 
       <!-- Plateau central -->
       <div class="game-table-container">
         <div id="players-container" class="players-circle"></div>
-        <div id="joker" class="joker-display"></div>
+        <div id="joker" class="joker-display">
+          <div class="card red">
+            <div class="corner top"><span>A</span><span>♥</span></div>
+            <div class="suit main">♥</div>
+            <div class="corner bottom"><span>A</span><span>♥</span></div>
+          </div>
+        </div>
 
         <div class="table-center">
           <div class="deck-area">
@@ -1067,17 +1085,71 @@
             <div class="deck-label">Pioche</div>
           </div>
           <div class="discard-area">
-            <div id="discard" class="discard-pile clickable"></div>
+            <div id="discard" class="discard-pile clickable">
+              <div class="card black">
+                <div class="corner top"><span>7</span><span>♠</span></div>
+                <div class="suit main">♠</div>
+                <div class="corner bottom"><span>7</span><span>♠</span></div>
+              </div>
+            </div>
             <div class="discard-label">Défausse</div>
           </div>
         </div>
 
-        <div id="global-discard"></div>
+        <div id="global-discard">
+          <div class="discard-label">Défausses des joueurs</div>
+          <div class="player-discard">
+            <div class="player-name">Joueur1</div>
+            <div class="discard-cards">
+              <div class="card red">
+                <div class="corner top"><span>K</span><span>♦</span></div>
+                <div class="suit main">♦</div>
+                <div class="corner bottom"><span>K</span><span>♦</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="player-discard">
+            <div class="player-name">Joueur2</div>
+            <div class="discard-cards">
+              <div class="card black">
+                <div class="corner top"><span>Q</span><span>♣</span></div>
+                <div class="suit main">♣</div>
+                <div class="corner bottom"><span>Q</span><span>♣</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Main du joueur -->
       <div id="hand-container">
-        <div id="hand" class="player-hand horizontal"></div>
+        <div id="hand" class="player-hand horizontal">
+          <div class="card red dealing" data-card-id="A♥0">
+            <div class="corner top"><span>A</span><span>♥</span></div>
+            <div class="suit main">♥</div>
+            <div class="corner bottom"><span>A</span><span>♥</span></div>
+          </div>
+          <div class="card black dealing" data-card-id="2♠0">
+            <div class="corner top"><span>2</span><span>♠</span></div>
+            <div class="suit main">♠</div>
+            <div class="corner bottom"><span>2</span><span>♠</span></div>
+          </div>
+          <div class="card red dealing" data-card-id="10♦0">
+            <div class="corner top"><span>10</span><span>♦</span></div>
+            <div class="suit main">♦</div>
+            <div class="corner bottom"><span>10</span><span>♦</span></div>
+          </div>
+          <div class="card black dealing" data-card-id="K♣0">
+            <div class="corner top"><span>K</span><span>♣</span></div>
+            <div class="suit main">♣</div>
+            <div class="corner bottom"><span>K</span><span>♣</span></div>
+          </div>
+          <div class="card red dealing" data-card-id="Q♥0">
+            <div class="corner top"><span>Q</span><span>♥</span></div>
+            <div class="suit main">♥</div>
+            <div class="corner bottom"><span>Q</span><span>♥</span></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1087,13 +1159,17 @@
         <h3>Chat</h3><span>▼</span>
       </div>
       <div class="chat-content">
-        <div id="chat-messages"></div>
+        <div id="chat-messages">
+          <div class="message me"><b>Joueur1:</b> Bonjour tout le monde !</div>
+          <div class="message other"><b>Joueur2:</b> Salut ! Prêt à jouer ?</div>
+        </div>
         <form id="chat-form">
           <input
             id="chat-input"
             type="text"
             placeholder="Message…"
             autocomplete="off"
+            value="C'est à qui de jouer ?"
           />
           <button type="submit">Envoyer</button>
         </form>
@@ -1101,8 +1177,26 @@
     </div>
   </div>
 
-  <!-- Inclusion des scripts -->
-  <script type="module" src="./game.js"></script>
-</body>
+  <script>
+    // Simulation des interactions pour la démonstration
+    document.getElementById('pseudoSubmit').addEventListener('click', function() {
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+    });
 
+    document.getElementById('createRoom').addEventListener('click', function() {
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+    });
+
+    document.getElementById('joinRoom').addEventListener('click', function() {
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+    });
+
+    document.getElementById('toggleChat').addEventListener('click', function() {
+      document.getElementById('chat-container').classList.toggle('collapsed');
+    });
+  </script>
+</body>
 </html>
