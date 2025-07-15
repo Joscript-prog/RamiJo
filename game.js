@@ -470,6 +470,55 @@ function showPopup(content, isError = false) {
     modal.querySelector('.modal-content').style.background = '#ffe6e6';
   }
 }
+function askPseudo() {
+  showPopup(`
+    <h3>Entrez votre pseudo</h3>
+    <input id="pseudoInput" type="text" placeholder="Votre pseudo" aria-label="Pseudo" />
+    <button id="pseudoSubmit" class="btn btn-primary">Valider</button>
+  `);
+  document.getElementById('pseudoSubmit').addEventListener('click', () => {
+    const val = document.getElementById('pseudoInput').value.trim();
+    myPseudo = val || 'Anonyme';
+    // ferme la modal
+    document.querySelector('.modal-close').click();
+  });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  // on demande le pseudo avant tout
+  askPseudo();
+  // options d’affichage de la main
+  setupHandDisplayOptions();
+
+  // bouton Créer
+  const btnCreate = document.getElementById('createRoom');
+  if (btnCreate) btnCreate.addEventListener('click', createRoom);
+  else console.warn('⚠️ #createRoom introuvable');
+
+  // bouton Rejoindre
+  const btnJoin = document.getElementById('joinRoom');
+  if (btnJoin) btnJoin.addEventListener('click', joinRoom);
+  else console.warn('⚠️ #joinRoom introuvable');
+
+  // autres boutons
+  const btnStart = document.getElementById('startGameBtn');
+  if (btnStart) btnStart.addEventListener('click', startGame);
+
+  const btnEnd = document.getElementById('endTurnBtn');
+  if (btnEnd) btnEnd.addEventListener('click', endTurn);
+
+  document.getElementById('declare7N')?.addEventListener('click', declare7Naturel);
+  document.getElementById('declareWin')?.addEventListener('click', () => sendNotification('win'));
+  document.getElementById('remind7NBtn')?.addEventListener('click', async () => {
+    const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+    const combo = extractSevenCombo(hand);
+    if (combo.length === 7) await sendNotification('7N', true);
+    else showPopup("Aucune combinaison de 7 cartes trouvée.", true);
+  });
+
+  // double‑click pour piocher
+  document.getElementById('deck')?.addEventListener('dblclick', drawCard);
+});
+
 
 function showGlobalPopup(message, cards = null) {
   const overlay = document.createElement('div');
