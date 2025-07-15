@@ -634,7 +634,7 @@ async function joinRoom() {
   }
 }
 setupHandDisplayOptions();
-}
+
 function actionCreateRoomPopup() {
   showPopup(`
     <h3>Salle créée</h3>
