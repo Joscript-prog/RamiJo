@@ -1264,50 +1264,5 @@
       </div>
     </div>
   </div>
-
-  <script>
-    // Gestion du changement d'affichage de la main
-    document.querySelectorAll('.hand-display-btn').forEach(button => {
-      button.addEventListener('click', function() {
-        document.querySelectorAll('.hand-display-btn').forEach(btn => {
-          btn.classList.remove('active');
-        });
-        this.classList.add('active');
-        
-        const displayType = this.dataset.display;
-        const hand = document.getElementById('hand');
-        hand.className = 'player-hand ' + displayType;
-        
-        if (displayType === 'semi-circle') {
-          arrangeCardsInSemiCircle();
-        }
-      });
-    });
-
-    // Fonction pour arranger les cartes en demi-cercle
-    function arrangeCardsInSemiCircle() {
-      const hand = document.getElementById('hand');
-      const cards = hand.querySelectorAll('.card');
-      const cardCount = cards.length;
-      const radius = 300; // Rayon du demi-cercle
-      
-      cards.forEach((card, index) => {
-        const angle = (index / (cardCount - 1)) * Math.PI - Math.PI/2;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-        
-        card.style.transform = `translate(${x}px, ${y}px) rotate(${angle + Math.PI/2}rad)`;
-      });
-    }
-    
-    // Simuler un jeu chargé
-    setTimeout(() => {
-      document.getElementById('menu').style.display = 'none';
-      document.getElementById('game').style.display = 'block';
-      
-      // Pour la démo, simuler un arrangement en demi-cercle
-      setTimeout(arrangeCardsInSemiCircle, 100);
-    }, 1000);
-  </script>
 </body>
 </html>
