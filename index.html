@@ -264,7 +264,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1rem;
+      padding: 0.5rem;
       background: rgba(0,0,0,0.3);
       backdrop-filter: blur(10px);
       border-bottom: 1px solid rgba(255,255,255,0.1);
@@ -306,12 +306,12 @@
     }
 
     .game-table-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      flex: 1;
-    }
+.game-table-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
 
     .game-center {
       display: flex;
@@ -322,12 +322,14 @@
       width: 100%;
     }
 
-    .table-center {
-      display: flex;
-      justify-content: center;
-      gap: 40px;
-      width: 100%;
-    }
+/* Zone de défausse centrale */
+.table-center {
+  display: flex;
+  justify-content: center;
+  gap: 50px;
+  margin-top: 20px;
+}
+
 
     /* Zone de défausse */
     #global-discard {
@@ -465,19 +467,22 @@
     }
 
     .players-circle {
-      position: relative;
-      top: 0;
-      left: 0;
-      transform: none;
-      display: flex;
-      gap: 1.5rem;
-      z-index: 30;
-      flex-wrap: wrap;
-      justify-content: center;
-      padding: 1rem;
-      max-height: 20vh;
-      overflow-y: auto;
-    }
+.players-circle {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  z-index: 30;
+}
+      /* Joker positionné en haut à gauche */
+.joker-display {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+}
 
     .player-info {
       background: rgba(255,255,255,0.1);
@@ -647,24 +652,20 @@
     }
 
     /* Main du joueur - Options d'affichage */
-    .player-hand-container {
-      position: relative;
-      width: 100%;
-      padding: 20px;
-      background: rgba(255,255,255,0.1);
-      backdrop-filter: blur(10px);
-      border-radius: var(--radius) var(--radius) 0 0;
-      z-index: 100;
-      border-top: 1px solid rgba(255,255,255,0.2);
-      box-shadow: var(--shadow-lg);
-    }
+.player-hand-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
 
-    .hand-display-options {
-      display: flex;
-      justify-content: center;
-      gap: 15px;
-      margin-bottom: 15px;
-    }
+ .hand-display-options {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+}
 
     .hand-display-btn {
       padding: 8px 15px;
@@ -705,19 +706,23 @@
     }
 
     .player-hand.semi-circle {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: calc(var(--card-height) + 80px);
-    }
+.player-hand.semi-circle {
+  display: flex;
+  justify-content: center;
+  height: calc(var(--card-height) + 100px);
+  position: relative;
+}
 
     .player-hand.semi-circle .card {
-      position: absolute;
-      transform-origin: center calc(100% + 100px);
-      transition: transform 0.3s ease;
-      margin-right: 0 !important;
-    }
-
+  position: absolute;
+  transform-origin: bottom center;
+  transition: transform 0.3s ease;
+  margin: 0 !important;
+}
+/* Chevauchement des cartes en demi-cercle */
+.player-hand.semi-circle .card {
+  margin-left: -50px; /* Chevauchement */
+}
     .player-hand.semi-circle .card:hover {
       transform: translateY(-40px) scale(1.1);
       z-index: 10;
