@@ -564,6 +564,72 @@ function listenTurn(room) {
     }
   });
 }
+async function joinRoom() {
+  // Récupère et formate le code saisi
+  const roomCode = roomInput.value.trim().toUpperCase();
+  if (!roomCode) {
+    alert("Veuillez entrer un code de salle.");
+    return;
+  }
+
+  // Vérifie que la salle existe
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  const snapshot = await get(roomRef);
+  if (!snapshot.exists()) {
+    alert("Cette salle n'existe pas.");
+    return;
+  }
+
+  // Vérifie si la partie a déjà commencé
+  const stateSnap = await get(ref(db, `rooms/${roomCode}/state`));
+  const gameStarted = stateSnap.exists() && stateSnap.val().started;
+
+  // Récupère la liste des joueurs actuels
+  const playersSnap = await get(ref(db, `rooms/${roomCode}/players`));
+  const players = playersSnap.val() || {};
+
+  // Limite à 5 joueurs max
+  if (Object.keys(players).length >= 5) {
+    alert("Cette salle est déjà complète (5 joueurs max).");
+    return;
+  }
+
+  // Vérifie que ce joueur n'est pas déjà présent
+  if (players[playerId]) {
+    alert("Vous êtes déjà dans cette salle.");
+    return;
+  }
+
+  // Ajoute le joueur (spectateur si la partie a démarré)
+  await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+    pseudo: myPseudo,
+    isSpectator: gameStarted
+  });
+
+  // Mémorise la salle courante
+  currentRoom = roomCode;
+
+  // Active tous les listeners Firebase (watchers de données)
+  listenPlayers(roomCode);
+  listenScores(roomCode);
+  listenDiscard(roomCode);
+  listenHand(roomCode);
+  listenTurn(roomCode);               // ← Écoute du tour, doit exister AVANT
+  setupPlayerHandDiscardListener();
+  listenJokerCard(roomCode);
+  listenNotifications(roomCode);
+
+  // Affiche le plateau de jeu et masque le menu
+  menuDiv.style.display = 'none';
+  gameDiv.style.display = 'block';
+
+  // Message pour spectateur ou joueur normal
+  if (gameStarted) {
+    showPopup(`<p>Connecté en tant que spectateur à la salle <b>${roomCode}</b></p>`);
+  } else {
+    showPopup(`<p>Connecté à la salle <b>${roomCode}</b></p>`);
+  }
+}
 
 function actionCreateRoomPopup() {
   showPopup(`
@@ -1298,70 +1364,6 @@ async function createRoom() {
   // Affiche le popup de confirmation de création
   actionCreateRoomPopup();
 }
-
-
-async function joinRoom() {
-  const roomCode = roomInput.value.trim().toUpperCase();
-  if (!roomCode) {
-    alert("Veuillez entrer un code de salle.");
-    return;
-  }
-
-  const roomRef = ref(db, `rooms/${roomCode}`);
-  const snapshot = await get(roomRef);
-  if (!snapshot.exists()) {
-    alert("Cette salle n'existe pas.");
-    return;
-  }
-
-  // Vérifier si la partie a déjà commencé
-  const stateSnap = await get(ref(db, `rooms/${roomCode}/state`));
-  const gameStarted = stateSnap.exists() && stateSnap.val()?.started;
-
-  const playersSnap = await get(ref(db, `rooms/${roomCode}/players`));
-  const players = playersSnap.val() || {};
-
-  if (Object.keys(players).length >= 5) {
-    alert("Cette salle est déjà complète (5 joueurs max).");
-    return;
-  }
-
-  if (players[playerId]) {
-    alert("Vous êtes déjà dans cette salle.");
-    return;
-  }
-
-  // Ajout du joueur
-  await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-    pseudo: myPseudo,
-    isSpectator: gameStarted // Marquer comme spectateur si la partie a commencé
-  });
-
-  currentRoom = roomCode;
-
-  // Écoute des données
-  listenPlayers(roomCode);
-  listenScores(roomCode);
-  listenDiscard(roomCode);
-  listenHand(roomCode);
-  listenTurn(roomCode);
-  setupPlayerHandDiscardListener();
-  enableChat();
-  listenJokerCard(roomCode);
-  listenNotifications(roomCode);
-
-  // Affichage du jeu
-  menuDiv.style.display = 'none';
-  gameDiv.style.display = 'block';
-
-  // Afficher un message différent pour les spectateurs
-  if (gameStarted) {
-    showPopup(`<p>Connecté en tant que spectateur à la salle <b>${roomCode}</b></p>`);
-  } else {
-    showPopup(`<p>Connecté à la salle <b>${roomCode}</b></p>`);
-  }
-}
-
 // Fonction pour démarrer la partie
 async function startGame() {
   if (!currentRoom) return;
