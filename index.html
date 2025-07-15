@@ -812,7 +812,16 @@
     .chat-header span {
       transition: transform 0.3s ease;
     }
+    
+    #chat-container.collapsed {
+  height: 40px;
+}
 
+#chat-container.collapsed .chat-content {
+  display: none;
+}
+
+    
     #chat-container.collapsed .chat-header span {
       transform: rotate(180deg);
     }
@@ -885,32 +894,38 @@
     }
 
     /* Hand Display Options */
-    .hand-display-options {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: center;
-      margin-bottom: 1rem;
-    }
+   .hand-display-options {
+  position: absolute;
+  top: -50px;
+  right: 20px;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 70;
+}
 
-    .hand-display-btn {
-      padding: 0.5rem 1rem;
-      background: var(--gradient-primary);
-      color: var(--text-white);
-      border: none;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: var(--transition);
-    }
+.hand-display-btn {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: var(--transition);
+}
 
-    .hand-display-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
+.hand-display-btn:hover {
+  background: var(--gradient-primary);
+  color: white;
+}
 
-    .hand-display-btn.active {
-      background: var(--gradient-success);
-    }
+.hand-display-btn.active {
+  background: var(--gradient-success);
+  color: white;
+}
 
     /* Animations */
     @keyframes fadeIn {
@@ -1078,10 +1093,13 @@
         </div>
 
         <!-- Main du joueur -->
-        <div id="hand-container">
-          <div id="hand" class="player-hand horizontal"></div>
-        </div>
-      </div>
+<div id="hand-container">
+  <div class="hand-display-options">
+    <button class="hand-display-btn active" data-display="horizontal" title="Horizontal">☰</button>
+    <button class="hand-display-btn" data-display="semi-circle" title="Éventail">🝁</button>
+  </div>
+  <div id="hand" class="player-hand horizontal"></div>
+</div>
 
       <!-- Chat -->
       <div id="chat-container">
