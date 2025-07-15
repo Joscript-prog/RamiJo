@@ -839,22 +839,45 @@ function listenTurn(room) {
   onValue(ref(db, `rooms/${room}/turn`), snap => {
     const turn = snap.val();
     const myTurn = turn === playerId;
+
+    // Réinitialisation des flags pour ce tour
     hasDrawnOrPicked = false;
     hasDiscardedThisTurn = false;
 
+    // Mise à jour du statut simple
     const status = document.getElementById('status');
-    status.textContent = myTurn ? "⭐ C'est votre tour !" : "En attente…";
+    if (status) {
+      status.textContent = myTurn 
+        ? "⭐ C'est votre tour !" 
+        : "En attente…";
+    }
 
+    // Indicateur plus parlant dans le header
+    const turnIndicator = document.getElementById('turnIndicator');
+    if (turnIndicator) {
+      turnIndicator.textContent = myTurn 
+        ? "C'est à vous !" 
+        : `Tour de ${turn}`;
+    }
+
+    // Activation / désactivation de la pioche
     const deckPile = document.getElementById('deck');
-    deckPile.style.pointerEvents = myTurn ? 'auto' : 'none';
-    deckPile.style.opacity = myTurn ? '1' : '0.5';
+    if (deckPile) {
+      deckPile.style.pointerEvents = myTurn ? 'auto' : 'none';
+      deckPile.style.opacity       = myTurn ? '1'    : '0.5';
+    }
 
+    // Activation / désactivation du bouton "Terminer le tour"
     const endTurnBtn = document.getElementById('endTurnBtn');
     if (endTurnBtn) {
       endTurnBtn.disabled = !myTurn || !hasDrawnOrPicked || !hasDiscardedThisTurn;
     }
+
+    // Réinitialise aussi l'état des boutons de déclaration
+    updateActionButtons([]);
   });
 }
+
 
 function listenJokerCard(room) {
   onValue(ref(db, `rooms/${room}/jokerCard`), snap => {
@@ -1183,34 +1206,51 @@ async function discardCard(cardId) {
 }
 
 async function endTurn() {
+  console.log('END TURN demandé par', playerId);
+
+  // Vérifier que c'est bien votre tour
   const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
   if (turnSnap.val() !== playerId) {
     return showPopup("Ce n'est pas votre tour.", true);
   }
 
+  // Récupérer l'état de la partie
   const stateRef = ref(db, `rooms/${currentRoom}/state`);
   const stateSnap = await get(stateRef);
   const state = stateSnap.val() || {};
 
+  // Doit avoir pioché ou pris une carte
   if (!state.hasDrawnOrPicked) {
-    return showPopup("Vous devez piocher une carte (ou en prendre une de la défausse) avant de terminer votre tour.", true);
+    return showPopup(
+      "Vous devez piocher une carte (ou en prendre une de la défausse) avant de terminer votre tour.",
+      true
+    );
   }
 
+  // Vérifier que la main contient bien 13 cartes (défausse faite)
   const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
   const hand = handSnap.val() || [];
   if (hand.length !== 13) {
-    return showPopup("Votre main doit contenir 13 cartes pour terminer le tour (vous devez défausser une carte).", true);
+    return showPopup(
+      "Votre main doit contenir 13 cartes pour terminer le tour (vous devez défausser une carte).",
+      true
+    );
   }
 
+  // Doit avoir défaussé une carte
   if (!state.hasDiscardedThisTurn) {
     return showPopup("Vous devez défausser une carte.", true);
   }
 
+  // Déterminer le joueur suivant
   const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
   const players = Object.keys(playersSnap.val() || {});
   const currentIndex = players.indexOf(playerId);
   const nextPlayerId = players[(currentIndex + 1) % players.length];
+  console.log('Tour en cours avant mise à jour :', turnSnap.val());
+  console.log('Passage au joueur suivant :', nextPlayerId);
 
+  // Mettre à jour l'état et passer le tour
   await Promise.all([
     update(stateRef, {
       hasDrawnOrPicked: false,
@@ -1221,8 +1261,13 @@ async function endTurn() {
     set(ref(db, `rooms/${currentRoom}/turn`), nextPlayerId)
   ]);
 
+  // Facultatif : forcer le rafraîchissement des boutons d'action
+  updateActionButtons([]);
+
+  // Vérifier fin de manche ou fin de partie
   await checkEndGame();
 }
+
 async function startGame() {
   if (!currentRoom) return;
 
