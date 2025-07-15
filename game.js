@@ -1162,22 +1162,26 @@ async function takeDiscardedCard(ownerId) {
 }
 
 async function discardCard(cardId) {
+  // 1️⃣ Vérifier que c'est bien votre tour
   const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
   if (turnSnap.val() !== playerId) {
     return showPopup("Ce n'est pas votre tour.", true);
   }
 
+  // 2️⃣ Récupérer l'état
   const stateRef = ref(db, `rooms/${currentRoom}/state`);
-  const state = (await get(stateRef)).val() || { hasDrawnOrPicked: false, hasDiscardedThisTurn: false };
+  const stateSnap = await get(stateRef);
+  const state = stateSnap.val() || {};
 
+  // 3️⃣ Validations pioche + défausse unique
   if (!state.hasDrawnOrPicked) {
     return showPopup("Vous devez piocher ou prendre une carte avant de défausser.", true);
   }
-
   if (state.hasDiscardedThisTurn) {
     return showPopup("Vous avez déjà défaussé une carte ce tour.", true);
   }
 
+  // 4️⃣ Charger la main et la défausse
   const handRef = ref(db, `rooms/${currentRoom}/hands/${playerId}`);
   const handSnap = await get(handRef);
   const hand = handSnap.val() || [];
@@ -1185,25 +1189,29 @@ async function discardCard(cardId) {
   if (cardIndex === -1) {
     return showPopup("Erreur : Cette carte n'est pas dans votre main.", true);
   }
-
   const [cardToDiscard] = hand.splice(cardIndex, 1);
   const discardPileRef = ref(db, `rooms/${currentRoom}/discard/${playerId}`);
   const discardPileSnap = await get(discardPileRef);
   const discardPile = discardPileSnap.val() || [];
   discardPile.push(cardToDiscard);
 
-  state.hasDiscardedThisTurn = true;
-  state.lastDiscarder = playerId;
-  hasDiscardedThisTurn = true;
-
+  // 5️⃣ Mettre à jour BDD en une seule Promise
   await Promise.all([
     set(handRef, hand),
     set(discardPileRef, discardPile),
-    update(stateRef, { hasDiscardedThisTurn: state.hasDiscardedThisTurn, lastDiscarder: state.lastDiscarder })
+    update(stateRef, { 
+      hasDiscardedThisTurn: true, 
+      lastDiscarder: playerId 
+    })
   ]);
 
+  // 6️⃣ Réafficher la main
   renderHand(hand);
+
+  // 7️⃣ Puis, AUTOMATIQUEMENT, terminer le tour
+  await endTurn();
 }
+
 
 async function endTurn() {
   console.log('END TURN demandé par', playerId);
@@ -1342,6 +1350,6 @@ function setupPlayerHandDiscardListener() {
 
     const cardId = cardEl.dataset.cardId;
     await discardCard(cardId);
-    await endTurn();
+    // plus besoin de endTurn() ici
   });
 }
