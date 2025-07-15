@@ -206,7 +206,6 @@ function extractWinCombosJoker(hand, jokerSet) {
   let availableJokers = availableCards.filter(c => jokerSet.includes(c.id));
   let nonJokers = availableCards.filter(c => !jokerSet.includes(c.id));
   const combos = [];
-
   const findAndRemoveCards = (sourceArray, predicate, count) => {
     const foundCards = [];
     let tempArray = [...sourceArray];
@@ -222,7 +221,6 @@ function extractWinCombosJoker(hand, jokerSet) {
     }
     return { found: [], remaining: sourceArray };
   };
-
   if (has7) {
     const sevenCombo = extractSevenCombo(hand);
     if (sevenCombo.length === 7) {
@@ -247,13 +245,12 @@ function extractWinCombosJoker(hand, jokerSet) {
       acc[c.suit].push(c);
       return acc;
     }, {});
-
     for (let suit in bySuit) {
       const cardsInSuit = bySuit[suit].sort((a, b) => a.value - b.value);
       for (let i = 0; i <= cardsInSuit.length - len; i++) {
         let sequence = [cardsInSuit[i]];
         for (let j = 1; j < len; j++) {
-          if (cardsInSuit[i + j] && cardsInSuit[i + j].DotNetCore.value === sequence[sequence.length - 1].value + 1) {
+          if (cardsInSuit[i + j] && cardsInSuit[i + j].value === sequence[sequence.length - 1].value + 1) { // Corrected line
             sequence.push(cardsInSuit[i + j]);
           } else {
             sequence = [];
@@ -296,7 +293,6 @@ function extractWinCombosJoker(hand, jokerSet) {
       acc[c.suit].push(c);
       return acc;
     }, {});
-
     for (let suit in bySuit) {
       const cardsInSuit = bySuit[suit].sort((a, b) => a.value - b.value);
       for (let i = 0; i < cardsInSuit.length; i++) {
@@ -652,9 +648,9 @@ async function declare7Naturel() {
 }
 
 // Initialiser dans joinRoom/createRoom
-await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+await set(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
   pseudo: myPseudo,
-  hasDeclared7N: false // Ajouter ce champ
+  hasDeclared7N: false // Add this field
 });
 
 // Mettre à jour l'écouteur du bouton
