@@ -859,20 +859,6 @@ function renderHand(hand) {
   enableDragDrop();
 }
 
-function arrangeCardsInSemiCircle() {
-  const cards = document.getElementById('hand').querySelectorAll('.card');
-  const cardCount = cards.length;
-  const radius = Math.min(200, window.innerWidth / 4);
-  const angleStep = Math.min(30, 360 / (cardCount + 1));
-
-  cards.forEach((card, index) => {
-    const angle = (index - (cardCount - 1) / 2) * angleStep;
-    const angleRad = angle * Math.PI / 180;
-    const x = Math.sin(angleRad) * radius;
-    card.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
-    card.style.zIndex = index;
-  });
-}
 
 function setupHandDisplayOptions() {
   document.querySelectorAll('.hand-display-btn').forEach(button => {
@@ -1273,7 +1259,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnEnd) btnEnd.addEventListener('click', endTurn);
 
   const btn7N = document.getElementById('declare7N');
-  if (btn7N) btn7N.addEventListener('click', () => sendNotification('7N'));
+  if (btn7N) btn7N.addEventListener('click', declare7Naturel);
 
   const btnWin = document.getElementById('declareWin');
   if (btnWin) btnWin.addEventListener('click', () => sendNotification('win'));
