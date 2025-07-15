@@ -837,6 +837,7 @@ async function terminateGame(winnerId) {
   const jokerSet = jokerSetSnap.val()?.jokerSet || [];
 
   const winCombos = extractWinCombosJoker(winnerHand, jokerSet);
+  const has7 = Rules.has7Naturel(winnerHand);
 
   await update(ref(db, `rooms/${currentRoom}/state`), {
     roundOver: true,
@@ -844,21 +845,38 @@ async function terminateGame(winnerId) {
     winnerId: winnerId,
     winnerPseudo: winnerPseudo,
     winCombos: winCombos
+    has7Naturel: has7
   });
 }
 
 async function checkEndGame() {
-  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
+  const stateRef = ref(db, `rooms/${currentRoom}/state`);
+  const stateSnap = await get(stateRef);
   const state = stateSnap.val() || {};
 
-  if (state.roundOver || state.winDeclared) return;
+  // 1) Si un vainqueur vient d’être déclaré, on ne fait rien
+  if (state.winDeclared) return;
 
+  // 2) Si le deck est vide sans victoire
   const deckSnap = await get(ref(db, `rooms/${currentRoom}/deck`));
   const deck = deckSnap.val() || [];
+  if (deck.length === 0) {
+    // Récupérer toutes les mains
+    const handsSnap = await get(ref(db, `rooms/${currentRoom}/hands`));
+    const allHands = handsSnap.val() || {};
 
-  if (deck.length === 0 && !state.winDeclared) {
-    await update(ref(db, `rooms/${currentRoom}/state`), { roundOver: true, reason: 'deck_empty_no_win' });
-    return;
+    // Vérifier si quelqu’un a un 7 naturel
+    const someoneHas7 = Object.values(allHands).some(hand =>
+      Rules.has7Naturel(hand)
+    );
+
+    if (someoneHas7) {
+      // relancer une nouvelle manche immédiatement
+      await newRound('♻️ Deck vide – 7 Naturel détecté, nouvelle manche');
+    } else {
+      // on peut choisir de stopper vraiment la partie
+      await update(stateRef, { roundOver: true, reason: 'deck_empty_no_7' });
+    }
   }
 }
 
@@ -1121,7 +1139,7 @@ async function endTurn() {
       update(stateRef, newState),
       set(ref(db, `rooms/${currentRoom}/turn`), nextPlayerId)
     ]);
-
+  await checkEndGame();
     console.log(`Tour terminé. C'est le tour de ${nextPlayerId}.`);
   } catch (error) {
     console.error("Erreur lors de la fin du tour:", error);
