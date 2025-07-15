@@ -1,7 +1,7 @@
 import { db, ref, push, onChildAdded, set, update, get, onValue } from './firebase.js';
 import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/modular/sortable.esm.js';
 
-const myPseudo = prompt('Entrez votre pseudo :') || 'Anonyme';
+let myPseudo = '';
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
 let currentRoom = '';
 let hasDrawnOrPicked    = false;
@@ -1455,11 +1455,25 @@ async function startGame() {
 if (startGameBtn) {
   startGameBtn.addEventListener('click', startGame);
 }
+function askPseudo() {
+  showPopup(`
+    <h3>Entrez votre pseudo</h3>
+    <input id="pseudoInput" type="text" placeholder="Votre pseudo" />
+    <button id="pseudoSubmit" class="btn btn-primary">Valider</button>
+  `);
+  // Dès que le modal est injecté, on branche le listener
+  document.getElementById('pseudoSubmit').onclick = () => {
+    const val = document.getElementById('pseudoInput').value.trim();
+    myPseudo = val || 'Anonyme';
+    document.querySelector('.modal-close').click(); // ferme le modal
+  };
+}
 
 // —————————————
 // Initialisation au chargement du DOM
 // —————————————
 document.addEventListener('DOMContentLoaded', () => {
+  askPseudo();
   const toggleBtn     = document.getElementById('toggleChat');
   const chatContainer = document.getElementById('chat-container');
   const chatHeader    = chatContainer.querySelector('.chat-header');
