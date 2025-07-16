@@ -1063,7 +1063,6 @@
         <span id="turnIndicator">Tour du joueur...</span>
       </div>
       <div class="header-right">
-        <button id="toggleChat">💬</button>
       </div>
     </header>
 
@@ -1072,6 +1071,9 @@
       <aside class="game-controls">
         <button id="startGameBtn" class="btn-action" style="display: none;">
           Démarrer la partie
+        </button>
+        <button id="sortHandBtn" class="btn-special">
+        Ranger les cartes
         </button>
         <button id="endTurnBtn" class="btn-action" disabled>
           Terminer le tour
@@ -1082,11 +1084,6 @@
         <button id="declareWin" class="btn-special" disabled>
           Déclarer Victoire
         </button>
-        <div class="hand-display-options">
-          <button class="hand-display-btn active" data-display="horizontal">Horizontal</button>
-          <button class="hand-display-btn" data-display="vertical">Vertical</button>
-          <button class="hand-display-btn" data-display="semi-circle">Semi-circle</button>
-        </div>
       </aside>
 
       <!-- Liste des joueurs -->
@@ -1116,10 +1113,6 @@
 
         <!-- Main du joueur -->
 <div id="hand-container">
-  <div class="hand-display-options">
-    <button class="hand-display-btn active" data-display="horizontal" title="Horizontal">☰</button>
-    <button class="hand-display-btn" data-display="semi-circle" title="Éventail">🝁</button>
-  </div>
   <div id="hand" class="player-hand horizontal"></div>
 </div>
 
