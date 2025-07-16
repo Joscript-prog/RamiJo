@@ -573,41 +573,42 @@ function getPreviousPlayerId(currentPlayerId, allPlayers) {
 async function renderPreviousDiscard(discards) {
   const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
   const players = Object.keys(playersSnap.val() || {});
+  const currentIndex = players.indexOf(playerId);
+  const prevPlayerId = players[(currentIndex - 1 + players.length) % players.length];
 
-  // Détermine l’ID du joueur précédent
-  const prevPlayerId = players[(players.indexOf(playerId) - 1 + players.length) % players.length];
   const pile = discards[prevPlayerId] || [];
   const lastCard = pile[pile.length - 1];
 
   const container = document.getElementById('previous-discard');
   if (!container) return;
+
   container.innerHTML = '';
 
   if (lastCard) {
-    // Crée la carte
+    const name = playersMap[prevPlayerId]?.pseudo || prevPlayerId;
+
+    const label = document.createElement('div');
+    label.className = 'discard-label';
+    label.textContent = `Défausse de ${name}`;
+
     const cardDiv = document.createElement('div');
-    cardDiv.className = `card ${lastCard.color} clickable`;
+    cardDiv.className = `card ${lastCard.color}`;
     cardDiv.dataset.cardId = lastCard.id;
     cardDiv.innerHTML = `
       <div class="corner top">${lastCard.rank}${lastCard.symbol}</div>
       <div class="suit main">${lastCard.symbol}</div>
     `;
 
-    // Récupère le pseudo
-    const name = playersMap[prevPlayerId]?.pseudo || prevPlayerId;
-    const label = document.createElement('div');
-    label.className = 'discard-label';
-    label.textContent = `Défausse de ${name}`;
+    const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
+    const nextOfPrev = players[(players.indexOf(prevPlayerId) + 1) % players.length];
+
+    if (turn === playerId && playerId === nextOfPrev) {
+      cardDiv.classList.add('clickable');
+      cardDiv.addEventListener('click', () => pickFromPreviousDiscard(lastCard.id, prevPlayerId));
+    }
 
     container.appendChild(label);
     container.appendChild(cardDiv);
-
-    // Clique autorisé uniquement si c'est votre tour et que vous êtes le joueur suivant
-    const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
-    const nextOfPrev = players[(players.indexOf(prevPlayerId) + 1) % players.length];
-    if (turn === playerId && playerId === nextOfPrev) {
-      cardDiv.addEventListener('click', () => pickFromPreviousDiscard(lastCard.id, prevPlayerId));
-    }
   } else {
     container.innerHTML = '<div class="discard-label">Aucune carte à prendre</div>';
   }
