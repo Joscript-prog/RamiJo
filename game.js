@@ -433,6 +433,12 @@ function setupListeners(roomCode) {
   setupHandDisplayOptions();
   enableChat();
   enableDragDrop();
+  
+  // Nouvel écouteur pour la défausse centrale
+  document.getElementById('discard')?.addEventListener('click', () => {
+    if (!currentRoom) return;
+    pickFromDiscard();
+  });
 }
 
 async function startGame() {
@@ -527,63 +533,6 @@ async function declareWin() {
 
   showGlobalPopup(`🏆 ${myPseudo} gagne ! (+${winBonus} pts)`, []);
 }
-function renderPreviousDiscard() {
-  const prevDiv = document.getElementById('previous-discard');
-  if (!prevDiv) return;
-  prevDiv.innerHTML = '';
-
-  get(ref(db, `rooms/${currentRoom}/state`)).then(snap => {
-    const state = snap.val() || {};
-    const card = state.lastDiscardCard;
-    const owner = state.lastDiscardPlayer;
-
-    if (!card || owner === playerId) return;
-
-    const div = document.createElement('div');
-    div.className = 'previous-discard clickable';
-    div.innerHTML = `
-      <div class="card ${card.color}" data-card-id="${card.id}">
-        <div class="corner top">${card.rank}${card.symbol}</div>
-      </div>
-      <div class="discard-info">Défausse de ${owner.substring(7)}</div>
-    `;
-    prevDiv.appendChild(div);
-
-    // 🔧 Double-clic pour prendre la défausse
-    div.querySelector('.card')?.addEventListener('dblclick', () => {
-      pickFromDiscard(card, owner);
-    });
-  });
-}
-async function pickFromDiscard() {
-  const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
-  if (turn !== playerId) return showPopup("Ce n'est pas votre tour.");
-  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
-  if (state.hasDrawnOrPicked) return showPopup("Vous avez déjà pioché.");
-
-  // Charger toutes les piles
-  const discRef = ref(db, `rooms/${currentRoom}/discard`);
-  const snap = await get(discRef);
-  const discards = snap.val() || {};
-  // Récupérer la dernière carte de la défausse la plus récente
-  let ownerId = null, card = null;
-  for (let [id, pile] of Object.entries(discards)) {
-    if (pile.length && (!card || pile[pile.length-1].timestamp > card.timestamp)) {
-      ownerId = id;
-      card = pile[pile.length-1];
-    }
-  }
-  if (!card) return showPopup("Rien à piocher dans la défausse.");
-
-  // Retirer la carte de la défausse
-  const newPile = discards[ownerId].slice(0, -1);
-  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-  await Promise.all([
-    set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), newPile),
-    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), [...hand, card]),
-    update(ref(db, `rooms/${currentRoom}/state`), { hasDrawnOrPicked: true })
-  ]);
-}
 
 // AFFICHAGE DES CARTES
 function renderHand(hand) {
@@ -596,6 +545,11 @@ function renderHand(hand) {
     const div = document.createElement('div');
     div.className = `card ${card.color}`;
     div.dataset.cardId = card.id;
+    div.dataset.rank = card.rank;
+    div.dataset.symbol = card.symbol;
+    div.dataset.color = card.color;
+    div.dataset.suit = card.suit;
+    div.dataset.value = card.value;
 
     div.innerHTML = `
       <div class="corner top">${card.rank}${card.symbol}</div>
@@ -607,8 +561,6 @@ function renderHand(hand) {
     handDiv.appendChild(div);
   });
 }
-
-
 
 // LISTENERS
 async function listenPlayers(room) {
@@ -629,6 +581,8 @@ async function listenPlayers(room) {
 
 function renderPlayers(players) {
   const playersDiv = document.getElementById('players-container');
+  if (!playersDiv) return; // Sécurité si l'élément n'existe pas
+  
   playersDiv.innerHTML = '';
   players.forEach(p => {
     const badge = document.createElement('div');
@@ -648,6 +602,7 @@ function listenHand(room) {
     renderHand(hand);
   });
 }
+
 function listenTurn(room) {
   onValue(ref(db, `rooms/${room}/turn`), snap => {
     const turn = snap.val();
@@ -659,20 +614,25 @@ function listenTurn(room) {
     document.getElementById('endTurnBtn').disabled = !myTurn;
   });
 }
+
 function listenJokerCard(room) {
   onValue(ref(db, `rooms/${room}/jokerCard`), snap => {
     const card = snap.val();
+    const jokerDiv = document.getElementById('joker');
+    if (!jokerDiv) return; // Sécurité si l'élément n'existe pas
+    
     if (card) {
-      document.getElementById('joker').innerHTML = `
+      jokerDiv.innerHTML = `
         <div class="card ${card.color}">
           <div class="corner top">${card.rank}${card.symbol}</div>
           <div class="suit main">${card.symbol}</div>
         </div>
       `;
+    } else {
+      jokerDiv.innerHTML = '';
     }
   });
 }
-
 
 function listenDiscard(room) {
   onValue(ref(db, `rooms/${room}/discard`), snap => {
@@ -682,24 +642,33 @@ function listenDiscard(room) {
 }
 
 function renderDiscardPiles(discards) {
-  // Mise à jour du slot central
-  const central = document.querySelector('#central-discard .card-slot');
-  // On prend uniquement la dernière carte défaussée (de n’importe quel joueur)
-  const all = Object.values(discards).flat();
-  const last = all[all.length - 1] || null;
-  central.innerHTML = last
-    ? `<div class="card ${last.color}">
-         <div class="corner top-left">${last.rank}${last.symbol}</div>
-         <div class="suit main">${last.symbol}</div>
-         <div class="corner bottom-right">${last.rank}${last.symbol}</div>
-       </div>`
-    : '';
+  const discardDiv = document.getElementById('discard');
+  if (!discardDiv) return; // Sécurité si l'élément n'existe pas
+
+  // Trouver la dernière carte défaussée
+  let lastCard = null;
+  for (const pile of Object.values(discards)) {
+    if (pile.length > 0) {
+      const card = pile[pile.length - 1];
+      if (!lastCard || card.timestamp > lastCard.timestamp) {
+        lastCard = card;
+      }
+    }
+  }
+
+  // Mettre à jour l'affichage
+  if (lastCard) {
+    discardDiv.innerHTML = `
+      <div class="card ${lastCard.color}" data-card-id="${lastCard.id}">
+        <div class="corner top">${lastCard.rank}${lastCard.symbol}</div>
+        <div class="suit main">${lastCard.symbol}</div>
+      </div>
+    `;
+  } else {
+    discardDiv.innerHTML = '';
+  }
 }
-document.getElementById('central-discard')?.  // ← notez le “?”
-  addEventListener('click', () => {
-    if (!currentRoom) return;
-    pickFromDiscard();
-  });
+
 async function updateActionButtons(hand) {
   const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`))).val() || [];
   const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
@@ -766,7 +735,9 @@ async function discardCard(cardId) {
     set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
     set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), discard),
     update(ref(db, `rooms/${currentRoom}/state`), {
-      hasDiscardedThisTurn: true
+      hasDiscardedThisTurn: true,
+      lastDiscardPlayer: playerId,
+      lastDiscardCard: card
     })
   ]);
 
@@ -783,6 +754,40 @@ async function discardCard(cardId) {
   ]);
 
   renderHand(hand);
+}
+
+async function pickFromDiscard() {
+  const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
+  if (turn !== playerId) return showPopup("Ce n'est pas votre tour.");
+  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+  if (state.hasDrawnOrPicked) return showPopup("Vous avez déjà pioché.");
+
+  // Charger toutes les piles
+  const discRef = ref(db, `rooms/${currentRoom}/discard`);
+  const snap = await get(discRef);
+  const discards = snap.val() || {};
+  
+  // Récupérer la dernière carte de la défausse la plus récente
+  let ownerId = null, card = null;
+  for (let [id, pile] of Object.entries(discards)) {
+    if (pile.length && (!card || pile[pile.length-1].timestamp > card.timestamp)) {
+      ownerId = id;
+      card = pile[pile.length-1];
+    }
+  }
+  if (!card) return showPopup("Rien à piocher dans la défausse.");
+
+  // Retirer la carte de la défausse
+  const newPile = discards[ownerId].slice(0, -1);
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+  
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), newPile),
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), [...hand, card]),
+    update(ref(db, `rooms/${currentRoom}/state`), { 
+      hasDrawnOrPicked: true 
+    })
+  ]);
 }
 
 async function endTurn() {
@@ -811,24 +816,29 @@ async function endTurn() {
 // CHAT
 function enableChat() {
   const chatContainer = document.getElementById('chat-container');
-  const chatHeader = chatContainer.querySelector('.chat-header'); // ✅ Variable manquante
+  if (!chatContainer) return; // Sécurité si l'élément n'existe pas
+  
+  const chatHeader = chatContainer.querySelector('.chat-header');
+  if (!chatHeader) return;
 
   // 🔧 Ouvre le chat par défaut
   chatContainer.classList.remove('collapsed');
   const arrow = chatHeader.querySelector('span');
-  arrow.textContent = '▼';
+  if (arrow) arrow.textContent = '▼';
 
   // 🔧 Gestion du clic sur l’en-tête
   chatHeader.addEventListener('click', () => {
     chatContainer.classList.toggle('collapsed');
     const arrow = chatHeader.querySelector('span');
-    arrow.textContent = chatContainer.classList.contains('collapsed') ? '▲' : '▼';
+    if (arrow) {
+      arrow.textContent = chatContainer.classList.contains('collapsed') ? '▲' : '▼';
+    }
   });
 
   // 🔧 Envoi des messages
-  document.getElementById('chat-form').addEventListener('submit', async (e) => {
+  document.getElementById('chat-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const message = document.getElementById('chat-input').value.trim();
+    const message = document.getElementById('chat-input')?.value.trim();
     if (!message) return;
 
     await set(ref(db, `rooms/${currentRoom}/chat/${Date.now()}`), {
@@ -849,6 +859,8 @@ function listenChat(room) {
       .sort((a, b) => a.timestamp - b.timestamp);
 
     const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return; // Sécurité si l'élément n'existe pas
+    
     chatMessages.innerHTML = '';
     messagesArray.forEach(msg => {
       const div = document.createElement('div');
@@ -862,37 +874,32 @@ function listenChat(room) {
 
 // UTILITAIRES
 function setupHandDisplayOptions() {
-  // On ne gère plus qu’un seul bouton “horizontal”
-  const button = document.querySelector('.hand-display-btn[data-display="horizontal"]');
-  if (!button) return;
-
-  // On active d’emblée ce bouton
-  button.classList.add('active');
-
-  button.addEventListener('click', () => {
-    handDisplayType = 'horizontal';
-    const hand = document.getElementById('hand');
-    // On force la classe horizontal
-    hand.className = 'player-hand horizontal';
-
-    // Reset de tout style résiduel (venant d'un éventuel semi-circle précédent)
-    hand.querySelectorAll('.card').forEach(card => {
-      card.style.position = '';
-      card.style.left     = '';
-      card.style.bottom   = '';
-      card.style.transform= '';
-      card.style.width    = '';
-      card.style.height   = '';
+  const buttons = document.querySelectorAll('.hand-display-btn');
+  if (!buttons.length) return;
+  
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const displayType = btn.getAttribute('data-display');
+      if (displayType) {
+        handDisplayType = displayType;
+        const hand = document.getElementById('hand');
+        if (hand) {
+          hand.className = `player-hand ${displayType}`;
+        }
+      }
     });
   });
 }
 
 function enableDragDrop() {
-  new Sortable(document.getElementById('hand'), {
+  const handElement = document.getElementById('hand');
+  if (!handElement) return;
+  
+  new Sortable(handElement, {
     animation: 150,
     ghostClass: 'sortable-ghost',
     onEnd: async (evt) => {
-      const hand = Array.from(document.getElementById('hand').children).map(el => ({
+      const hand = Array.from(handElement.children).map(el => ({
         id: el.dataset.cardId,
         rank: el.dataset.rank,
         symbol: el.dataset.symbol,
@@ -949,3 +956,10 @@ window.addEventListener('resize', () => {
     setTimeout(arrangeCardsInSemiCircle, 100);
   }
 });
+
+// Gestion du bouton "Terminer le tour"
+document.getElementById('endTurnBtn')?.addEventListener('click', endTurn);
+
+// Gestion des déclarations
+document.getElementById('declare7N')?.addEventListener('click', declare7Naturel);
+document.getElementById('declareWin')?.addEventListener('click', declareWin);
