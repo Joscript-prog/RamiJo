@@ -559,7 +559,14 @@
     #hand .card.sortable-ghost {
       opacity: 0.2;
     }
-
+     .player-discard .card.clickable {
+  cursor: pointer;
+  border: 2px solid #00ff00;
+  transition: transform 0.2s;
+}
+.player-discard .card.clickable:hover {
+  transform: scale(1.05);
+}
     /* Contrôles du jeu */
     .game-controls {
       position: fixed;
@@ -880,7 +887,7 @@
       background: var(--gradient-success);
       color: white;
     }
-
+    
     /* Animations */
     @keyframes fadeIn {
       from { opacity: 0; }
@@ -1522,6 +1529,17 @@
       // ✅ Écouteur pour le bouton "Ranger les cartes"
       document.getElementById('sortHandBtn')?.addEventListener('click', sortHandByFormation);
     }
+      // ✅ NOUVEAU : Écouteur global pour les clics sur les défausses des autres joueurs
+  document.addEventListener('click', (e) => {
+    const discardSlot = e.target.closest('.player-discard');
+    if (!discardSlot) return;
+
+    const ownerId = discardSlot.dataset.owner;
+    if (!ownerId || ownerId === playerId) return;
+
+    handlePickFromPreviousDiscard(ownerId);
+  });
+}
     async function startGame() {
       const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
       const players = playersSnap.val() || {};
@@ -1666,49 +1684,34 @@
       return div;
     }
 
-    async function renderDiscardPiles(discards) {
-      // Récupérer le tour actuel et la liste des joueurs
-      const [turnSnap, playersSnap] = await Promise.all([
-        get(ref(db, `rooms/${currentRoom}/turn`)),
-        get(ref(db, `rooms/${currentRoom}/players`))
-      ]);
-      const turn = turnSnap.val();
-      const players = Object.keys(playersSnap.val() || {});
+async function renderDiscardPiles(discards) {
+  const [turnSnap, playersSnap] = await Promise.all([
+    get(ref(db, `rooms/${currentRoom}/turn`)),
+    get(ref(db, `rooms/${currentRoom}/players`))
+  ]);
+  const turn = turnSnap.val();
+  const players = Object.keys(playersSnap.val() || {});
 
-      // Pour chaque slot de défausse
-      document.querySelectorAll('.player-discard').forEach(slot => {
-        const ownerId = slot.dataset.owner;
-        const pile = discards[ownerId] || [];
-        slot.innerHTML = '';  // réinitialise
+  document.querySelectorAll('.player-discard').forEach(slot => {
+    const ownerId = slot.dataset.owner;
+    const pile = discards[ownerId] || [];
+    slot.innerHTML = '';
 
-        if (pile.length) {
-          const lastCard = pile[pile.length-1];
-          const cardDiv = createCardElement(lastCard);
+    if (pile.length) {
+      const lastCard = pile[pile.length - 1];
+      const cardDiv = createCardElement(lastCard);
 
-          // Récupérer l'id du joueur actuel (propriétaire du slot)
-          const playerSlot = slot.closest('.player-slot');
-          if (!playerSlot) return;
+      const nextOfOwner = players[(players.indexOf(ownerId) + 1) % players.length];
+      if (turn === playerId && playerId === nextOfOwner) {
+        cardDiv.classList.add('clickable');
+      }
 
-          const currentPlayerId = playerSlot.dataset.playerId;
-          if (turn === currentPlayerId) {
-            // Vérifier que le joueur actuel est le suivant du owner de la défausse
-            const ownerIndex = players.indexOf(ownerId);
-            const nextIndex = (ownerIndex + 1) % players.length;
-            const nextPlayerId = players[nextIndex];
-
-            if (currentPlayerId === nextPlayerId) {
-                cardDiv.classList.add('clickable');
-                cardDiv.addEventListener('click', () => pickFromPreviousDiscard(lastCard.id, ownerId));
-            }
-          }
-
-          slot.appendChild(cardDiv);
-        } else {
-          // Afficher un message ou rien ?
-          slot.innerHTML = '<div class="no-card">Pas de carte</div>';
-        }
-      });
+      slot.appendChild(cardDiv);
+    } else {
+      slot.innerHTML = '<div class="no-card">Pas de carte</div>';
     }
+  });
+}
 
     function listenDiscard(room) {
       onValue(ref(db, `rooms/${room}/discard`), async snap => {
@@ -1937,7 +1940,54 @@
         deckEl.classList.remove('no-click');
       }
     }
+async function handlePickFromPreviousDiscard(ownerId) {
+  if (isDrawing) return;
+  isDrawing = true;
 
+  try {
+    const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
+    if (turn !== playerId) {
+      showPopup("Ce n'est pas votre tour.", true);
+      return;
+    }
+
+    const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+    if (state.hasDrawnOrPicked) {
+      showPopup("Vous avez déjà pioché.", true);
+      return;
+    }
+
+    const players = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {});
+    const nextOfOwner = players[(players.indexOf(ownerId) + 1) % players.length];
+
+    if (playerId !== nextOfOwner) {
+      showPopup("Vous ne pouvez pas piocher dans cette défausse.", true);
+      return;
+    }
+
+    const discards = (await get(ref(db, `rooms/${currentRoom}/discard`))).val() || {};
+    const pile = discards[ownerId] || [];
+    if (!pile.length) {
+      showPopup("Rien à piocher ici.", true);
+      return;
+    }
+
+    const card = pile[pile.length - 1];
+    const newPile = pile.slice(0, -1);
+    const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+
+    await Promise.all([
+      set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), newPile),
+      set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), [...hand, card]),
+      update(ref(db, `rooms/${currentRoom}/state`), { hasDrawnOrPicked: true })
+    ]);
+
+  } catch (err) {
+    console.error("Erreur lors de la prise depuis la défausse :", err);
+  } finally {
+    isDrawing = false;
+  }
+}
 
     async function discardCard(cardId) {
       const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
