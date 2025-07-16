@@ -501,8 +501,8 @@ async function declare7Naturel() {
 }
 
 async function declareWin() {
-  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)).val() || [];
-  const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`)).val() || [];
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+  const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`))).val() || [];
   
   if (!Rules.validateWinHand(hand, jokerCards, false)) {
     showPopup("Main non valide pour la victoire.", true);
