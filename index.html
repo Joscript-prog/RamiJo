@@ -454,6 +454,26 @@
       from { opacity: 0; }
       to { opacity: 1; }
     }
+    .card {
+  font-size: 0.8rem;
+  line-height: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  min-width: 60px;
+  min-height: 90px;
+}
+
+.card .corner,
+.card .suit.main {
+  font-size: 1.2rem;
+}
+
+.card .suit.main {
+  font-size: 2rem;
+}
 
     @keyframes slideUp {
       from { transform: translateY(50px); opacity: 0; }
@@ -518,6 +538,7 @@
         </button>
         
         <div class="hand-display-options">
+          <button id="drawCardBtn" class="btn" style="display:none;">Piocher</button>
           <button class="hand-display-btn active" data-display="horizontal" title="Horizontal">☰</button>
           <button class="hand-display-btn" data-display="semi-circle" title="Éventail">🝁</button>
         </div>
