@@ -243,14 +243,6 @@
       height: 100vh;
     }
 
-    .game-play-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      overflow: auto;
-    }
-
     /* Header du jeu */
     .game-header {
   position: fixed !important;
@@ -290,19 +282,69 @@
     }
 
     /* Nouvelle disposition du plateau de jeu */
-    .game-play-area {
-      display: flex;
-      flex-direction: column;
-      height: calc(100vh - 60px);
-      padding: 20px;
-    }
+.game-play-area {
+  flex: 1;                           /* Prend tout l'espace vertical restant */
+  display: flex;                    /* Flex layout pour organiser ses enfants */
+  flex-direction: column;          /* Organise les enfants verticalement */
+  position: relative;              /* Pour positionner en absolu des enfants si besoin */
+  overflow: hidden;                /* Évite les débordements visuels */
+  padding: 20px;                   /* Marge intérieure autour du contenu */
+  padding-top: 60px;               /* Pour ne pas passer sous le header fixe */
+  height: calc(100vh - 60px);      /* Hauteur visible sous le header */
+}
 
     .game-table-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-    }
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+#deck, #discard {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  transition: transform 0.2s ease;
+}
+
+#deck:hover, #discard:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+  filter: brightness(1.1);
+}
+    #players-container.players-circle {
+  position: absolute;
+  top: 1rem;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+}
+
+.table-center {
+  position: absolute;         /* On le positionne au-dessus du plateau */
+  top: 50%;                   /* Centré verticalement */
+  left: 50%;                  /* Centré horizontalement */
+  transform: translate(-50%, -50%); /* Recentrage exact */
+  
+  display: flex;              /* Disposition en ligne */
+  align-items: center;        /* Alignement vertical au centre */
+  justify-content: center;    /* Alignement horizontal au centre */
+  gap: 2rem;                  /* Espacement uniforme entre pioche, joker, défausse */
+}
+
+
+.deck-area, .discard-area {
+  text-align: center;
+}
+
+#joker.joker-display {
+  width: 4rem;
+  height: 6rem;
+}
 
     .game-center {
       display: flex;
@@ -313,34 +355,6 @@
       width: 100%;
     }
 
-    /* Zone de défausse centrale */
-    .table-center {
-      display: flex;
-      justify-content: center;
-      gap: 50px;
-      margin-top: 20px;
-    }
-
-#previous-discard {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-#previous-discard .card {
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-#previous-discard .card:hover {
-  transform: scale(1.1);
-}
 
     /* Contrôles du jeu */
     .game-controls {
@@ -919,44 +933,45 @@
     }
 
     /* Responsive Design */
-    @media (max-width: 768px) {
-      :root {
-        --card-width: 100px;
-        --card-height: 150px;
-        --chat-width: 100%;
-        --chat-height: 250px;
-      }
+@media (max-width: 768px) {
+  :root {
+    --card-width: 100px;
+    --card-height: 150px;
+    --chat-width: 100%;
+    --chat-height: 250px;
+  }
 
-      .menu-content {
-        padding: 1.5rem;
-      }
+  .menu-content {
+    padding: 1.5rem;
+  }
 
-      .btn {
-        font-size: 0.9rem;
-        padding: 0.6rem 1rem;
-      }
+  .btn {
+    font-size: 0.9rem;
+    padding: 0.6rem 1rem;
+  }
 
-      .game-header {
-        flex-direction: column;
-        gap: 0.5rem;
-      }
+  .game-header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 
-      .header-left, .header-right {
-        width: 100%;
-        justify-content: center;
-      }
+  .header-left,
+  .header-right {
+    width: 100%;
+    justify-content: center;
+  }
 
-      .header-center {
-        order: unset;
-      }
+  .header-center {
+    order: unset;
+  }
 
-    .game-controls {
-  position: fixed !important;
-  top: 80px;        /* ou la hauteur de votre header */
-  right: 20px;
-  z-index: 150;
-}
-      @media (max-width: 768px) {
+  .game-controls {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 150;
+  }
+
   #hand {
     gap: -30px !important;
   }
@@ -970,32 +985,13 @@
     top: -40px;
     right: 10px;
   }
-}
 
-@media (max-height: 700px) {
-  :root {
-    --card-width: 100px;
-    --card-height: 150px;
-  }
-  
-  .game-play-area {
-    padding: 10px !important;
+  #chat-container {
+    right: 0;
+    border-radius: 0;
   }
 }
 
-      #chat-container {
-        right: 0;
-        border-radius: 0;
-      }
-
-      #hand {
-        gap: -40px;
-      }
-
-      #hand .card {
-        margin-right: -40px;
-      }
-    }
   </style>
 </head>
 <body>
@@ -1066,30 +1062,34 @@
         </button>
       </aside>
 
-      <!-- Liste des joueurs -->
-      <div id="players" class="players-list"></div>
+      <!-- Liste des joueurs en cercle (avec .discard-slot à l’intérieur de chaque .player-slot) -->
 
-      <!-- Plateau central -->
-      <div class="game-table-container">
-        <div id="players-container" class="players-circle"></div>
-        <div id="previous-discard" class="discard-area"></div>
-        <div id="joker" class="joker-display"></div>
+<!-- Plateau central -->
+<div class="game-table-container">
+  <!-- Cercle des joueurs + leurs zones de défausse -->
+  <div id="players-container" class="players-circle"></div>
 
-        <div class="table-center">
-          <div class="deck-area">
-            <div id="deck" class="deck-pile clickable">
-              <div class="card back"></div>
-            </div>
-            <div class="deck-label">Pioche</div>
-          </div>
-          <div class="discard-area">
-            <div id="discard" class="discard-pile clickable"></div>
-            <div class="discard-label">Défausse</div>
-          </div>
-        </div>
-        <div id="previous-discard" class="discard-area">
-  <!-- Affichera la défausse du joueur précédent -->
+  <!-- Zone centrale : pioche, joker, défausse -->
+  <div class="table-center">
+    <!-- Pioche -->
+    <div class="deck-area">
+      <div id="deck" class="deck-pile clickable">
+        <div class="card back"></div>
+      </div>
+      <div class="deck-label">Pioche</div>
+    </div>
+
+    <!-- Joker -->
+    <div id="joker" class="joker-display"></div>
+
+    <!-- Défausse centrale -->
+    <div class="discard-area">
+      <div id="discard" class="discard-pile clickable"></div>
+      <div class="discard-label">Défausse</div>
+    </div>
+  </div>
 </div>
+
 
           <!-- Main du joueur -->
 <div id="hand-container">
