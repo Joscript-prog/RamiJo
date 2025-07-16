@@ -554,31 +554,36 @@ function renderPreviousDiscard() {
     });
   });
 }
-async function pickFromDiscard(card, ownerId) {
+async function pickFromDiscard() {
   const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
   if (turn !== playerId) return showPopup("Ce n'est pas votre tour.");
-
   const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
   if (state.hasDrawnOrPicked) return showPopup("Vous avez déjà pioché.");
 
-  // Retirer la carte de la défausse du propriétaire
-  const ownerDiscard = (await get(ref(db, `rooms/${currentRoom}/discard/${ownerId}`))).val() || [];
-  const cardIndex = ownerDiscard.findIndex(c => c.id === card.id);
-  if (cardIndex === -1) return;
+  // Charger toutes les piles
+  const discRef = ref(db, `rooms/${currentRoom}/discard`);
+  const snap = await get(discRef);
+  const discards = snap.val() || {};
+  // Récupérer la dernière carte de la défausse la plus récente
+  let ownerId = null, card = null;
+  for (let [id, pile] of Object.entries(discards)) {
+    if (pile.length && (!card || pile[pile.length-1].timestamp > card.timestamp)) {
+      ownerId = id;
+      card = pile[pile.length-1];
+    }
+  }
+  if (!card) return showPopup("Rien à piocher dans la défausse.");
 
-  ownerDiscard.splice(cardIndex, 1);
-  const newHand = [...(await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [], card];
-
+  // Retirer la carte de la défausse
+  const newPile = discards[ownerId].slice(0, -1);
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
   await Promise.all([
-    set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), ownerDiscard),
-    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), newHand),
-    update(ref(db, `rooms/${currentRoom}/state`), {
-      hasDrawnOrPicked: true,
-      lastDiscardCard: null, // carte retirée
-      lastDiscardPlayer: null
-    })
+    set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), newPile),
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), [...hand, card]),
+    update(ref(db, `rooms/${currentRoom}/state`), { hasDrawnOrPicked: true })
   ]);
 }
+
 // AFFICHAGE DES CARTES
 function renderHand(hand) {
   const handDiv = document.getElementById('hand');
@@ -667,10 +672,15 @@ function renderPlayers(players) {
   players.forEach(p => {
     const badge = document.createElement('div');
     badge.className = 'player-info';
-    badge.innerHTML = `<div class="player-name">${p.pseudo}</div><div class="player-score">${p.score}</div>`;
+    badge.innerHTML = `
+      <div class="player-name">${p.pseudo}</div>
+      <div class="player-score">${p.score}</div>
+      <div class="discard-slot" data-owner="${p.id}"></div>
+    `;
     playersDiv.appendChild(badge);
   });
 }
+
 function listenHand(room) {
   onValue(ref(db, `rooms/${room}/hands/${playerId}`), snap => {
     const hand = snap.val() || [];
@@ -711,30 +721,24 @@ function listenDiscard(room) {
 }
 
 function renderDiscardPiles(discards) {
-  const globalDiscard = document.getElementById('global-discard');
-  globalDiscard.innerHTML = '<div class="discard-label">Défausses</div>';
-
-  Object.entries(discards).forEach(([ownerId, pile]) => {
-    if (!pile || pile.length === 0) return;
-
-    const div = document.createElement('div');
-    div.className = 'player-discard';
-    const card = pile[pile.length - 1];
-
-    div.innerHTML = `
-      <div class="player-name">${ownerId.substring(7)}</div>
-      <div class="card ${card.color}" data-card-id="${card.id}">
-        <div class="corner top">${card.rank}${card.symbol}</div>
-      </div>
-    `;
-    globalDiscard.appendChild(div);
-
-    // 🔧 Double-clic pour défausser
-    div.querySelector('.card')?.addEventListener('dblclick', () => {
-      discardCard(card.id);
-    });
-  });
+  // Mise à jour du slot central
+  const central = document.querySelector('#central-discard .card-slot');
+  // On prend uniquement la dernière carte défaussée (de n’importe quel joueur)
+  const all = Object.values(discards).flat();
+  const last = all[all.length - 1] || null;
+  central.innerHTML = last
+    ? `<div class="card ${last.color}">
+         <div class="corner top-left">${last.rank}${last.symbol}</div>
+         <div class="suit main">${last.symbol}</div>
+         <div class="corner bottom-right">${last.rank}${last.symbol}</div>
+       </div>`
+    : '';
 }
+document.getElementById('central-discard')
+  .addEventListener('click', () => {
+    if (!currentRoom) return;
+    pickFromDiscard();
+  });
 async function updateActionButtons(hand) {
   const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`))).val() || [];
   const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
