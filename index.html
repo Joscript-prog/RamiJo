@@ -931,6 +931,17 @@
         right: 0;
         border-radius: 0;
       }
+      .previous-discard-zone {
+  position: fixed;
+  bottom: 280px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
       
       #joker {
         top: 60px;
@@ -984,6 +995,10 @@
         <span id="turnIndicator">Tour du joueur...</span>
       </div>
       <div class="header-right">
+        <!-- Défausse du joueur précédent -->
+        <div id="previous-discard" class="previous-discard-zone">
+        <!-- Cette zone sera remplie dynamiquement -->
+        </div>
         <!-- Contrôles d'affichage de la main -->
         <div class="hand-display-options">
           <button class="hand-display-btn" data-display="horizontal">↔</button>
