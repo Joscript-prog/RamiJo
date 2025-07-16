@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // FONCTIONS PRINCIPALES
-async function askPseudo() {
+function askPseudo() {
   return new Promise(resolve => {
     showPopup(`
       <h3>Entrez votre pseudo</h3>
@@ -354,7 +354,7 @@ async function askPseudo() {
     document.getElementById('pseudoSubmit').addEventListener('click', () => {
       const val = document.getElementById('pseudoInput').value.trim();
       myPseudo = val || 'Joueur';
-      document.querySelector('.modal-close')?.click();
+      document.querySelector('.modal')?.remove();
       resolve();
     });
   });
@@ -365,7 +365,11 @@ async function createRoom() {
   const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900);
   currentRoom = roomCode;
   gameRounds = 0;
-
+  <h3>Salle créée</h3>
+  <p>Code : <b style="font-size: 1.5rem;">${roomCode}</b></p>
+  <button onclick="navigator.clipboard.writeText('${roomCode}')" class="btn btn-secondary">📋 Copier</button>
+  <button class="modal-close btn btn-primary" style="margin-top: 1rem;">Continuer</button>
+`);
   await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
     pseudo: myPseudo,
     hasDeclared7N: false,
@@ -562,15 +566,21 @@ function arrangeCardsInSemiCircle() {
 }
 
 // LISTENERS
-function listenPlayers(room) {
-  onValue(ref(db, `rooms/${room}/players`), snap => {
+async function listenPlayers(room) {
+  onValue(ref(db, `rooms/${room}/players`), async snap => {
     const players = Object.entries(snap.val() || {}).map(([id, o]) => ({
-      id, pseudo: o.pseudo, score: o.totalScore || 0
+      id,
+      pseudo: o.pseudo,
+      score: o.totalScore || 0
     }));
     renderPlayers(players);
+
+    const creator = (await get(ref(db, `rooms/${room}/creator`))).val();
+    const state = (await get(ref(db, `rooms/${room}/state`))).val() || {};
+    const btn = document.getElementById('startGameBtn');
+    btn.style.display = (creator === playerId && !state.started) ? 'block' : 'none';
   });
 }
-
 
 function renderPlayers(players) {
   const playersDiv = document.getElementById('players-container');
@@ -731,7 +741,9 @@ async function endTurn() {
 // CHAT
 function enableChat() {
   const chatContainer = document.getElementById('chat-container');
-  const chatHeader = chatContainer.querySelector('.chat-header');
+  chatContainer.classList.remove('collapsed'); // on l’ouvre directement
+  const arrow = chatContainer.querySelector('.chat-header span');
+  arrow.textContent = '▼';
   
   chatHeader.addEventListener('click', () => {
     chatContainer.classList.toggle('collapsed');
