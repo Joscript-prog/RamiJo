@@ -751,10 +751,12 @@ function listenJokerCard(room) {
 function listenDiscard(room) {
   onValue(ref(db, `rooms/${room}/discard`), async snap => {
     const discards = snap.val() || {};
-    renderAllDiscardPiles(discards);
-    renderPreviousDiscard(discards); 
+    // Appel de la bonne fonction :
+    renderDiscardPiles(discards);
+    renderPreviousDiscard(discards);
   });
 }
+
 
 async function renderDiscardPiles(discards) {
   const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
