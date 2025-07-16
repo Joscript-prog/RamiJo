@@ -571,20 +571,6 @@ function listenPlayers(room) {
   });
 }
 
-function renderPlayers(players, gameStarted) {
-  const playersDiv = document.getElementById('players-container');
-  playersDiv.innerHTML = '';
-  
-  players.forEach(p => {
-    const badge = document.createElement('div');
-    badge.className = 'player-info';
-    badge.innerHTML = `
-      <div class="player-name">${p.pseudo}</div>
-      <div class="player-score">Score: ${p.score}</div>
-    `;
-    playersDiv.appendChild(badge);
-  });
-}
 
 function renderPlayers(players) {
   const playersDiv = document.getElementById('players-container');
