@@ -9,58 +9,12 @@
   <style>
     /* Variables CSS modernes pour le jeu Rami */
     :root {
-      --primary: #2c3e50;
-      --secondary: #3498db;
-      --accent: #e74c3c;
-      --success: #27ae60;
-      --warning: #f39c12;
-      --danger: #e74c3c;
-      --text: #2d3436;
-      --text-light: #7f8c8d;
-      --text-white: #ffffff;
-      --bg: #f8f9fa;
-      --bg-dark: #1a1a1a;
-      --felt-green: #0d5016;
-      --felt-green-light: #1a7a28;
-      --card-white: #ffffff;
-      --card-red: #e74c3c;
-      --card-black: #2c3e50;
-      --shadow-sm: 0 2px 8px rgba(0,0,0,0.1);
-      --shadow-md: 0 4px 16px rgba(0,0,0,0.15);
-      --shadow-lg: 0 8px 32px rgba(0,0,0,0.2);
-      --shadow-xl: 0 16px 64px rgba(0,0,0,0.25);
-      --shadow-glow: 0 0 20px rgba(52,152,219,0.3);
-      --radius: 12px;
-      --radius-sm: 8px;
-      --radius-lg: 16px;
-      --transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-      --transition-bounce: all 0.4s cubic-bezier(0.68,-0.55,0.265,1.55);
-      --card-width: 140px;
-      --card-height: 210px;
-      --hand-bottom: 40px;
-      --chat-width: 320px;
-      --chat-height: 280px;
-      --gradient-primary: linear-gradient(135deg,#3498db 0%,#2980b9 100%);
-      --gradient-success: linear-gradient(135deg,#27ae60 0%,#229954 100%);
-      --gradient-felt: linear-gradient(135deg,#0d5016 0%,#1a7a28 50%,#0d5016 100%);
+      /* … TOUS VOS VARIABLES EXISTANTES … */
     }
 
     /* Reset et base */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      touch-action: manipulation;
-    }
-
-    body {
-      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      color: var(--text);
-      line-height: 1.6;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; touch-action: manipulation; }
+    body { font-family: 'Roboto', sans-serif; color: var(--text); line-height:1.6; min-height:100vh; overflow-x:hidden; }
     body #game {
       background: var(--felt-green);
       background-image: var(--gradient-felt);
@@ -69,115 +23,38 @@
       flex-direction: column;
     }
 
-    /* Menu principal */
-    .menu-overlay {
-      position: fixed;
-      inset: 0;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      animation: fadeIn 0.6s ease-out;
-      padding: 1rem;
-    }
+    /* … TOUS VOS STYLES EXISTANTS JUSQU’À … */
 
-    .menu-content {
-      background: rgba(255,255,255,0.95);
-      backdrop-filter: blur(20px);
-      padding: 2rem;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-xl);
-      text-align: center;
-      max-width: min(500px, 90vw);
-      width: 100%;
-      border: 1px solid rgba(255,255,255,0.2);
-      animation: slideUp 0.6s ease-out;
-    }
-
-    .menu-content h1 {
-      font-family: 'Poppins', sans-serif;
-      font-size: clamp(2rem, 5vw, 2.5rem);
-      color: var(--primary);
-      margin-bottom: 1.5rem;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      background: var(--gradient-primary);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    /* Boutons */
-    .btn {
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: var(--transition-bounce);
-      position: relative;
-      overflow: hidden;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      width: 100%;
-      max-width: 300px;
-    }
-
-    .btn-primary {
-      background: var(--gradient-primary);
-      color: var(--text-white);
-      box-shadow: var(--shadow-md);
-    }
-
-    .btn-secondary {
-      background: var(--gradient-success);
-      color: var(--text-white);
-      box-shadow: var(--shadow-md);
-    }
-
-    .btn:disabled {
-      background: #bdc3c7;
-      cursor: not-allowed;
-      box-shadow: none;
-      opacity: 0.6;
-    }
-
-    /* Game layout */
-    #game {
-      display: none;
-      flex-direction: column;
-      height: 100vh;
-    }
-
-    .game-header {
-      position: fixed;
-      top: 0;
+    /* Players */
+    #players-container {
+      position: absolute;
+      top: 150px;
       left: 0;
-      width: 100%;
-      background: rgba(0,0,0,0.8);
+      right: 0;
+      display: flex;
+      justify-content: space-around;
+      z-index: 30;
+    }
+    .player-info {
+      background: rgba(255,255,255,0.1);
       backdrop-filter: blur(10px);
-      padding: 10px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: white;
-      z-index: 100;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      color: var(--text-white);
+      font-weight: 500;
+      text-align: center;
+      min-width: 120px;
+      position: relative;
+      padding-bottom: 260px; /* espace pour la défausse */
     }
-
-    .game-play-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 80px 20px 20px;
-      overflow: hidden;
-    }
-
-    /* Joker */
-    .joker-display {
-      position: fixed;
-      top: 80px;
-      left: 20px;
-      z-index: 50;
+    /* zone de défausse sous le nom */
+    .player-info .discard-slot {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: var(--card-width);
+      height: var(--card-height);
     }
 
     /* Zone centrale */
@@ -187,12 +64,12 @@
       gap: 50px;
       margin: 20px 0;
     }
-
     .deck-area, .discard-area {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 10px;
+      cursor: pointer;
     }
 
     /* Cartes */
@@ -211,56 +88,37 @@
       font-weight: 700;
       user-select: none;
       background: var(--card-white);
+      position: relative;
     }
+    .card:hover { transform: translateY(-8px); box-shadow: var(--shadow-lg); z-index:10; }
 
-    .card:hover {
-      transform: translateY(-8px);
-      box-shadow: var(--shadow-lg);
-      z-index: 10;
-    }
-
-    .card.back {
-      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #1e3a8a 100%);
-      border: 2px solid #1e40af;
-    }
-
-    .corner {
+    /* VALEURS EN COIN HAUT‑GAUCHE ET BAS‑DROIT */
+    .corner.top-left {
+      position: absolute;
+      top: 8px;
+      left: 8px;
       font-size: 1.2rem;
-      line-height: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      color: var(--card-black);
     }
-
-    .card.red .corner {
-      color: var(--card-red);
+    .corner.bottom-right {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      font-size: 1.2rem;
+      transform: rotate(180deg);
     }
-
     .suit.main {
       font-size: 6rem;
-      line-height: 1;
-      text-align: center;
-      flex-grow: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      line-height:1;
+      text-align:center;
+      flex-grow:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       color: var(--card-black);
     }
 
-    .card.red .suit.main {
-      color: var(--card-red);
-    }
-
-    /* Main joueur */
-    #hand-container {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 100;
-    }
-
+    /* Main joueur : toujours horizontal */
+    #hand-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index:100; }
     #hand {
       display: flex;
       justify-content: center;
@@ -268,257 +126,26 @@
       padding: 0 20px;
       min-height: var(--card-height);
     }
+    /* suppression des règles vertical / semi-circle */
 
-    #hand.horizontal .card {
-      margin-right: -60px;
+    /* Contrôles (sans semi-circle) */
+    .hand-display-options {
+      display: none; /* plus d’option de display */
     }
 
-    #hand.vertical {
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    /* Contrôles */
-    .game-controls {
-      position: fixed;
-      top: 80px;
-      right: 20px;
-      width: 240px;
-      padding: 1rem;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(10px);
-      border-radius: var(--radius);
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      z-index: 40;
-    }
-
-    .btn-special, .btn-action {
-      padding: 0.75rem;
-      border: none;
-      border-radius: var(--radius);
-      cursor: pointer;
-      font-weight: 500;
-      transition: var(--transition);
-      text-transform: uppercase;
-      font-size: clamp(0.9rem, 2vw, 1rem);
-    }
-
-    .btn-special {
-      background: var(--gradient-primary);
-      color: var(--text-white);
-    }
-
-    .btn-action {
-      background: var(--gradient-success);
-      color: var(--text-white);
-      margin-top: auto;
-    }
-
-    /* Players */
-    #players-container {
-      position: absolute;
-      top: 150px;
-      left: 0;
-      right: 0;
-      display: flex;
-      justify-content: space-around;
-      z-index: 30;
-    }
-
-    .player-info {
-      background: rgba(255,255,255,0.1);
-      backdrop-filter: blur(10px);
-      padding: 0.75rem 1rem;
-      border-radius: var(--radius);
-      color: var(--text-white);
-      font-weight: 500;
-      text-align: center;
-      min-width: 120px;
-    }
-
-    /* Chat */
-    #chat-container {
-      position: fixed;
-      bottom: 0;
-      right: 20px;
-      width: var(--chat-width);
-      height: var(--chat-height);
-      background: rgba(0,0,0,0.8);
-      backdrop-filter: blur(10px);
-      border-top-left-radius: var(--radius);
-      border-top-right-radius: var(--radius);
-      box-shadow: var(--shadow-lg);
-      display: flex;
-      flex-direction: column;
-      z-index: 100;
-      overflow: hidden;
-    }
-
-    #chat-container.collapsed {
-      height: 40px;
-    }
-
-    .chat-header {
-      background: var(--gradient-primary);
-      padding: 0.75rem 1rem;
-      color: var(--text-white);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      cursor: pointer;
-      font-weight: 500;
-    }
-
-    .chat-content {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 0.75rem;
-      overflow-y: auto;
-    }
-
-    #chat-messages {
-      flex-grow: 1;
-      overflow-y: auto;
-      margin-bottom: 0.75rem;
-      color: var(--text-white);
-      font-size: 0.9rem;
-    }
-
-    .message.me { color: #3498db; }
-    .message.other { color: #2ecc71; }
-
-    .chat-form {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    #chat-input {
-      flex-grow: 1;
-      padding: 0.5rem;
-      border: 1px solid rgba(255,255,255,0.3);
-      border-radius: var(--radius-sm);
-      background: rgba(255,255,255,0.1);
-      color: var(--text-white);
-    }
-
-    #chat-input::placeholder {
-      color: rgba(255,255,255,0.7);
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      :root {
-        --card-width: 100px;
-        --card-height: 150px;
-        --chat-width: 100%;
-      }
-
-      .game-controls {
-        position: fixed;
-        top: 80px;
-        right: 10px;
-        width: 200px;
-        font-size: 0.8em;
-      }
-
-      #hand {
-        gap: -30px;
-      }
-
-      #hand.horizontal .card {
-        margin-right: -30px;
-      }
-
-      #chat-container {
-        right: 0;
-        border-radius: 0;
-      }
-    }
-
-    @media (max-width: 375px) {
-      :root {
-        --card-width: 80px;
-        --card-height: 120px;
-      }
-      
-      .game-header {
-        font-size: 0.9em;
-        padding: 8px 15px;
-      }
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    .card {
-  font-size: 0.8rem;
-  line-height: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem;
-  min-width: 60px;
-  min-height: 90px;
-}
-
-.card .corner,
-.card .suit.main {
-  font-size: 1.2rem;
-}
-
-.card .suit.main {
-  font-size: 2rem;
-}
-
-    @keyframes slideUp {
-      from { transform: translateY(50px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
+    /* … LE RESTE DE VOS STYLES (chat, responsive, keyframes, etc.) … */
   </style>
 </head>
 <body>
   <!-- Menu de connexion/création -->
   <div id="menu" class="menu-overlay">
-    <div class="menu-content">
-      <h1>Bienvenue au Rami !</h1>
-      <div class="menu-section">
-        <button id="createRoom" class="btn btn-primary">
-          Créer une nouvelle partie
-        </button>
-      </div>
-      <div class="separator">OU</div>
-      <div class="menu-section">
-        <h2>Rejoindre une partie</h2>
-        <div class="join-form">
-          <input
-            id="roomCodeInput"
-            class="room-input"
-            type="text"
-            maxlength="7"
-            placeholder="Code de partie (RAMI123)"
-            pattern="RAMI\d{3}"
-          />
-          <button id="joinRoom" class="btn btn-secondary">
-            Rejoindre
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- … VOTRE MENU INTÉGRAL … -->
   </div>
 
   <!-- Plateau de jeu -->
   <div id="game" style="display: none;">
     <header class="game-header">
-      <div>
-        <span id="status">En attente...</span>
-        <span id="roomCodeDisplay"></span>
-      </div>
-      <div id="turnIndicator">Tour du joueur...</div>
+      <!-- … VOS ÉLÉMENTS D’EN‑TÊTE … -->
     </header>
 
     <div class="game-play-area">
@@ -536,36 +163,26 @@
         <button id="endTurnBtn" class="btn-action" disabled>
           Terminer le tour
         </button>
-        
-        <div class="hand-display-options">
-          <button class="hand-display-btn active" data-display="horizontal" title="Horizontal">☰</button>
-          <button class="hand-display-btn" data-display="semi-circle" title="Éventail">🝁</button>
-        </div>
+        <!-- suppression de l’option semi-circle -->
       </aside>
 
       <!-- Joker -->
       <div id="joker" class="joker-display"></div>
-
-      <div id="previous-discard" class="previous-discard-area"></div>
 
       <!-- Liste des joueurs -->
       <div id="players-container"></div>
 
       <!-- Zone centrale -->
       <div class="table-center">
-        <div class="deck-area">
-          <div id="deck" class="deck-pile clickable">
-            <div class="card back"></div>
-          </div>
+        <div id="deck" class="deck-area clickable">
+          <div class="card back"></div>
           <div class="deck-label">Pioche</div>
         </div>
-        <div class="discard-area">
-          <div id="discard" class="discard-pile"></div>
+        <div id="central-discard" class="discard-area">
+          <div class="card-slot"></div>
           <div class="discard-label">Défausse</div>
         </div>
       </div>
-
-      <div id="global-discard"></div>
 
       <!-- Main du joueur -->
       <div id="hand-container">
@@ -574,22 +191,7 @@
 
       <!-- Chat -->
       <div id="chat-container" class="collapsed">
-        <div class="chat-header">
-          <span>Chat</span>
-          <span>▲</span>
-        </div>
-        <div class="chat-content">
-          <div id="chat-messages"></div>
-          <form id="chat-form">
-            <input
-              id="chat-input"
-              type="text"
-              placeholder="Message..."
-              autocomplete="off"
-            />
-            <button type="submit">Envoyer</button>
-          </form>
-        </div>
+        <!-- … VOTRE CHAT … -->
       </div>
     </div>
   </div>
