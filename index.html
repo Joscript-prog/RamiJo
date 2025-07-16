@@ -892,7 +892,26 @@
     .chat-form button:hover {
       filter: brightness(1.1);
     }
+#previous-discard {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
 
+#previous-discard .card {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+#previous-discard .card:hover {
+  transform: scale(1.1);
+}
     /* Hand Display Options */
    .hand-display-options {
   position: absolute;
@@ -1106,12 +1125,11 @@
             <div class="discard-label">Défausse</div>
           </div>
         </div>
+        <div id="previous-discard" class="discard-area">
+  <!-- Affichera la défausse du joueur précédent -->
+</div>
 
-        <div id="global-discard">
-          <div class="discard-label">Défausses des joueurs</div>
-        </div>
-
-        <!-- Main du joueur -->
+          <!-- Main du joueur -->
 <div id="hand-container">
   <div id="hand" class="player-hand horizontal"></div>
 </div>
