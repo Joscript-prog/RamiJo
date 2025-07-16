@@ -532,6 +532,7 @@ function renderHand(hand) {
   handDiv.innerHTML = '';
   hand.forEach(c => {
     const div = document.createElement('div');
+    div.addEventListener('dblclick', () => discardCard(c.id));
     div.className = `card ${c.color}`;
     div.dataset.cardId = c.id;
     div.innerHTML = `
@@ -655,8 +656,8 @@ function renderDiscardPiles(discards) {
 
     const div = document.createElement('div');
     div.className = 'player-discard';
-
     const card = pile[pile.length - 1];
+
     div.innerHTML = `
       <div class="player-name">${ownerId.substring(7)}</div>
       <div class="card ${card.color}" data-card-id="${card.id}">
@@ -665,8 +666,8 @@ function renderDiscardPiles(discards) {
     `;
     globalDiscard.appendChild(div);
 
-    // 🔧 Rendre la défausse cliquable
-    div.querySelector('.card')?.addEventListener('click', () => {
+    // 🔧 Double-clic pour défausser
+    div.querySelector('.card')?.addEventListener('dblclick', () => {
       discardCard(card.id);
     });
   });
@@ -684,28 +685,36 @@ async function updateActionButtons(hand) {
 // ACTIONS DU JEU
 async function drawCard() {
   const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
-  if (turn !== playerId) return showPopup("Ce n'est pas votre tour");
+  if (turn !== playerId) return showPopup("Ce n'est pas votre tour.");
+
+  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+  if (state.hasDrawnOrPicked) {
+    showPopup("Vous avez déjà pioché.");
+    return;
+  }
 
   const [deck, hand] = await Promise.all([
     get(ref(db, `rooms/${currentRoom}/deck`)),
     get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))
   ]);
   const deckCards = deck.val() || [];
-  if (deckCards.length === 0) return showPopup("Deck vide");
+  if (deckCards.length === 0) return showPopup("Deck vide.");
+
   const card = deckCards.shift();
   const newHand = [...(hand.val() || []), card];
+
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/deck`), deckCards),
-    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), newHand)
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), newHand),
+    update(ref(db, `rooms/${currentRoom}/state`), {
+      hasDrawnOrPicked: true
+    })
   ]);
 }
 
 async function discardCard(cardId) {
   const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
-  if (turn !== playerId) {
-    showPopup("Ce n'est pas votre tour.");
-    return;
-  }
+  if (turn !== playerId) return showPopup("Ce n'est pas votre tour.");
 
   const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
   if (!state.hasDrawnOrPicked) {
@@ -729,11 +738,22 @@ async function discardCard(cardId) {
     set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
     set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), discard),
     update(ref(db, `rooms/${currentRoom}/state`), {
-      hasDiscardedThisTurn: true,
-      lastDiscarder: playerId
+      hasDiscardedThisTurn: true
     })
   ]);
-  
+
+  // ✅ Passage automatique au joueur suivant
+  const players = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {});
+  const nextIndex = (players.indexOf(playerId) + 1) % players.length;
+
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/turn`), players[nextIndex]),
+    update(ref(db, `rooms/${currentRoom}/state`), {
+      hasDrawnOrPicked: false,
+      hasDiscardedThisTurn: false
+    })
+  ]);
+
   renderHand(hand);
 }
 
