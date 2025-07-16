@@ -376,13 +376,16 @@ async function createRoom() {
     return;
   }
 
+  // ✅ Toutes les valeurs définies explicitement
   await Promise.all([
-await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-  pseudo: myPseudo,
-  hasDeclared7N: false,
-  score: 0,
-  isSpectator: false // Valeur explicite
-});
+    set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+      pseudo: myPseudo || 'Joueur',
+      hasDeclared7N: false,
+      score: 0,
+      isSpectator: false,
+      sevenNPoints: 0,
+      totalScore: 0
+    }),
     set(ref(db, `rooms/${roomCode}/creator`), playerId),
     set(ref(db, `rooms/${roomCode}/turn`), playerId)
   ]);
@@ -418,7 +421,9 @@ async function joinRoom() {
     return;
   }
 
+  const state = (await get(ref(db, `rooms/${roomCode}/state`))).val() || {};
   const players = (await get(ref(db, `rooms/${roomCode}/players`))).val() || {};
+  
   if (Object.keys(players).length >= 5) {
     showPopup("Salle complète (5 max).", true);
     return;
@@ -428,14 +433,14 @@ async function joinRoom() {
     return;
   }
 
-  const state = (await get(ref(db, `rooms/${roomCode}/state`))).val() || {};
-  gameRounds = state.gameRound || 0;
-
+  // ✅ Correction ESSENTIELLE ici
   await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-    pseudo: myPseudo,
+    pseudo: myPseudo || 'Joueur',
     hasDeclared7N: false,
     score: 0,
-    isSpectator: state.started
+    isSpectator: Boolean(state.started), // ✅ Valeur définie
+    sevenNPoints: 0,
+    totalScore: 0
   });
   
   currentRoom = roomCode;
@@ -446,7 +451,6 @@ async function joinRoom() {
   showPopup(`Connecté à ${roomCode}${state.started ? ' (spectateur)' : ''}`);
   enableChat();
 }
-
 function setupListeners(roomCode) {
   listenPlayers(roomCode);
   listenHand(roomCode);
@@ -461,34 +465,33 @@ async function startGame() {
   const players = playersSnap.val() || {};
   const playerIds = Object.keys(players);
 
-  if (playerIds.length < 2) {
-    showPopup("Minimum 2 joueurs requis.", true);
-    return;
-  }
-
   await dealCards(currentRoom, playerIds);
   await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
   
-  // Correction: toutes les valeurs définies explicitement
+  // ✅ Toutes les valeurs définies
   await update(ref(db, `rooms/${currentRoom}/state`), { 
     started: true,
     sevenDeclared: false,
     winDeclared: false,
-    roundOver: false
+    roundOver: false,
+    gameRound: 0,
+    drawCount: 0,
+    hasDrawnOrPicked: false,
+    hasDiscardedThisTurn: false
   });
   
-  // Correction: utilisation de Promise.all et valeurs définies
-  await Promise.all(
-    playerIds.map(id => 
-      update(ref(db, `rooms/${currentRoom}/players/${id}`), { 
-        isSpectator: false,
-        hasDeclared7N: false,
-        score: 0
-      })
-    )
-  );
-
-  // Cacher le bouton après démarrage
+  // ✅ Mise à jour sécurisée de tous les joueurs
+  const updates = {};
+  playerIds.forEach(id => {
+    updates[`${id}/isSpectator`] = false;
+    updates[`${id}/hasDeclared7N`] = false;
+    updates[`${id}/score`] = 0;
+    updates[`${id}/sevenNPoints`] = 0;
+    updates[`${id}/totalScore`] = 0;
+  });
+  
+  await update(ref(db, `rooms/${currentRoom}/players`), updates);
+  
   document.getElementById('startGameBtn').style.display = 'none';
 }
 
