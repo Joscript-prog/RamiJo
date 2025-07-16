@@ -43,7 +43,12 @@
       --gradient-success: linear-gradient(135deg,#27ae60 0%,#229954 100%);
       --gradient-felt: linear-gradient(135deg,#0d5016 0%,#1a7a28 50%,#0d5016 100%);
     }
-       .no-click { pointer-events: none; opacity: 0.6; }
+    
+    .no-click { 
+      pointer-events: none; 
+      opacity: 0.6; 
+    }
+    
     /* Reset et base */
     * {
       margin: 0;
@@ -58,14 +63,14 @@
       line-height: 1.6;
       min-height: 100vh;
       overflow-x: hidden;
-    }
-
-    body #game {
       background: var(--felt-green);
       background-image: var(--gradient-felt);
-      height: 100vh;
-      display: flex;
+    }
+
+    #game {
+      display: none;
       flex-direction: column;
+      height: 100vh;
     }
 
     /* Menu principal */
@@ -237,250 +242,84 @@
     }
 
     /* Game layout */
-    #game {
-      display: none;
-      flex-direction: column;
-      height: 100vh;
-    }
-
     /* Header du jeu */
     .game-header {
-  position: fixed !important;
-  top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 100;
-}
-    /* Pour ne pas masquer le contenu sous le header fixe */
-#game .game-play-area {
-  padding-top: 60px;  /* ajustez à la hauteur réelle de .game-header */
-}
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-
-    .header-center {
-      position: static;
-      transform: none;
-      color: var(--text-white);
-      font-weight: 600;
-      font-size: clamp(0.9rem, 2.5vw, 1.1rem);
-      margin: 0.5rem 0;
-      text-align: center;
+      position: fixed;
+      top: 0;
+      left: 0;
       width: 100%;
-      order: 3;
-    }
-
-    .header-right {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 0.75rem;
-    }
-
-    /* Nouvelle disposition du plateau de jeu */
-.game-play-area {
-  flex: 1;                           /* Prend tout l'espace vertical restant */
-  display: flex;                    /* Flex layout pour organiser ses enfants */
-  flex-direction: column;          /* Organise les enfants verticalement */
-  position: relative;              /* Pour positionner en absolu des enfants si besoin */
-  overflow: hidden;                /* Évite les débordements visuels */
-  padding: 20px;                   /* Marge intérieure autour du contenu */
-  padding-top: 60px;               /* Pour ne pas passer sous le header fixe */
-  height: calc(100vh - 60px);      /* Hauteur visible sous le header */
-}
-
-    .game-table-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-#deck, #discard {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  cursor: pointer;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  transition: transform 0.2s ease;
-}
-
-#deck:hover, #discard:hover {
-  transform: translate(-50%, -50%) scale(1.05);
-  filter: brightness(1.1);
-}
-    #players-container.players-circle {
-  position: absolute;
-  top: 1rem;
-  width: 100%;
-  display: flex;
-  justify-content: space-around;
-}
-
-.table-center {
-  position: absolute;         /* On le positionne au-dessus du plateau */
-  top: 50%;                   /* Centré verticalement */
-  left: 50%;                  /* Centré horizontalement */
-  transform: translate(-50%, -50%); /* Recentrage exact */
-  
-  display: flex;              /* Disposition en ligne */
-  align-items: center;        /* Alignement vertical au centre */
-  justify-content: center;    /* Alignement horizontal au centre */
-  gap: 2rem;                  /* Espacement uniforme entre pioche, joker, défausse */
-}
-
-
-.deck-area, .discard-area {
-  text-align: center;
-}
-
-#joker.joker-display {
-  width: 4rem;
-  height: 6rem;
-}
-
-    .game-center {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 30px;
-      margin: 20px 0;
-      width: 100%;
-    }
-
-
-    /* Contrôles du jeu */
-    .game-controls {
-      position: absolute;
-      top: 80px;
-      right: 20px;
-      width: 240px;
       padding: 1rem;
       background: rgba(0,0,0,0.7);
       backdrop-filter: blur(10px);
-      border-radius: var(--radius);
+      z-index: 100;
+      color: white;
+    }
+
+    .header-left, .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .header-center {
+      color: var(--text-white);
+      font-weight: 600;
+      font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+    }
+
+    /* Pour ne pas masquer le contenu sous le header fixe */
+    .game-play-area {
+      padding-top: 60px;
+      height: calc(100vh - 60px);
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
-      z-index: 40;
-      overflow-y: auto;
+      position: relative;
     }
 
-    .btn-special {
-      padding: 0.75rem;
-      background: var(--gradient-primary);
-      color: var(--text-white);
-      border: none;
-      border-radius: var(--radius);
-      cursor: pointer;
-      font-weight: 500;
-      transition: var(--transition);
-      text-transform: uppercase;
-      font-size: clamp(0.9rem, 2vw, 1rem);
-    }
-
-    .btn-special:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
-
-    .btn-special:disabled {
-      background: #6c757d;
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-
-    .btn-action {
-      padding: 0.75rem;
-      background: var(--gradient-success);
-      color: var(--text-white);
-      border: none;
-      border-radius: var(--radius);
-      cursor: pointer;
-      font-weight: 600;
-      transition: var(--transition);
-      text-transform: uppercase;
-      font-size: clamp(1rem, 2.5vw, 1.1rem);
-      margin-top: auto;
-    }
-
-    .btn-action:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
-
-    .btn-action:disabled {
-      background: #6c757d;
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-
-    /* Zone de jeu principale */
-    .game-table {
+    /* Nouvelle disposition du plateau de jeu */
+    .game-table-container {
       flex: 1;
       display: flex;
       flex-direction: column;
       position: relative;
-      width: 100%;
-      max-width: 1400px;
-      margin: 0 auto;
+      padding: 20px;
     }
 
-    .players-circle {
+    /* Zone centrale */
+    .table-center {
       position: absolute;
-      top: 10px;
-      left: 0;
-      right: 0;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       display: flex;
-      justify-content: space-around;
-      z-index: 30;
+      align-items: center;
+      gap: 2rem;
     }
 
-    /* Joker positionné en haut à gauche */
-    .joker-display {
-  position: fixed !important;
-  top: 10px;
-  left: 10px;
-  z-index: 200;
-}
+    /* Joker en haut à gauche */
+    #joker {
+      position: fixed;
+      top: 70px;
+      left: 20px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
 
-    .player-info {
-      background: rgba(255,255,255,0.1);
-      backdrop-filter: blur(10px);
-      padding: 0.75rem 1rem;
-      border-radius: var(--radius);
+    .joker-label {
       color: var(--text-white);
-      font-weight: 500;
-      border: 1px solid rgba(255,255,255,0.2);
-      min-width: 150px;
-      text-align: center;
-      font-size: clamp(1rem, 2.5vw, 1.1rem);
-      transition: var(--transition);
-    }
-
-    .player-info.active {
-      background: rgba(52,152,219,0.3);
-      border-color: rgba(52,152,219,0.5);
-      box-shadow: var(--shadow-glow);
-      transform: scale(1.05);
-    }
-
-    .player-name {
       font-weight: 600;
-      margin-bottom: 5px;
-      font-size: 1.1em;
-    }
-
-    .player-hand-count {
-      font-size: 0.9em;
-      opacity: 0.9;
+      font-size: 1rem;
+      text-align: center;
+      background: rgba(0,0,0,0.3);
+      padding: 0.5rem;
+      border-radius: var(--radius);
+      backdrop-filter: blur(10px);
     }
 
     /* Deck et défausse */
@@ -595,21 +434,71 @@
       color: var(--card-red);
     }
 
-    /* Main joueur */
+    /* Liste des joueurs */
+    #players-container {
+      display: flex;
+      justify-content: space-around;
+      padding: 20px;
+      flex-wrap: wrap;
+      gap: 20px;
+      z-index: 30;
+    }
+
+    .player-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .player-info {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      color: var(--text-white);
+      font-weight: 500;
+      border: 1px solid rgba(255,255,255,0.2);
+      min-width: 150px;
+      text-align: center;
+      font-size: clamp(1rem, 2.5vw, 1.1rem);
+      transition: var(--transition);
+    }
+
+    .player-info.active {
+      background: rgba(52,152,219,0.3);
+      border-color: rgba(52,152,219,0.5);
+      box-shadow: var(--shadow-glow);
+      transform: scale(1.05);
+    }
+
+    .player-name {
+      font-weight: 600;
+      margin-bottom: 5px;
+      font-size: 1.1em;
+    }
+
+    .player-hand-count {
+      font-size: 0.9em;
+      opacity: 0.9;
+    }
+
+    /* Main du joueur */
     #hand-container {
-  position: fixed !important;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: auto;
-  z-index: 100;
-  background: transparent;
-}
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: auto;
+      z-index: 100;
+      background: transparent;
+      padding: 10px;
+    }
 
     #hand {
       display: flex;
       justify-content: center;
-      gap: -60px;
+      gap: 10px;
       padding: 0 20px;
       min-width: content;
       width: fit-content;
@@ -632,7 +521,7 @@
     }
 
     #hand .card {
-      margin-right: -60px;
+      margin-right: 10px;
       transition: var(--transition);
       cursor: grab;
       position: relative;
@@ -644,6 +533,107 @@
 
     #hand .card.sortable-ghost {
       opacity: 0.2;
+    }
+
+    /* Contrôles du jeu */
+    .game-controls {
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      width: 240px;
+      padding: 1rem;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      z-index: 40;
+      overflow-y: auto;
+    }
+
+    .btn-special {
+      padding: 0.75rem;
+      background: var(--gradient-primary);
+      color: var(--text-white);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 500;
+      transition: var(--transition);
+      text-transform: uppercase;
+      font-size: clamp(0.9rem, 2vw, 1rem);
+    }
+
+    .btn-special:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-special:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .btn-action {
+      padding: 0.75rem;
+      background: var(--gradient-success);
+      color: var(--text-white);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 600;
+      transition: var(--transition);
+      text-transform: uppercase;
+      font-size: clamp(1rem, 2.5vw, 1.1rem);
+      margin-top: auto;
+    }
+
+    .btn-action:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-action:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    /* Défausse précédente */
+    #previous-discard {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      pointer-events: none;
+    }
+
+    #previous-discard.active {
+      pointer-events: auto;
+    }
+
+    #previous-discard .card {
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    #previous-discard .card:hover {
+      transform: scale(1.1);
+    }
+
+    .discard-label {
+      color: white;
+      font-weight: bold;
+      background: rgba(0,0,0,0.7);
+      padding: 5px 10px;
+      border-radius: 5px;
     }
 
     /* Modals */
@@ -789,14 +779,13 @@
     }
     
     #chat-container.collapsed {
-  height: 40px;
-}
+      height: 40px;
+    }
 
-#chat-container.collapsed .chat-content {
-  display: none;
-}
+    #chat-container.collapsed .chat-content {
+      display: none;
+    }
 
-    
     #chat-container.collapsed .chat-header span {
       transform: rotate(180deg);
     }
@@ -867,59 +856,40 @@
     .chat-form button:hover {
       filter: brightness(1.1);
     }
-#previous-discard {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
 
-#previous-discard .card {
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-#previous-discard .card:hover {
-  transform: scale(1.1);
-}
     /* Hand Display Options */
-   .hand-display-options {
-  position: absolute;
-  top: -50px;
-  right: 20px;
-  display: flex;
-  gap: 0.5rem;
-  z-index: 70;
-}
+    .hand-display-options {
+      position: absolute;
+      top: -50px;
+      right: 20px;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 70;
+    }
 
-.hand-display-btn {
-  background: rgba(255,255,255,0.2);
-  border: none;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  transition: var(--transition);
-}
+    .hand-display-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: var(--transition);
+    }
 
-.hand-display-btn:hover {
-  background: var(--gradient-primary);
-  color: white;
-}
+    .hand-display-btn:hover {
+      background: var(--gradient-primary);
+      color: white;
+    }
 
-.hand-display-btn.active {
-  background: var(--gradient-success);
-  color: white;
-}
+    .hand-display-btn.active {
+      background: var(--gradient-success);
+      color: white;
+    }
 
     /* Animations */
     @keyframes fadeIn {
@@ -933,65 +903,69 @@
     }
 
     /* Responsive Design */
-@media (max-width: 768px) {
-  :root {
-    --card-width: 100px;
-    --card-height: 150px;
-    --chat-width: 100%;
-    --chat-height: 250px;
-  }
+    @media (max-width: 768px) {
+      :root {
+        --card-width: 100px;
+        --card-height: 150px;
+        --chat-width: 100%;
+        --chat-height: 250px;
+      }
 
-  .menu-content {
-    padding: 1.5rem;
-  }
+      .menu-content {
+        padding: 1.5rem;
+      }
 
-  .btn {
-    font-size: 0.9rem;
-    padding: 0.6rem 1rem;
-  }
+      .btn {
+        font-size: 0.9rem;
+        padding: 0.6rem 1rem;
+      }
 
-  .game-header {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
+      .game-header {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
 
-  .header-left,
-  .header-right {
-    width: 100%;
-    justify-content: center;
-  }
+      .header-left,
+      .header-right {
+        width: 100%;
+        justify-content: center;
+      }
 
-  .header-center {
-    order: unset;
-  }
+      .header-center {
+        order: unset;
+      }
 
-  .game-controls {
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    z-index: 150;
-  }
+      .game-controls {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 150;
+      }
 
-  #hand {
-    gap: -30px !important;
-  }
+      #hand {
+        gap: 10px !important;
+      }
 
-  #hand .card {
-    margin-right: -30px !important;
-    transform: none !important;
-  }
+      #hand .card {
+        margin-right: 0 !important;
+        transform: none !important;
+      }
 
-  .hand-display-options {
-    top: -40px;
-    right: 10px;
-  }
+      .hand-display-options {
+        top: -40px;
+        right: 10px;
+      }
 
-  #chat-container {
-    right: 0;
-    border-radius: 0;
-  }
-}
-
+      #chat-container {
+        right: 0;
+        border-radius: 0;
+      }
+      
+      #joker {
+        top: 60px;
+        left: 10px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1039,6 +1013,11 @@
         <span id="turnIndicator">Tour du joueur...</span>
       </div>
       <div class="header-right">
+        <!-- Contrôles d'affichage de la main -->
+        <div class="hand-display-options">
+          <button class="hand-display-btn" data-display="horizontal">↔</button>
+          <button class="hand-display-btn" data-display="vertical">↕</button>
+        </div>
       </div>
     </header>
 
@@ -1049,7 +1028,7 @@
           Démarrer la partie
         </button>
         <button id="sortHandBtn" class="btn-special">
-        Ranger les cartes
+          Ranger les cartes
         </button>
         <button id="endTurnBtn" class="btn-action" disabled>
           Terminer le tour
@@ -1062,39 +1041,41 @@
         </button>
       </aside>
 
-      <!-- Liste des joueurs en cercle (avec .discard-slot à l’intérieur de chaque .player-slot) -->
-
-<!-- Plateau central -->
-<div class="game-table-container">
-  <!-- Cercle des joueurs + leurs zones de défausse -->
-  <div id="players-container" class="players-circle"></div>
-
-  <!-- Zone centrale : pioche, joker, défausse -->
-  <div class="table-center">
-    <!-- Pioche -->
-    <div class="deck-area">
-      <div id="deck" class="deck-pile clickable">
-        <div class="card back"></div>
+      <!-- Joker en haut à gauche -->
+      <div id="joker">
+        <div class="joker-label">Joker</div>
+        <!-- Le contenu sera injecté par JavaScript -->
       </div>
-      <div class="deck-label">Pioche</div>
-    </div>
 
-    <!-- Joker -->
-    <div id="joker" class="joker-display"></div>
+      <!-- Liste des joueurs -->
+      <div id="players-container"></div>
 
-    <!-- Défausse centrale -->
-    <div class="discard-area">
-      <div id="discard" class="discard-pile clickable"></div>
-      <div class="discard-label">Défausse</div>
-    </div>
-  </div>
-</div>
+      <!-- Plateau central : pioche et défausse -->
+      <div class="game-table-container">
+        <div class="table-center">
+          <!-- Pioche -->
+          <div class="deck-area">
+            <div id="deck" class="deck-pile clickable">
+              <div class="card back"></div>
+            </div>
+            <div class="deck-label">Pioche</div>
+          </div>
 
+          <!-- Défausse centrale -->
+          <div class="discard-area">
+            <div id="discard" class="discard-pile clickable"></div>
+            <div class="discard-label">Défausse</div>
+          </div>
+        </div>
+      </div>
 
-          <!-- Main du joueur -->
-<div id="hand-container">
-  <div id="hand" class="player-hand horizontal"></div>
-</div>
+      <!-- Défausse précédente (sera injectée par JavaScript) -->
+      <div id="previous-discard"></div>
+
+      <!-- Main du joueur -->
+      <div id="hand-container">
+        <div id="hand" class="player-hand horizontal"></div>
+      </div>
 
       <!-- Chat -->
       <div id="chat-container">
@@ -1117,6 +1098,6 @@
     </div>
   </div>
 
- <script type="module" src="./game.js"></script>
+  <script type="module" src="./game.js"></script>
 </body>
 </html>
