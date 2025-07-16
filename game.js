@@ -582,19 +582,29 @@ async function pickFromDiscard(card, ownerId) {
 // AFFICHAGE DES CARTES
 function renderHand(hand) {
   const handDiv = document.getElementById('hand');
+  if (!handDiv) return; // Sécurité si l'élément n'existe pas
+
   handDiv.innerHTML = '';
-  hand.forEach(c => {
+
+  hand.forEach(card => {
     const div = document.createElement('div');
-    div.addEventListener('dblclick', () => discardCard(c.id));
-    div.className = `card ${c.color}`;
-    div.dataset.cardId = c.id;
+    div.className = `card ${card.color}`;
+    div.dataset.cardId = card.id;
+
     div.innerHTML = `
-      <div class="corner top">${c.rank}${c.symbol}</div>
-      <div class="suit main">${c.symbol}</div>
+      <div class="corner top">${card.rank}${card.symbol}</div>
+      <div class="suit main">${card.symbol}</div>
     `;
+
+    div.addEventListener('dblclick', () => discardCard(card.id));
+
     handDiv.appendChild(div);
   });
 }
+
+// À appeler uniquement quand nécessaire
+renderPreviousDiscard();
+
 function arrangeCardsInSemiCircle() {
   const hand = document.getElementById('hand');
   const cards = hand.querySelectorAll('.card');
