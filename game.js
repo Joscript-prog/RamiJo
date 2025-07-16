@@ -440,8 +440,10 @@ function setupListeners(roomCode) {
     if (!currentRoom) return;
     pickFromDiscard();
   });
-}
 
+  // ✅ Écouteur pour le bouton "Ranger les cartes"
+  document.getElementById('sortHandBtn')?.addEventListener('click', sortHandByFormation);
+}
 async function startGame() {
   const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
   const players = playersSnap.val() || {};
@@ -562,7 +564,19 @@ function renderHand(hand) {
     handDiv.appendChild(div);
   });
 }
+async function sortHandByFormation() {
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+  const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`))).val() || [];
 
+  // Trie par valeur, puis par couleur
+  const sorted = [...hand].sort((a, b) => {
+    if (a.value !== b.value) return a.value - b.value;
+    const suitOrder = ['♠', '♣', '♦', '♥'];
+    return suitOrder.indexOf(a.symbol) - suitOrder.indexOf(b.symbol);
+  });
+
+  await set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), sorted);
+}
 // LISTENERS
 async function listenPlayers(room) {
   onValue(ref(db, `rooms/${room}/players`), async snap => {
