@@ -1505,31 +1505,31 @@
       document.getElementById('game').style.display = 'flex';
     }
 
-    function setupListeners(roomCode) {
-      listenPlayers(roomCode);
-      listenHand(roomCode);
-      listenTurn(roomCode);
-      listenJokerCard(roomCode);
-      listenDiscard(roomCode);
-      listenChat(roomCode);
+function setupListeners(roomCode) {
+  listenPlayers(roomCode);
+  listenHand(roomCode);
+  listenTurn(roomCode);
+  listenJokerCard(roomCode);
+  listenDiscard(roomCode);
+  listenChat(roomCode);
 
-      // 🔧 Écouteurs
-      document.getElementById('startGameBtn')?.addEventListener('click', startGame);
-      document.getElementById('deck')?.addEventListener('click', drawCard);
-      setupHandDisplayOptions();
-      enableChat();
-      enableDragDrop();
-      
-      // Nouvel écouteur pour la défausse centrale
-      document.getElementById('discard')?.addEventListener('click', () => {
-        if (!currentRoom) return;
-        pickFromDiscard();
-      });
+  // 🔧 Écouteurs
+  document.getElementById('startGameBtn')?.addEventListener('click', startGame);
+  document.getElementById('deck')?.addEventListener('click', drawCard);
+  setupHandDisplayOptions();
+  enableChat();
+  enableDragDrop();
 
-      // ✅ Écouteur pour le bouton "Ranger les cartes"
-      document.getElementById('sortHandBtn')?.addEventListener('click', sortHandByFormation);
-    }
-      // ✅ NOUVEAU : Écouteur global pour les clics sur les défausses des autres joueurs
+  // Nouvel écouteur pour la défausse centrale
+  document.getElementById('discard')?.addEventListener('click', () => {
+    if (!currentRoom) return;
+    pickFromDiscard();
+  });
+
+  // ✅ Écouteur pour le bouton "Ranger les cartes"
+  document.getElementById('sortHandBtn')?.addEventListener('click', sortHandByFormation);
+
+  // ✅ NOUVEAU : Écouteur global pour les clics sur les défausses des autres joueurs
   document.addEventListener('click', (e) => {
     const discardSlot = e.target.closest('.player-discard');
     if (!discardSlot) return;
