@@ -762,7 +762,7 @@ async function discardCard(cardId) {
   if (cardIndex === -1) return;
 
   const [card] = hand.splice(cardIndex, 1);
-  const discard = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`)).val() || [];
+  const discard = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`))).val() || [];
   discard.push(card);
 
   await Promise.all([
