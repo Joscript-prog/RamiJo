@@ -757,7 +757,7 @@ async function discardCard(cardId) {
     return;
   }
 
-  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)).val() || [];
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
   const cardIndex = hand.findIndex(c => c.id === cardId);
   if (cardIndex === -1) return;
 
