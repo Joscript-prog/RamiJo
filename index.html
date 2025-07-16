@@ -357,30 +357,6 @@
       backdrop-filter: blur(10px);
     }
 
-    /* Défausse précédente */
-    #previous-discard {
-      position: absolute;
-      top: calc(50% + 100px);
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      z-index: 50;
-    }
-
-    .discard-label {
-      color: var(--text-white);
-      font-weight: 600;
-      font-size: clamp(1rem, 2.5vw, 1.2rem);
-      text-align: center;
-      background: rgba(0,0,0,0.3);
-      padding: 0.75rem 1.25rem;
-      border-radius: var(--radius);
-      backdrop-filter: blur(10px);
-    }
-
     /* Cartes */
     .card {
       width: var(--card-width);
@@ -474,6 +450,7 @@
       flex-direction: column;
       align-items: center;
       gap: 10px;
+      min-width: 180px;
     }
 
     .player-info {
@@ -506,6 +483,22 @@
     .player-hand-count {
       font-size: 0.9em;
       opacity: 0.9;
+    }
+
+    /* Zone de défausse sous chaque joueur */
+    .player-discard {
+      min-height: 50px;
+      min-width: 100px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .player-discard .card {
+      width: 80px;
+      height: 120px;
+      cursor: pointer;
     }
 
     /* Main du joueur */
@@ -1025,7 +1018,7 @@
         <div class="card back"></div>
       </div>
 
-      <!-- Liste des joueurs -->
+      <!-- Liste des joueurs avec défausse -->
       <div id="players-container"></div>
 
       <!-- Plateau central - Pioche seule -->
@@ -1039,12 +1032,6 @@
             <div class="deck-label">Pioche</div>
           </div>
         </div>
-      </div>
-
-      <!-- Défausse précédente -->
-      <div id="previous-discard">
-        <div class="discard-label">Défausse précédente</div>
-        <div class="card back"></div>
       </div>
 
       <!-- Main du joueur -->
@@ -1073,6 +1060,6 @@
     </div>
   </div>
 
-  
+  <script type="module" src="./game.js"></script>
 </body>
 </html>
