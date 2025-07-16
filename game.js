@@ -339,11 +339,11 @@ async function dealCards(roomId, playerIds) {
   ]);
 }
 
-// INITIALISATION
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('createRoom').addEventListener('click', createRoom);
-  document.getElementById('joinRoom').addEventListener('click', joinRoom);
-});
+ // INITIALISATION DES BOUTONS (module chargé après le DOM)
+ const btnCreate = document.getElementById('createRoom');
+ const btnJoin   = document.getElementById('joinRoom');
+ if (btnCreate) btnCreate.addEventListener('click', createRoom);
+ if (btnJoin)   btnJoin.addEventListener('click', joinRoom);
 
 // FONCTIONS PRINCIPALES
 function askPseudo() {
@@ -529,6 +529,7 @@ async function declareWin() {
 }
 function renderPreviousDiscard() {
   const prevDiv = document.getElementById('previous-discard');
+  if (!prevDiv) return;
   prevDiv.innerHTML = '';
 
   get(ref(db, `rooms/${currentRoom}/state`)).then(snap => {
@@ -607,47 +608,7 @@ function renderHand(hand) {
   });
 }
 
-// À appeler uniquement quand nécessaire
-renderPreviousDiscard();
 
-function arrangeCardsInSemiCircle() {
-  const hand = document.getElementById('hand');
-  const cards = hand.querySelectorAll('.card');
-  const cardCount = cards.length;
-  
-  if (cardCount === 0) return;
-
-  const isMobile = window.innerWidth <= 768;
-  const maxWidth = Math.min(window.innerWidth - 40, 600);
-  const cardWidth = isMobile ? 70 : 90;
-  const radius = Math.min(maxWidth / 2, 250);
-  
-  const maxAngle = Math.min(120, cardCount * 10);
-  const angleStep = maxAngle / Math.max(cardCount - 1, 1);
-  const centerX = maxWidth / 2;
-  const bottomY = isMobile ? 160 : 200;
-
-  cards.forEach((card, index) => {
-    const angle = (index * angleStep) - (maxAngle / 2);
-    const angleRad = angle * Math.PI / 180;
-    
-    const x = Math.sin(angleRad) * radius;
-    const y = (1 - Math.cos(angleRad)) * radius * 0.4;
-    
-    card.style.position = 'absolute';
-    card.style.left = `${centerX + x - cardWidth/2}px`;
-    card.style.bottom = `${y}px`;
-    card.style.transform = `rotate(${angle}deg)`;
-    card.style.width = `${cardWidth}px`;
-    card.style.height = `${cardWidth * 1.5}px`;
-    card.style.zIndex = index;
-    card.style.transition = 'all 0.3s ease';
-  });
-
-  hand.style.height = `${isMobile ? 180 : 220}px`;
-  hand.style.position = 'relative';
-  hand.style.width = `${maxWidth}px`;
-}
 
 // LISTENERS
 async function listenPlayers(room) {
@@ -734,8 +695,8 @@ function renderDiscardPiles(discards) {
        </div>`
     : '';
 }
-document.getElementById('central-discard')
-  .addEventListener('click', () => {
+document.getElementById('central-discard')?.  // ← notez le “?”
+  addEventListener('click', () => {
     if (!currentRoom) return;
     pickFromDiscard();
   });
@@ -901,30 +862,27 @@ function listenChat(room) {
 
 // UTILITAIRES
 function setupHandDisplayOptions() {
-  const buttons = document.querySelectorAll('.hand-display-btn');
-  buttons.forEach(btn => {
-    btn.addEventListener('click', function() {
-      buttons.forEach(b => b.classList.remove('active'));
-      this.classList.add('active');
-      
-      handDisplayType = this.dataset.display;
-      const hand = document.getElementById('hand');
-      hand.className = `player-hand ${handDisplayType}`;
-      
-      if (handDisplayType === 'semi-circle') {
-        arrangeCardsInSemiCircle();
-      } else {
-        // Reset position pour horizontal
-        const cards = hand.querySelectorAll('.card');
-        cards.forEach(card => {
-          card.style.position = '';
-          card.style.left = '';
-          card.style.bottom = '';
-          card.style.transform = '';
-          card.style.width = '';
-          card.style.height = '';
-        });
-      }
+  // On ne gère plus qu’un seul bouton “horizontal”
+  const button = document.querySelector('.hand-display-btn[data-display="horizontal"]');
+  if (!button) return;
+
+  // On active d’emblée ce bouton
+  button.classList.add('active');
+
+  button.addEventListener('click', () => {
+    handDisplayType = 'horizontal';
+    const hand = document.getElementById('hand');
+    // On force la classe horizontal
+    hand.className = 'player-hand horizontal';
+
+    // Reset de tout style résiduel (venant d'un éventuel semi-circle précédent)
+    hand.querySelectorAll('.card').forEach(card => {
+      card.style.position = '';
+      card.style.left     = '';
+      card.style.bottom   = '';
+      card.style.transform= '';
+      card.style.width    = '';
+      card.style.height   = '';
     });
   });
 }
