@@ -569,8 +569,10 @@ function getPreviousPlayerId(currentPlayerId, allPlayers) {
   const prevIndex = (index - 1 + allPlayers.length) % allPlayers.length;
   return allPlayers[prevIndex];
 }
-function renderPreviousDiscard(discards, players, currentPlayerId) {
-  const prevPlayerId = getPreviousPlayerId(currentPlayerId, players);
+async function renderPreviousDiscard(discards) {
+  const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
+  const players = Object.keys(playersSnap.val() || {});
+  const prevPlayerId = getPreviousPlayerId(playerId, players);
   const prevDiscard = discards[prevPlayerId] || [];
   const lastCard = prevDiscard[prevDiscard.length - 1];
 
@@ -590,7 +592,7 @@ function renderPreviousDiscard(discards, players, currentPlayerId) {
 
     const label = document.createElement('div');
     label.className = 'discard-label';
-    label.textContent = `Défausse de ${lastCard.discardBy || 'Joueur précédent'}`;
+    label.textContent = `Défausse de ${players[players.indexOf(prevPlayerId)]}`;
 
     container.appendChild(label);
     container.appendChild(cardDiv);
@@ -599,6 +601,25 @@ function renderPreviousDiscard(discards, players, currentPlayerId) {
   } else {
     container.innerHTML = '<div class="discard-label">Aucune carte à prendre</div>';
   }
+}
+async function pickFromPreviousDiscard(card, prevPlayerId) {
+  const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
+  if (turn !== playerId) return showPopup("Ce n'est pas votre tour.");
+
+  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+  if (state.hasDrawnOrPicked) return showPopup("Vous avez déjà pioché.");
+
+  const discards = (await get(ref(db, `rooms/${currentRoom}/discard`))).val() || {};
+  const newPile = discards[prevPlayerId].slice(0, -1);
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/discard/${prevPlayerId}`), newPile),
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), [...hand, card]),
+    update(ref(db, `rooms/${currentRoom}/state`), {
+      hasDrawnOrPicked: true
+    })
+  ]);
 }
 async function sortHandByFormation() {
   const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
@@ -689,7 +710,7 @@ function listenJokerCard(room) {
 function listenDiscard(room) {
   onValue(ref(db, `rooms/${room}/discard`), snap => {
     const discards = snap.val() || {};
-    renderDiscardPiles(discards);
+    renderPreviousDiscard(discards);
   });
 }
 
