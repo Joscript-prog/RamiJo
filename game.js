@@ -331,6 +331,8 @@ async function dealCards(roomId, playerIds) {
       sevenDeclared: false,
       winDeclared: false,
       roundOver: false,
+      lastDiscardPlayer: null,
+      lastDiscardCard: null,
       gameRound: gameRounds
     }),
     set(ref(db, `rooms/${roomId}/chat`), {})
@@ -525,7 +527,58 @@ async function declareWin() {
 
   showGlobalPopup(`🏆 ${myPseudo} gagne ! (+${winBonus} pts)`, []);
 }
+function renderPreviousDiscard() {
+  const prevDiv = document.getElementById('previous-discard');
+  prevDiv.innerHTML = '';
 
+  get(ref(db, `rooms/${currentRoom}/state`)).then(snap => {
+    const state = snap.val() || {};
+    const card = state.lastDiscardCard;
+    const owner = state.lastDiscardPlayer;
+
+    if (!card || owner === playerId) return;
+
+    const div = document.createElement('div');
+    div.className = 'previous-discard clickable';
+    div.innerHTML = `
+      <div class="card ${card.color}" data-card-id="${card.id}">
+        <div class="corner top">${card.rank}${card.symbol}</div>
+      </div>
+      <div class="discard-info">Défausse de ${owner.substring(7)}</div>
+    `;
+    prevDiv.appendChild(div);
+
+    // 🔧 Double-clic pour prendre la défausse
+    div.querySelector('.card')?.addEventListener('dblclick', () => {
+      pickFromDiscard(card, owner);
+    });
+  });
+}
+async function pickFromDiscard(card, ownerId) {
+  const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
+  if (turn !== playerId) return showPopup("Ce n'est pas votre tour.");
+
+  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+  if (state.hasDrawnOrPicked) return showPopup("Vous avez déjà pioché.");
+
+  // Retirer la carte de la défausse du propriétaire
+  const ownerDiscard = (await get(ref(db, `rooms/${currentRoom}/discard/${ownerId}`))).val() || [];
+  const cardIndex = ownerDiscard.findIndex(c => c.id === card.id);
+  if (cardIndex === -1) return;
+
+  ownerDiscard.splice(cardIndex, 1);
+  const newHand = [...(await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [], card];
+
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), ownerDiscard),
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), newHand),
+    update(ref(db, `rooms/${currentRoom}/state`), {
+      hasDrawnOrPicked: true,
+      lastDiscardCard: null, // carte retirée
+      lastDiscardPlayer: null
+    })
+  ]);
+}
 // AFFICHAGE DES CARTES
 function renderHand(hand) {
   const handDiv = document.getElementById('hand');
