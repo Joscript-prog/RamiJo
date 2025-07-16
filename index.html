@@ -264,7 +264,6 @@
       gap: 1rem;
     }
 
-
     /* Pour ne pas masquer le contenu sous le header fixe */
     .game-play-area {
       padding-top: 60px;
@@ -438,6 +437,7 @@
       flex-wrap: wrap;
       gap: 20px;
       z-index: 30;
+      position: relative;
     }
 
     .player-slot {
@@ -446,6 +446,7 @@
       align-items: center;
       gap: 10px;
       min-width: 180px;
+      position: relative;
     }
 
     .player-info {
@@ -480,7 +481,7 @@
       opacity: 0.9;
     }
 
-    /* Zone de défausse sous chaque joueur */
+    /* Zone de défausse sous chaque joueur - MODIFIÉ */
     .player-discard {
       min-height: 50px;
       min-width: 100px;
@@ -488,12 +489,30 @@
       justify-content: center;
       align-items: center;
       margin-top: 10px;
+      position: relative;
+      z-index: 10;
     }
 
     .player-discard .card {
       width: 80px;
       height: 120px;
       cursor: pointer;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* Style spécial pour la défausse du joueur précédent */
+    .player-discard.previous {
+      border: 2px dashed rgba(52, 152, 219, 0.6);
+      border-radius: var(--radius-sm);
+      padding: 5px;
+      box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
+      z-index: 15;
+    }
+
+    .player-discard.previous .card {
+      transform: scale(1.1);
+      box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
     }
 
     /* Main du joueur */
@@ -926,17 +945,6 @@
         right: 0;
         border-radius: 0;
       }
-      .previous-discard-zone {
-  position: fixed;
-  bottom: 280px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 90;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
       
       #joker {
         top: 60px;
@@ -987,10 +995,6 @@
         <span id="roomCodeDisplay"></span>
       </div>
       <div class="header-right">
-        <!-- Défausse du joueur précédent -->
-        <div id="previous-discard" class="previous-discard-zone">
-        <!-- Cette zone sera remplie dynamiquement -->
-        </div>
         <!-- Contrôles d'affichage de la main -->
         <div class="hand-display-options">
           <button class="hand-display-btn" data-display="horizontal">↔</button>
@@ -1026,7 +1030,35 @@
       </div>
 
       <!-- Liste des joueurs avec défausse -->
-      <div id="players-container"></div>
+      <div id="players-container">
+        <!-- Les emplacements des joueurs seront ajoutés dynamiquement -->
+        <div class="player-slot">
+          <div class="player-info active">
+            <div class="player-name">Joueur 1</div>
+            <div class="player-hand-count">7 cartes</div>
+          </div>
+          <div class="player-discard previous">
+            <div class="card red">
+              <div class="corner top">10<span>♥</span></div>
+              <div class="suit main">♥</div>
+              <div class="corner bottom">10<span>♥</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="player-slot">
+          <div class="player-info">
+            <div class="player-name">Joueur 2</div>
+            <div class="player-hand-count">7 cartes</div>
+          </div>
+          <div class="player-discard">
+            <div class="card">
+              <div class="corner top">8<span>♠</span></div>
+              <div class="suit main">♠</div>
+              <div class="corner bottom">8<span>♠</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Plateau central - Pioche seule -->
       <div class="game-table-container">
@@ -1043,7 +1075,33 @@
 
       <!-- Main du joueur -->
       <div id="hand-container">
-        <div id="hand" class="player-hand horizontal"></div>
+        <div id="hand" class="player-hand horizontal">
+          <div class="card">
+            <div class="corner top">A<span>♣</span></div>
+            <div class="suit main">♣</div>
+            <div class="corner bottom">A<span>♣</span></div>
+          </div>
+          <div class="card red">
+            <div class="corner top">Q<span>♦</span></div>
+            <div class="suit main">♦</div>
+            <div class="corner bottom">Q<span>♦</span></div>
+          </div>
+          <div class="card">
+            <div class="corner top">4<span>♠</span></div>
+            <div class="suit main">♠</div>
+            <div class="corner bottom">4<span>♠</span></div>
+          </div>
+          <div class="card red">
+            <div class="corner top">7<span>♥</span></div>
+            <div class="suit main">♥</div>
+            <div class="corner bottom">7<span>♥</span></div>
+          </div>
+          <div class="card">
+            <div class="corner top">K<span>♣</span></div>
+            <div class="suit main">♣</div>
+            <div class="corner bottom">K<span>♣</span></div>
+          </div>
+        </div>
       </div>
 
       <!-- Chat -->
@@ -1052,7 +1110,11 @@
           <h3>Chat</h3><span>▼</span>
         </div>
         <div class="chat-content">
-          <div id="chat-messages"></div>
+          <div id="chat-messages">
+            <div class="message me">Bonjour à tous !</div>
+            <div class="message other">Salut, prêt à jouer ?</div>
+            <div class="message me">Oui, on va gagner !</div>
+          </div>
           <form id="chat-form">
             <input
               id="chat-input"
@@ -1067,6 +1129,5 @@
     </div>
   </div>
 
-  <script type="module" src="./game.js"></script>
-</body>
+ </body>
 </html>
