@@ -288,15 +288,16 @@
       padding: 20px;
     }
 
-    /* Zone centrale */
+    /* Zone centrale - Pioche seule */
     .table-center {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 2rem;
+      gap: 1rem;
     }
 
     /* Joker en haut à gauche */
@@ -323,7 +324,7 @@
     }
 
     /* Deck et défausse */
-    .deck-area, .discard-area {
+    .deck-area {
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -345,7 +346,31 @@
       cursor: pointer;
     }
 
-    .deck-label, .discard-label {
+    .deck-label {
+      color: var(--text-white);
+      font-weight: 600;
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      text-align: center;
+      background: rgba(0,0,0,0.3);
+      padding: 0.75rem 1.25rem;
+      border-radius: var(--radius);
+      backdrop-filter: blur(10px);
+    }
+
+    /* Défausse précédente */
+    #previous-discard {
+      position: absolute;
+      top: calc(50% + 100px);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      z-index: 50;
+    }
+
+    .discard-label {
       color: var(--text-white);
       font-weight: 600;
       font-size: clamp(1rem, 2.5vw, 1.2rem);
@@ -498,8 +523,8 @@
     #hand {
       display: flex;
       justify-content: center;
-      gap: 10px;
-      padding: 0 20px;
+      gap: 0;
+      padding: 0;
       min-width: content;
       width: fit-content;
       margin: 0 auto;
@@ -507,21 +532,8 @@
       min-height: var(--card-height);
     }
 
-    #hand.vertical {
-      flex-direction: column;
-      gap: 10px;
-      align-items: flex-start;
-      margin-left: 20px;
-      padding: 20px 0;
-      width: auto;
-    }
-
-    #hand.vertical .card {
-      margin-left: 0 !important;
-    }
-
     #hand .card {
-      margin-right: 10px;
+      margin-right: -80px; /* Chevauchement des cartes */
       transition: var(--transition);
       cursor: grab;
       position: relative;
@@ -529,6 +541,12 @@
 
     #hand .card:last-child {
       margin-right: 0;
+      z-index: 5;
+    }
+
+    #hand .card:hover {
+      z-index: 10;
+      transform: translateY(-15px);
     }
 
     #hand .card.sortable-ghost {
@@ -599,41 +617,6 @@
       background: #6c757d;
       cursor: not-allowed;
       opacity: 0.6;
-    }
-
-    /* Défausse précédente */
-    #previous-discard {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 100;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      pointer-events: none;
-    }
-
-    #previous-discard.active {
-      pointer-events: auto;
-    }
-
-    #previous-discard .card {
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-
-    #previous-discard .card:hover {
-      transform: scale(1.1);
-    }
-
-    .discard-label {
-      color: white;
-      font-weight: bold;
-      background: rgba(0,0,0,0.7);
-      padding: 5px 10px;
-      border-radius: 5px;
     }
 
     /* Modals */
@@ -942,13 +925,8 @@
         z-index: 150;
       }
 
-      #hand {
-        gap: 10px !important;
-      }
-
       #hand .card {
-        margin-right: 0 !important;
-        transform: none !important;
+        margin-right: -50px;
       }
 
       .hand-display-options {
@@ -1044,13 +1022,13 @@
       <!-- Joker en haut à gauche -->
       <div id="joker">
         <div class="joker-label">Joker</div>
-        <!-- Le contenu sera injecté par JavaScript -->
+        <div class="card back"></div>
       </div>
 
       <!-- Liste des joueurs -->
       <div id="players-container"></div>
 
-      <!-- Plateau central : pioche et défausse -->
+      <!-- Plateau central - Pioche seule -->
       <div class="game-table-container">
         <div class="table-center">
           <!-- Pioche -->
@@ -1060,17 +1038,14 @@
             </div>
             <div class="deck-label">Pioche</div>
           </div>
-
-          <!-- Défausse centrale -->
-          <div class="discard-area">
-            <div id="discard" class="discard-pile clickable"></div>
-            <div class="discard-label">Défausse</div>
-          </div>
         </div>
       </div>
 
-      <!-- Défausse précédente (sera injectée par JavaScript) -->
-      <div id="previous-discard"></div>
+      <!-- Défausse précédente -->
+      <div id="previous-discard">
+        <div class="discard-label">Défausse précédente</div>
+        <div class="card back"></div>
+      </div>
 
       <!-- Main du joueur -->
       <div id="hand-container">
@@ -1098,6 +1073,112 @@
     </div>
   </div>
 
-  <script type="module" src="./game.js"></script>
+  <script type="module">
+    // Simulation du code game.js pour la démonstration
+    document.getElementById('createRoom').addEventListener('click', function() {
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+      document.getElementById('roomCodeDisplay').textContent = 'RAMI456';
+      document.getElementById('turnIndicator').textContent = 'Votre tour';
+      
+      // Simuler des joueurs
+      const players = [
+        { id: 'player1', pseudo: 'Joueur 1', score: 0 },
+        { id: 'player2', pseudo: 'Joueur 2', score: 0 },
+        { id: 'player3', pseudo: 'Vous', score: 0 },
+        { id: 'player4', pseudo: 'Joueur 4', score: 0 }
+      ];
+      
+      const playersContainer = document.getElementById('players-container');
+      playersContainer.innerHTML = '';
+      
+      players.forEach(player => {
+        const playerSlot = document.createElement('div');
+        playerSlot.className = 'player-slot';
+        playerSlot.innerHTML = `
+          <div class="player-info ${player.id === 'player3' ? 'active' : ''}">
+            <div class="player-name">${player.pseudo}</div>
+            <div class="player-hand-count">13 cartes</div>
+          </div>
+          <div class="discard-slot" data-owner="${player.id}"></div>
+        `;
+        playersContainer.appendChild(playerSlot);
+      });
+      
+      // Simuler une main de cartes
+      const hand = [
+        { id: '1', rank: 'A', symbol: '♥', color: 'red', suit: 'Coeurs', value: 1 },
+        { id: '2', rank: 'K', symbol: '♠', color: 'black', suit: 'Piques', value: 13 },
+        { id: '3', rank: 'Q', symbol: '♦', color: 'red', suit: 'Carreaux', value: 12 },
+        { id: '4', rank: 'J', symbol: '♣', color: 'black', suit: 'Trèfles', value: 11 },
+        { id: '5', rank: '10', symbol: '♥', color: 'red', suit: 'Coeurs', value: 10 },
+        { id: '6', rank: '9', symbol: '♠', color: 'black', suit: 'Piques', value: 9 },
+        { id: '7', rank: '8', symbol: '♦', color: 'red', suit: 'Carreaux', value: 8 },
+        { id: '8', rank: '7', symbol: '♣', color: 'black', suit: 'Trèfles', value: 7 },
+        { id: '9', rank: '6', symbol: '♥', color: 'red', suit: 'Coeurs', value: 6 },
+        { id: '10', rank: '5', symbol: '♠', color: 'black', suit: 'Piques', value: 5 },
+        { id: '11', rank: '4', symbol: '♦', color: 'red', suit: 'Carreaux', value: 4 },
+        { id: '12', rank: '3', symbol: '♣', color: 'black', suit: 'Trèfles', value: 3 },
+        { id: '13', rank: '2', symbol: '♥', color: 'red', suit: 'Coeurs', value: 2 }
+      ];
+      
+      const handContainer = document.getElementById('hand');
+      handContainer.innerHTML = '';
+      
+      hand.forEach(card => {
+        const div = document.createElement('div');
+        div.className = `card ${card.color}`;
+        div.dataset.cardId = card.id;
+        div.dataset.rank = card.rank;
+        div.dataset.symbol = card.symbol;
+        div.dataset.color = card.color;
+        div.dataset.suit = card.suit;
+        div.dataset.value = card.value;
+
+        div.innerHTML = `
+          <div class="corner top">${card.rank}${card.symbol}</div>
+          <div class="suit main">${card.symbol}</div>
+        `;
+        
+        div.addEventListener('dblclick', function() {
+          alert(`Défausser ${card.rank}${card.symbol}`);
+        });
+
+        handContainer.appendChild(div);
+      });
+    });
+    
+    document.getElementById('joinRoom').addEventListener('click', function() {
+      const roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+      if (!/^RAMI\d{3}$/.test(roomCode)) {
+        alert("Code invalide (format: RAMI123)");
+        return;
+      }
+      
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+      document.getElementById('roomCodeDisplay').textContent = roomCode;
+    });
+    
+    // Gestion du bouton "Terminer le tour"
+    document.getElementById('endTurnBtn').addEventListener('click', function() {
+      alert('Tour terminé');
+    });
+    
+    // Gestion du bouton "Ranger les cartes"
+    document.getElementById('sortHandBtn').addEventListener('click', function() {
+      alert('Cartes rangées par valeur');
+    });
+    
+    // Défausse précédente cliquable
+    document.getElementById('previous-discard').addEventListener('click', function() {
+      alert('Prendre la carte de la défausse précédente');
+    });
+    
+    // Pioche cliquable
+    document.getElementById('deck').addEventListener('click', function() {
+      alert('Piocher une carte');
+    });
+  </script>
 </body>
 </html>
