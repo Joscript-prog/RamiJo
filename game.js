@@ -424,6 +424,13 @@ function setupListeners(roomCode) {
   listenJokerCard(roomCode);
   listenDiscard(roomCode);
   listenChat(roomCode);
+
+  // 🔧 Écouteurs
+  document.getElementById('startGameBtn')?.addEventListener('click', startGame);
+  document.getElementById('deck')?.addEventListener('click', drawCard);
+  setupHandDisplayOptions();
+  enableChat();
+  enableDragDrop();
 }
 
 async function startGame() {
@@ -641,22 +648,29 @@ function listenDiscard(room) {
 
 function renderDiscardPiles(discards) {
   const globalDiscard = document.getElementById('global-discard');
-  globalDiscard.innerHTML = '';
+  globalDiscard.innerHTML = '<div class="discard-label">Défausses</div>';
+
   Object.entries(discards).forEach(([ownerId, pile]) => {
     if (!pile || pile.length === 0) return;
+
     const div = document.createElement('div');
     div.className = 'player-discard';
+
+    const card = pile[pile.length - 1];
     div.innerHTML = `
       <div class="player-name">${ownerId.substring(7)}</div>
-      <div class="card ${pile[pile.length-1].color}">
-        <div class="corner top">${pile[pile.length-1].rank}${pile[pile.length-1].symbol}</div>
+      <div class="card ${card.color}" data-card-id="${card.id}">
+        <div class="corner top">${card.rank}${card.symbol}</div>
       </div>
     `;
     globalDiscard.appendChild(div);
+
+    // 🔧 Rendre la défausse cliquable
+    div.querySelector('.card')?.addEventListener('click', () => {
+      discardCard(card.id);
+    });
   });
 }
-
-
 async function updateActionButtons(hand) {
   const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`))).val() || [];
   const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
@@ -749,16 +763,21 @@ async function endTurn() {
 // CHAT
 function enableChat() {
   const chatContainer = document.getElementById('chat-container');
-  chatContainer.classList.remove('collapsed'); // on l’ouvre directement
-  const arrow = chatContainer.querySelector('.chat-header span');
+  const chatHeader = chatContainer.querySelector('.chat-header'); // ✅ Variable manquante
+
+  // 🔧 Ouvre le chat par défaut
+  chatContainer.classList.remove('collapsed');
+  const arrow = chatHeader.querySelector('span');
   arrow.textContent = '▼';
-  
+
+  // 🔧 Gestion du clic sur l’en-tête
   chatHeader.addEventListener('click', () => {
     chatContainer.classList.toggle('collapsed');
     const arrow = chatHeader.querySelector('span');
     arrow.textContent = chatContainer.classList.contains('collapsed') ? '▲' : '▼';
   });
 
+  // 🔧 Envoi des messages
   document.getElementById('chat-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const message = document.getElementById('chat-input').value.trim();
