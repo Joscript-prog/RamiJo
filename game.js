@@ -8,321 +8,252 @@ let hasDrawnOrPicked = false;
 let hasDiscardedThisTurn = false;
 let handDisplayType = 'horizontal';
 let currentHand = [];
+let gameRounds = 0;
+let jokerSet = [];
 
+// NOUVELLE LOGIQUE DE RÈGLES
 const Rules = {
-  isQuadri(hand) {
-    const vals = hand.map(c => c.value);
-    const counts = {};
-    vals.forEach(v => {
-      counts[v] = (counts[v] || 0) + 1;
-    });
-    return Object.values(counts).some(count => count >= 4);
+  // Validation principale de victoire
+  validateWinHand(hand, jokerCards, has7Naturel) {
+    const naturalCards = hand.filter(c => !jokerCards.includes(c.id));
+    const jokers = hand.filter(c => jokerCards.includes(c.id));
+    
+    // Extraire toutes les formations possibles
+    const formations = this.extractAllFormations(naturalCards, jokers);
+    
+    // Si 7N, les 2 formations de 3 peuvent être tri avec 1 joker max
+    if (has7Naturel) {
+      return this.validateWith7N(formations, naturalCards, jokers);
+    }
+    
+    // Sinon, besoin d'au moins 1 escalier et 1 tri, jokers autorisés
+    return this.validateWithout7N(formations, naturalCards, jokers);
   },
-
-  isTri(hand) {
-    const vals = hand.map(c => c.value);
-    const counts = {};
-    vals.forEach(v => {
-      counts[v] = (counts[v] || 0) + 1;
-    });
-    return Object.values(counts).some(count => count >= 3);
+  
+  extractAllFormations(naturalCards, jokers) {
+    const formations = {
+      quadri: [],
+      escalier4: [],
+      escalier3: [],
+      tri: []
+    };
+    
+    // Formations naturelles
+    this.extractNaturalFormations(formations, naturalCards);
+    
+    // Formations avec jokers (1 max par formation)
+    this.extractJokerFormations(formations, naturalCards, jokers);
+    
+    return formations;
   },
-
-  isEscalier(hand, len) {
-    const bySuit = hand.reduce((acc, c) => {
-      acc[c.suit] = acc[c.suit] || [];
-      acc[c.suit].push(c.value);
+  
+  extractNaturalFormations(formations, cards) {
+    // Par valeur pour quadri et tri
+    const byValue = cards.reduce((acc, c) => {
+      acc[c.value] = acc[c.value] || [];
+      acc[c.value].push(c);
       return acc;
     }, {});
-
-    for (let suit in bySuit) {
-      const vals = [...new Set(bySuit[suit])].sort((a, b) => a - b);
-      for (let i = 0; i <= vals.length - len; i++) {
-        let ok = true;
-        for (let j = 1; j < len; j++) {
-          if (vals[i + j] !== vals[i] + j) {
-            ok = false;
-            break;
-          }
-        }
-        if (ok) return true;
+    
+    Object.entries(byValue).forEach(([value, cards]) => {
+      if (cards.length >= 4) {
+        formations.quadri.push({cards: cards.slice(0, 4), type: 'natural'});
       }
-    }
-    return false;
-  },
-
-  isTriJoker(hand, jokerSet, requireNatural) {
-    if (this.isTri(hand.filter(c => !jokerSet.includes(c.id))) && !requireNatural) return true;
-    if (!requireNatural) return false;
-
-    const naturalCards = hand.filter(c => !jokerSet.includes(c.id));
-    const handJokersCount = hand.filter(c => jokerSet.includes(c.id)).length;
-
-    if (handJokersCount === 0) {
-      return this.isTri(naturalCards);
-    }
-
-    const counts = {};
-    naturalCards.forEach(c => {
-      counts[c.value] = (counts[c.value] || 0) + 1;
+      if (cards.length === 3) {
+        formations.tri.push({cards, type: 'natural'});
+      }
     });
-
-    for (let value in counts) {
-      if (counts[value] >= 2 && handJokersCount >= 1) {
-        return true;
-      }
-    }
-    return false;
-  },
-
-  isEscalierJoker(hand, len, jokerSet, requireNatural) {
-    if (this.isEscalier(hand.filter(c => !jokerSet.includes(c.id)), len) && !requireNatural) return true;
-    if (!requireNatural) return false;
-
-    const naturalCards = hand.filter(c => !jokerSet.includes(c.id));
-    const handJokersCount = hand.filter(c => jokerSet.includes(c.id)).length;
-
-    if (handJokersCount === 0) {
-      return this.isEscalier(naturalCards, len);
-    }
-
-    const bySuit = naturalCards.reduce((acc, c) => {
+    
+    // Par couleur pour escaliers
+    const bySuit = cards.reduce((acc, c) => {
       acc[c.suit] = acc[c.suit] || [];
-      acc[c.suit].push(c.value);
+      acc[c.suit].push(c);
       return acc;
     }, {});
-
-    for (let suit in bySuit) {
-      const vals = [...new Set(bySuit[suit])].sort((a, b) => a - b);
-      for (let i = 0; i < vals.length; i++) {
-        let currentSequenceLength = 1;
-        let jokersUsed = 0;
-        let currentVal = vals[i];
-
-        for (let j = i + 1; j < vals.length && currentSequenceLength < len; j++) {
-          if (vals[j] === currentVal + 1) {
-            currentSequenceLength++;
-            currentVal++;
-          } else if (vals[j] > currentVal + 1) {
-            const gap = vals[j] - (currentVal + 1);
-            if (jokersUsed + gap <= handJokersCount) {
-              jokersUsed += gap;
-              currentSequenceLength += gap + 1;
-              currentVal = vals[j];
-            } else {
-              break;
-            }
+    
+    Object.entries(bySuit).forEach(([suit, cards]) => {
+      const sorted = cards.sort((a, b) => a.value - b.value);
+      
+      // Escalier de 4
+      for (let i = 0; i <= sorted.length - 4; i++) {
+        if (sorted[i+3].value === sorted[i].value + 3) {
+          formations.escalier4.push({cards: sorted.slice(i, i+4), type: 'natural'});
+        }
+      }
+      
+      // Escalier de 3
+      for (let i = 0; i <= sorted.length - 3; i++) {
+        if (sorted[i+2].value === sorted[i].value + 2) {
+          formations.escalier3.push({cards: sorted.slice(i, i+3), type: 'natural'});
+        }
+      }
+    });
+  },
+  
+  extractJokerFormations(formations, naturalCards, jokers) {
+    jokers.forEach(joker => {
+      // Escalier de 3 avec 1 joker
+      const bySuit = naturalCards.reduce((acc, c) => {
+        acc[c.suit] = acc[c.suit] || [];
+        acc[c.suit].push(c);
+        return acc;
+      }, {});
+      
+      Object.entries(bySuit).forEach(([suit, cards]) => {
+        const sorted = cards.sort((a, b) => a.value - b.value);
+        
+        // Trouver les séquences manquantes
+        for (let i = 0; i < sorted.length - 1; i++) {
+          const gap = sorted[i+1].value - sorted[i].value;
+          if (gap === 2) {
+            const neededValue = sorted[i].value + 1;
+            formations.escalier3.push({
+              cards: [sorted[i], {...joker, value: neededValue, suit}, sorted[i+1]],
+              type: 'joker',
+              jokerUsed: 1
+            });
           }
         }
-
-        if (currentSequenceLength < len) {
-          const needed = len - currentSequenceLength;
-          if (jokersUsed + needed <= handJokersCount) {
-            currentSequenceLength += needed;
-          }
+      });
+      
+      // Tri avec 1 joker
+      Object.entries(naturalCards.reduce((acc, c) => {
+        acc[c.value] = acc[c.value] || [];
+        acc[c.value].push(c);
+        return acc;
+      }, {})).forEach(([value, cards]) => {
+        if (cards.length === 2) {
+          formations.tri.push({
+            cards: [...cards, {...joker, value}],
+            type: 'joker',
+            jokerUsed: 1
+          });
         }
-
-        if (currentSequenceLength >= len) {
-          return true;
+      });
+    });
+  },
+  
+  validateWithout7N(formations, naturalCards, jokers) {
+    // Besoin d'au moins 1 escalier et 1 tri
+    const escaliers = [...formations.escalier4, ...formations.escalier3];
+    const tris = formations.tri;
+    
+    if (escaliers.length === 0 || tris.length === 0) return false;
+    
+    // Chercher 4 formations disjointes totalisant 13 cartes
+    return this.findDisjointFormations([...escaliers, ...formations.quadri, ...tris]);
+  },
+  
+  validateWith7N(formations, naturalCards, jokers) {
+    // Le 7N compte pour 2 formations (4+3 cartes)
+    // Il reste 2 formations de 3 cartes chacune, avec 1 joker max par formation
+    const remainingCards = this.getRemainingCards(naturalCards, jokers, formations);
+    return this.canFormTwoTriWithJokers(remainingCards);
+  },
+  
+  findDisjointFormations(allFormations) {
+    // Logique de recherche de 4 formations disjointes
+    // Implémentation simplifiée pour l'instant
+    let totalCards = 0;
+    const usedCards = new Set();
+    
+    allFormations.forEach(formation => {
+      formation.cards.forEach(card => {
+        if (!usedCards.has(card.id)) {
+          usedCards.add(card.id);
+          totalCards++;
+        }
+      });
+    });
+    
+    return totalCards >= 13;
+  },
+  
+  // Vérifie le 7 naturel (sans joker)
+  has7Naturel(hand, jokerCards) {
+    const naturalCards = hand.filter(c => !jokerCards.includes(c.id));
+    
+    // Quadri + escalier3
+    const quadri = this.findNaturalQuadri(naturalCards);
+    const escalier3 = this.findNaturalEscalier3(naturalCards);
+    
+    if (quadri && escalier3) {
+      const cards = [...quadri, ...escalier3];
+      if (cards.length === 7) return true;
+    }
+    
+    // Escalier4 + tri
+    const escalier4 = this.findNaturalEscalier4(naturalCards);
+    const tri = this.findNaturalTri(naturalCards);
+    
+    if (escalier4 && tri) {
+      const cards = [...escalier4, ...tri];
+      if (cards.length === 7) return true;
+    }
+    
+    return false;
+  },
+  
+  findNaturalQuadri(cards) {
+    const byValue = cards.reduce((acc, c) => {
+      acc[c.value] = acc[c.value] || [];
+      acc[c.value].push(c);
+      return acc;
+    }, {});
+    
+    const quadri = Object.values(byValue).find(vals => vals.length >= 4);
+    return quadri ? quadri.slice(0, 4) : null;
+  },
+  
+  findNaturalEscalier3(cards) {
+    const bySuit = cards.reduce((acc, c) => {
+      acc[c.suit] = acc[c.suit] || [];
+      acc[c.suit].push(c);
+      return acc;
+    }, {});
+    
+    for (const suitCards of Object.values(bySuit)) {
+      const sorted = suitCards.sort((a, b) => a.value - b.value);
+      for (let i = 0; i <= sorted.length - 3; i++) {
+        if (sorted[i+2].value === sorted[i].value + 2) {
+          return sorted.slice(i, i+3);
         }
       }
     }
-    return false;
+    return null;
   },
-
-  has7Naturel(hand) {
-    return (this.isQuadri(hand) && this.isEscalier(hand, 3)) ||
-           (this.isEscalier(hand, 4) && this.isTri(hand));
-  },
-
-  validateWinHandWithJoker(hand, jokerSet) {
-    const has7 = this.has7Naturel(hand);
-    const condition1 = this.isQuadri(hand) && this.isEscalierJoker(hand, 3, jokerSet, has7);
-    const condition2 = this.isEscalierJoker(hand, 4, jokerSet, has7) && this.isTriJoker(hand, jokerSet, has7);
-
-    if (condition1 || condition2) {
-      const extractedCombos = extractWinCombosJoker(hand, jokerSet);
-      const usedCardIds = new Set(extractedCombos.flat().map(c => c.id));
-      return usedCardIds.size === hand.length;
+  
+  findNaturalEscalier4(cards) {
+    const bySuit = cards.reduce((acc, c) => {
+      acc[c.suit] = acc[c.suit] || [];
+      acc[c.suit].push(c);
+      return acc;
+    }, {});
+    
+    for (const suitCards of Object.values(bySuit)) {
+      const sorted = suitCards.sort((a, b) => a.value - b.value);
+      for (let i = 0; i <= sorted.length - 4; i++) {
+        if (sorted[i+3].value === sorted[i].value + 3) {
+          return sorted.slice(i, i+4);
+        }
+      }
     }
-
-    return false;
+    return null;
+  },
+  
+  findNaturalTri(cards) {
+    const byValue = cards.reduce((acc, c) => {
+      acc[c.value] = acc[c.value] || [];
+      acc[c.value].push(c);
+      return acc;
+    }, {});
+    
+    const tri = Object.values(byValue).find(vals => vals.length === 3);
+    return tri || null;
   }
 };
 
-function extractSevenCombo(hand) {
-  const combos = [];
-
-  for (let v = 1; v <= 13; v++) {
-    const sameVal = hand.filter(c => c.value === v);
-    if (sameVal.length >= 4) {
-      combos.push(sameVal.slice(0, 4));
-    }
-  }
-
-  const bySuit = hand.reduce((acc, c) => {
-    acc[c.suit] = acc[c.suit] || [];
-    acc[c.suit].push(c.value);
-    return acc;
-  }, {});
-
-  for (let suit in bySuit) {
-    const vals = [...new Set(bySuit[suit])].sort((a, b) => a - b);
-    for (let i = 0; i <= vals.length - 3; i++) {
-      if (vals[i + 1] === vals[i] + 1 && vals[i + 2] === vals[i] + 2) {
-        combos.push(vals.slice(i, i + 3).map(v => hand.find(c => c.value === v && c.suit === suit)));
-      }
-    }
-  }
-
-  if (Rules.isQuadri(hand) && Rules.isEscalier(hand, 3)) {
-    const quadri = combos.find(c => c.length === 4);
-    const escalier3 = combos.find(c => c.length === 3);
-    if (quadri && escalier3) {
-      const allCards = [...quadri, ...escalier3];
-      if (new Set(allCards.map(c => c.id)).size === 7) {
-        return allCards;
-      }
-    }
-  }
-
-  if (Rules.isEscalier(hand, 4) && Rules.isTri(hand)) {
-    const escalier4 = combos.find(c => c.length === 4);
-    const tri = combos.find(c => c.length === 3);
-    if (escalier4 && tri) {
-      const allCards = [...escalier4, ...tri];
-      if (new Set(allCards.map(c => c.id)).size === 7) {
-        return allCards;
-      }
-    }
-  }
-
-  return [];
-}
-
-function extractWinCombosJoker(hand, jokerSet) {
-  const has7 = Rules.has7Naturel(hand);
-  let availableCards = [...hand];
-  let availableJokers = availableCards.filter(c => jokerSet.includes(c.id));
-  let nonJokers = availableCards.filter(c => !jokerSet.includes(c.id));
-  const combos = [];
-  const findAndRemoveCards = (sourceArray, predicate, count) => {
-    const foundCards = [];
-    let tempArray = [...sourceArray];
-    for (let i = 0; i < tempArray.length && foundCards.length < count; i++) {
-      if (predicate(tempArray[i])) {
-        foundCards.push(tempArray[i]);
-        tempArray.splice(i, 1);
-        i--;
-      }
-    }
-    if (foundCards.length === count) {
-      return { found: foundCards, remaining: tempArray };
-    }
-    return { found: [], remaining: sourceArray };
-  };
-  if (has7) {
-    const sevenCombo = extractSevenCombo(hand);
-    if (sevenCombo.length === 7) {
-      combos.push(sevenCombo);
-      availableCards = availableCards.filter(c => !sevenCombo.map(sc => sc.id).includes(c.id));
-      availableJokers = availableCards.filter(c => jokerSet.includes(c.id));
-      nonJokers = availableCards.filter(c => !jokerSet.includes(c.id));
-    }
-  }
-
-  for (let v = 1; v <= 13; v++) {
-    const { found, remaining } = findAndRemoveCards(nonJokers, c => c.value === v, 4);
-    if (found.length === 4) {
-      combos.push(found);
-      nonJokers = remaining;
-    }
-  }
-
-  for (let len of [4, 3]) {
-    const bySuit = nonJokers.reduce((acc, c) => {
-      acc[c.suit] = acc[c.suit] || [];
-      acc[c.suit].push(c);
-      return acc;
-    }, {});
-    for (let suit in bySuit) {
-      const cardsInSuit = bySuit[suit].sort((a, b) => a.value - b.value);
-      for (let i = 0; i <= cardsInSuit.length - len; i++) {
-        let sequence = [cardsInSuit[i]];
-        for (let j = 1; j < len; j++) {
-          if (cardsInSuit[i + j] && cardsInSuit[i + j].value === sequence[sequence.length - 1].value + 1) { // Corrected line
-            sequence.push(cardsInSuit[i + j]);
-          } else {
-            sequence = [];
-            break;
-          }
-        }
-        if (sequence.length === len) {
-          combos.push(sequence);
-          nonJokers = nonJokers.filter(c => !sequence.map(sc => sc.id).includes(c.id));
-          break;
-        }
-      }
-    }
-  }
-
-  for (let v = 1; v <= 13; v++) {
-    const { found, remaining } = findAndRemoveCards(nonJokers, c => c.value === v, 3);
-    if (found.length === 3) {
-      combos.push(found);
-      nonJokers = remaining;
-    }
-  }
-
-  if (has7 || availableJokers.length > 0) {
-    const nonJokersForTri = [...nonJokers];
-    for (let v = 1; v <= 13; v++) {
-      const matches = nonJokersForTri.filter(c => c.value === v);
-      if (matches.length === 2 && availableJokers.length > 0) {
-        const joker = availableJokers.shift();
-        combos.push([...matches, joker]);
-        nonJokers = nonJokers.filter(c => !matches.includes(c));
-      }
-    }
-  }
-
-  if (has7 || availableJokers.length > 0) {
-    const nonJokersForEsc = [...nonJokers];
-    const bySuit = nonJokersForEsc.reduce((acc, c) => {
-      acc[c.suit] = acc[c.suit] || [];
-      acc[c.suit].push(c);
-      return acc;
-    }, {});
-    for (let suit in bySuit) {
-      const cardsInSuit = bySuit[suit].sort((a, b) => a.value - b.value);
-      for (let i = 0; i < cardsInSuit.length; i++) {
-        for (let j = 0; j < cardsInSuit.length; j++) {
-          if (i === j) continue;
-          const card1 = cardsInSuit[i];
-          const card2 = cardsInSuit[j];
-          if (Math.abs(card1.value - card2.value) === 2 && availableJokers.length > 0) {
-            const missingValue = Math.min(card1.value, card2.value) + 1;
-            if (!nonJokers.some(c => c.suit === suit && c.value === missingValue)) {
-              const joker = availableJokers.shift();
-              const newCombo = [card1, { value: missingValue, suit: suit, id: joker.id, rank: 'Joker', symbol: joker.symbol, color: joker.color }, card2].sort((a, b) => a.value - b.value);
-              combos.push(newCombo);
-              nonJokers = nonJokers.filter(c => c.id !== card1.id && c.id !== card2.id);
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  const allUsedCardIds = new Set(combos.flat().map(c => c.id));
-  if (allUsedCardIds.size !== hand.length) {
-    return [];
-  }
-
-  return combos;
-}
-
+// FONCTIONS UTILITAIRES
 function getCardValue(rank) {
   switch (rank) {
     case 'A': return 1;
@@ -358,10 +289,6 @@ function createDeck() {
       });
     });
   }
-
-  if (deck.length !== 104) {
-    console.error(`Erreur createDeck : attendu 104 cartes, trouvé ${deck.length}`);
-  }
   return deck;
 }
 
@@ -382,176 +309,570 @@ async function dealCards(roomId, playerIds) {
     hands[pid] = deck.splice(0, 13);
   });
   const revealedJokerCard = deck.shift();
-  const jokerSet = deck
-  .filter(c => c.value === revealedJokerCard.value && c.color !== revealedJokerCard.color)
-  .map(c => c.id);
+  
+  // Déterminer les jokers (même valeur, couleur opposée)
+  jokerSet = deck
+    .filter(c => c.value === revealedJokerCard.value && c.color !== revealedJokerCard.color)
+    .map(c => c.id);
 
   await Promise.all([
     set(ref(db, `rooms/${roomId}/deck`), deck),
     set(ref(db, `rooms/${roomId}/jokerCard`), revealedJokerCard),
-    set(ref(db, `rooms/${roomId}/jokerSet`), { jokerSet }),
+    set(ref(db, `rooms/${roomId}/jokerSet`), jokerSet),
     set(ref(db, `rooms/${roomId}/hands`), hands),
     set(ref(db, `rooms/${roomId}/discard`), {}),
+    set(ref(db, `rooms/${roomId}/scores`), {}),
     set(ref(db, `rooms/${roomId}/state`), {
       started: false,
       drawCount: 0,
       lastDiscarder: null,
       hasDrawnOrPicked: false,
       hasDiscardedThisTurn: false,
-      sevenPlayed: false,
+      sevenDeclared: false,
       winDeclared: false,
-      sevenCombo: null,
-      winCombos: null,
-      roundOver: false
+      roundOver: false,
+      gameRound: gameRounds
     }),
     set(ref(db, `rooms/${roomId}/chat`), {})
   ]);
 }
 
-function showJoker(jokerCard) {
-  const jokerDiv = document.getElementById('joker');
-  if (jokerCard?.rank) {
-    jokerDiv.innerHTML = `
-      <div class="card ${jokerCard.color}">
-        <div class="corner top"><span>${jokerCard.rank}</span><span>${jokerCard.symbol}</span></div>
-        <div class="suit main">${jokerCard.symbol}</div>
-        <div class="corner bottom"><span>${jokerCard.rank}</span><span>${jokerCard.symbol}</span></div>
-      </div>
-    `;
-  } else {
-    jokerDiv.innerHTML = '';
-  }
-}
+// INITIALISATION
+document.addEventListener('DOMContentLoaded', () => {
+  askPseudo();
+  
+  document.getElementById('createRoom')?.addEventListener('click', createRoom);
+  document.getElementById('joinRoom')?.addEventListener('click', joinRoom);
+  document.getElementById('startGameBtn')?.addEventListener('click', startGame);
+  document.getElementById('endTurnBtn')?.addEventListener('click', endTurn);
+  document.getElementById('declare7N')?.addEventListener('click', declare7Naturel);
+  document.getElementById('declareWin')?.addEventListener('click', declareWin);
+  
+  setupHandDisplayOptions();
+});
 
-function showPopup(content, isError = false) {
-  const modal = document.createElement('div');
-  modal.className = 'modal';
-  modal.innerHTML = `
-    <div class="modal-content">
-      ${content}
-      <button class="modal-close">Fermer</button>
-    </div>`;
-  document.body.appendChild(modal);
-
-  let trapFocus = null;
-  const keyHandler = (e) => {
-    if (e.key === 'Escape') closeModal();
-  };
-
-  document.addEventListener('keydown', keyHandler);
-  const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-  if (focusable.length > 0) {
-    const firstFocusable = focusable[0];
-    const lastFocusable = focusable[focusable.length - 1];
-    firstFocusable.focus();
-
-    trapFocus = (e) => {
-      if (e.key === 'Tab') {
-        if (e.shiftKey && document.activeElement === firstFocusable) {
-          e.preventDefault();
-          lastFocusable.focus();
-        } else if (!e.shiftKey && document.activeElement === lastFocusable) {
-          e.preventDefault();
-          firstFocusable.focus();
-        }
-      }
-    };
-    modal.addEventListener('keydown', trapFocus);
-  }
-
-  const closeModal = () => {
-    modal.remove();
-    document.removeEventListener('keydown', keyHandler);
-    if (trapFocus) {
-      modal.removeEventListener('keydown', trapFocus);
-    }
-  };
-
-  modal.querySelector('.modal-close').addEventListener('click', closeModal);
-  if (isError) {
-    modal.querySelector('.modal-content').style.background = '#ffe6e6';
-  }
-}
+// FONCTIONS PRINCIPALES
 function askPseudo() {
   showPopup(`
     <h3>Entrez votre pseudo</h3>
-    <input id="pseudoInput" type="text" placeholder="Votre pseudo" aria-label="Pseudo" />
+    <input id="pseudoInput" type="text" placeholder="Votre pseudo" maxlength="15" />
     <button id="pseudoSubmit" class="btn btn-primary">Valider</button>
   `);
   document.getElementById('pseudoSubmit').addEventListener('click', () => {
     const val = document.getElementById('pseudoInput').value.trim();
-    myPseudo = val || 'Anonyme';
-    // ferme la modal
-    document.querySelector('.modal-close').click();
+    myPseudo = val || 'Joueur';
+    document.querySelector('.modal-close')?.click();
   });
 }
-document.addEventListener('DOMContentLoaded', () => {
-  // on demande le pseudo avant tout
-  askPseudo();
 
-  // options d’affichage de la main
-  setupHandDisplayOptions();
+async function createRoom() {
+  const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900);
+  currentRoom = roomCode;
+  gameRounds = 0;
 
-  // bouton Créer
-  const btnCreate = document.getElementById('createRoom');
-  if (btnCreate) btnCreate.addEventListener('click', createRoom);
-  else console.warn('⚠️ #createRoom introuvable');
-
-  // bouton Rejoindre
-  const btnJoin = document.getElementById('joinRoom');
-  if (btnJoin) btnJoin.addEventListener('click', joinRoom);
-  else console.warn('⚠️ #joinRoom introuvable');
-
-  // bouton Démarrer la partie (seulement visible par le créateur)
-  const btnStart = document.getElementById('startGameBtn');
-  if (btnStart) btnStart.addEventListener('click', startGame);
-
-  // bouton Terminer le tour
-  const btnEnd = document.getElementById('endTurnBtn');
-  if (btnEnd) btnEnd.addEventListener('click', endTurn);
-
-  // déclarations/spam 7 naturel et victoire
-  document.getElementById('declare7N')?.addEventListener('click', declare7Naturel);
-  document.getElementById('declareWin')?.addEventListener('click', () => sendNotification('win'));
-  document.getElementById('remind7NBtn')?.addEventListener('click', async () => {
-    const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-    const combo = extractSevenCombo(hand);
-    if (combo.length === 7) await sendNotification('7N', true);
-    else showPopup("Aucune combinaison de 7 cartes trouvée.", true);
-  });
-
-  // double‑clic pour piocher
-  document.getElementById('deck')?.addEventListener('dblclick', drawCard);
-});
-
-
-function showGlobalPopup(message, cards = null) {
-  const overlay = document.createElement('div');
-  overlay.className = 'global-popup-overlay';
-  const box = document.createElement('div');
-  box.className = 'global-popup-box';
-  box.innerHTML = `<div class="notif-message">${message}</div>`;
-
-  if (cards && Array.isArray(cards)) {
-    const cardsDiv = document.createElement('div');
-    cardsDiv.className = 'notif-cards';
-    cards.forEach(card => {
-      const cardEl = document.createElement('div');
-      cardEl.className = `card ${card.color}`;
-      cardEl.innerHTML = `
-        <div class="corner top"><span>${card.rank}</span><span>${card.symbol}</span></div>
-        <div class="suit main">${card.symbol}</div>
-        <div class="corner bottom"><span>${card.rank}</span><span>${card.symbol}</span></div>
-      `;
-      cardsDiv.appendChild(cardEl);
-    });
-    box.appendChild(cardsDiv);
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  if ((await get(roomRef)).exists()) {
+    showPopup("La salle existe déjà, réessayez.", true);
+    return;
   }
 
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-  setTimeout(() => overlay.remove(), 3000);
-  overlay.addEventListener('click', () => overlay.remove());
+  await Promise.all([
+    set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+      pseudo: myPseudo,
+      hasDeclared7N: false,
+      score: 0
+    }),
+    set(ref(db, `rooms/${roomCode}/creator`), playerId),
+    set(ref(db, `rooms/${roomCode}/turn`), playerId)
+  ]);
+
+  setupListeners(roomCode);
+  
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('game').style.display = 'flex';
+  showPopup(`
+    <h3>Salle créée</h3>
+    <p>Code : <b>${roomCode}</b></p>
+    <button id="copyRoomCode" class="btn btn-secondary">Copier</button>
+  `);
+  document.getElementById('copyRoomCode')?.addEventListener('click', () => {
+    navigator.clipboard.writeText(roomCode);
+    showPopup('Code copié !');
+  });
+  
+  enableChat();
+}
+
+async function joinRoom() {
+  const roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+  if (!/^RAMI\d{3}$/.test(roomCode)) {
+    showPopup("Code invalide (format: RAMI123)", true);
+    return;
+  }
+
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  const snapshot = await get(roomRef);
+  if (!snapshot.exists()) {
+    showPopup("Cette salle n'existe pas.", true);
+    return;
+  }
+
+  const players = (await get(ref(db, `rooms/${roomCode}/players`))).val() || {};
+  if (Object.keys(players).length >= 5) {
+    showPopup("Salle complète (5 max).", true);
+    return;
+  }
+  if (players[playerId]) {
+    showPopup("Vous êtes déjà dans cette salle.", true);
+    return;
+  }
+
+  const state = (await get(ref(db, `rooms/${roomCode}/state`))).val() || {};
+  gameRounds = state.gameRound || 0;
+
+  await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+    pseudo: myPseudo,
+    hasDeclared7N: false,
+    score: 0,
+    isSpectator: state.started
+  });
+  
+  currentRoom = roomCode;
+  setupListeners(roomCode);
+  
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('game').style.display = 'flex';
+  showPopup(`Connecté à ${roomCode}${state.started ? ' (spectateur)' : ''}`);
+  enableChat();
+}
+
+function setupListeners(roomCode) {
+  listenPlayers(roomCode);
+  listenHand(roomCode);
+  listenTurn(roomCode);
+  listenJokerCard(roomCode);
+  listenDiscard(roomCode);
+  listenChat(roomCode);
+}
+
+async function startGame() {
+  const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
+  const players = playersSnap.val() || {};
+  const playerIds = Object.keys(players);
+
+  await dealCards(currentRoom, playerIds);
+  await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
+  await update(ref(db, `rooms/${currentRoom}/state`), { started: true });
+  
+  Object.keys(players).forEach(id => {
+    update(ref(db, `rooms/${currentRoom}/players/${id}`), { isSpectator: false });
+  });
+}
+
+// GESTION DES DÉCLARATIONS
+async function declare7Naturel() {
+  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+  if (state.sevenDeclared) {
+    showPopup("Un 7N a déjà été déclaré.");
+    return;
+  }
+
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+  const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`))).val() || [];
+  
+  if (!Rules.has7Naturel(hand, jokerCards)) {
+    showPopup("Pas de 7 Naturel valide.");
+    return;
+  }
+
+  const points = gameRounds === 0 ? 0.5 : 1.0;
+  await Promise.all([
+    update(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
+      hasDeclared7N: true,
+      sevenNPoints: points
+    }),
+    update(ref(db, `rooms/${currentRoom}/state`), {
+      sevenDeclared: true,
+      sevenDeclarant: playerId
+    })
+  ]);
+
+  showGlobalPopup(`🎉 ${myPseudo} déclare 7N (+${points} pts)`, []);
+}
+
+async function declareWin() {
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)).val() || [];
+  const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`)).val() || [];
+  
+  if (!Rules.validateWinHand(hand, jokerCards, false)) {
+    showPopup("Main non valide pour la victoire.", true);
+    return;
+  }
+
+  const winBonus = gameRounds + 1;
+  const sevenNPoints = (await get(ref(db, `rooms/${currentRoom}/players/${playerId}/sevenNPoints`))).val() || 0;
+  const totalScore = sevenNPoints + winBonus;
+
+  await update(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
+    totalScore,
+    winBonus
+  });
+
+  await update(ref(db, `rooms/${currentRoom}/state`), {
+    winDeclared: true,
+    winner: playerId,
+    winnerName: myPseudo
+  });
+
+  showGlobalPopup(`🏆 ${myPseudo} gagne ! (+${winBonus} pts)`, []);
+}
+
+// AFFICHAGE DES CARTES
+function renderHand(hand) {
+  const playerHandDiv = document.getElementById('hand');
+  playerHandDiv.innerHTML = '';
+  currentHand = hand;
+
+  hand.forEach((c, index) => {
+    const div = document.createElement('div');
+    div.className = `card ${c.color}`;
+    div.dataset.cardId = c.id;
+    div.dataset.rank = c.rank;
+    div.dataset.symbol = c.symbol;
+    div.dataset.color = c.color;
+    div.dataset.suit = c.suit;
+    div.dataset.value = c.value;
+    div.innerHTML = `
+      <div class="corner top"><span>${c.rank}</span><span>${c.symbol}</span></div>
+      <div class="suit main">${c.symbol}</div>
+      <div class="corner bottom"><span>${c.rank}</span><span>${c.symbol}</span></div>
+    `;
+    div.addEventListener('dblclick', () => discardCard(c.id));
+    playerHandDiv.appendChild(div);
+  });
+
+  playerHandDiv.className = `player-hand ${handDisplayType}`;
+  if (handDisplayType === 'semi-circle') {
+    setTimeout(arrangeCardsInSemiCircle, 100);
+  }
+  enableDragDrop();
+}
+
+function arrangeCardsInSemiCircle() {
+  const hand = document.getElementById('hand');
+  const cards = hand.querySelectorAll('.card');
+  const cardCount = cards.length;
+  
+  if (cardCount === 0) return;
+
+  const isMobile = window.innerWidth <= 768;
+  const maxWidth = Math.min(window.innerWidth - 40, 600);
+  const cardWidth = isMobile ? 70 : 90;
+  const radius = Math.min(maxWidth / 2, 250);
+  
+  const maxAngle = Math.min(120, cardCount * 10);
+  const angleStep = maxAngle / Math.max(cardCount - 1, 1);
+  const centerX = maxWidth / 2;
+  const bottomY = isMobile ? 160 : 200;
+
+  cards.forEach((card, index) => {
+    const angle = (index * angleStep) - (maxAngle / 2);
+    const angleRad = angle * Math.PI / 180;
+    
+    const x = Math.sin(angleRad) * radius;
+    const y = (1 - Math.cos(angleRad)) * radius * 0.4;
+    
+    card.style.position = 'absolute';
+    card.style.left = `${centerX + x - cardWidth/2}px`;
+    card.style.bottom = `${y}px`;
+    card.style.transform = `rotate(${angle}deg)`;
+    card.style.width = `${cardWidth}px`;
+    card.style.height = `${cardWidth * 1.5}px`;
+    card.style.zIndex = index;
+    card.style.transition = 'all 0.3s ease';
+  });
+
+  hand.style.height = `${isMobile ? 180 : 220}px`;
+  hand.style.position = 'relative';
+  hand.style.width = `${maxWidth}px`;
+}
+
+// LISTENERS
+function listenPlayers(room) {
+  onValue(ref(db, `rooms/${room}/players`), async snap => {
+    const players = Object.entries(snap.val() || {}).map(([id, o]) => ({
+      id,
+      pseudo: o.pseudo,
+      score: o.totalScore || 0
+    }));
+    
+    const state = (await get(ref(db, `rooms/${room}/state`))).val() || {};
+    renderPlayers(players, state.started);
+    
+    const creator = (await get(ref(db, `rooms/${room}/creator`))).val();
+    document.getElementById('startGameBtn').style.display = 
+      creator === playerId && !state.started ? 'block' : 'none';
+  });
+}
+
+function renderPlayers(players, gameStarted) {
+  const playersDiv = document.getElementById('players-container');
+  playersDiv.innerHTML = '';
+  
+  players.forEach(p => {
+    const badge = document.createElement('div');
+    badge.className = 'player-info';
+    badge.innerHTML = `
+      <div class="player-name">${p.pseudo}</div>
+      <div class="player-score">Score: ${p.score}</div>
+    `;
+    playersDiv.appendChild(badge);
+  });
+}
+
+function listenHand(room) {
+  onValue(ref(db, `rooms/${room}/hands/${playerId}`), snap => {
+    const hand = snap.val() || [];
+    renderHand(hand);
+    updateActionButtons(hand);
+  });
+}
+
+function listenTurn(room) {
+  onValue(ref(db, `rooms/${room}/turn`), snap => {
+    const turn = snap.val();
+    const myTurn = turn === playerId;
+
+    hasDrawnOrPicked = false;
+    hasDiscardedThisTurn = false;
+
+    document.getElementById('status').textContent = myTurn ? "Votre tour" : "En attente...";
+    document.getElementById('turnIndicator').textContent = myTurn ? "À vous !" : `Tour de ${turn}`;
+    document.getElementById('endTurnBtn').disabled = !myTurn;
+  });
+}
+
+function listenJokerCard(room) {
+  onValue(ref(db, `rooms/${room}/jokerCard`), snap => {
+    const card = snap.val();
+    if (card) {
+      document.getElementById('joker').innerHTML = `
+        <div class="card ${card.color}">
+          <div class="corner top"><span>${card.rank}</span><span>${card.symbol}</span></div>
+          <div class="suit main">${card.symbol}</div>
+          <div class="corner bottom"><span>${card.rank}</span><span>${card.symbol}</span></div>
+        </div>
+      `;
+    }
+  });
+}
+
+function listenDiscard(room) {
+  onValue(ref(db, `rooms/${room}/discard`), snap => {
+    const discards = snap.val() || {};
+    renderDiscardPiles(discards);
+  });
+}
+
+function renderDiscardPiles(discards) {
+  const globalDiscard = document.getElementById('global-discard');
+  globalDiscard.innerHTML = '<div class="discard-label">Défausses</div>';
+  
+  Object.entries(discards).forEach(([ownerId, pile]) => {
+    if (!pile || pile.length === 0) return;
+    
+    const div = document.createElement('div');
+    div.className = 'player-discard';
+    div.innerHTML = `
+      <div class="player-name">Joueur ${ownerId.substring(7)}</div>
+      <div class="card ${pile[pile.length-1].color}" style="position: static;">
+        <div class="corner top"><span>${pile[pile.length-1].rank}</span><span>${pile[pile.length-1].symbol}</span></div>
+        <div class="suit main">${pile[pile.length-1].symbol}</div>
+      </div>
+    `;
+    globalDiscard.appendChild(div);
+  });
+}
+
+async function updateActionButtons(hand) {
+  const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`))).val() || [];
+  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+  
+  document.getElementById('declare7N').disabled = state.sevenDeclared || 
+    !Rules.has7Naturel(hand, jokerCards);
+  document.getElementById('declareWin').disabled = 
+    !Rules.validateWinHand(hand, jokerCards, state.sevenDeclared);
+}
+
+// ACTIONS DU JEU
+async function drawCard() {
+  if ((await get(ref(db, `rooms/${currentRoom}/turn`))).val() !== playerId) return;
+  
+  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+  if (state.hasDrawnOrPicked) {
+    showPopup("Vous avez déjà pioché.");
+    return;
+  }
+
+  const [deck, hand] = await Promise.all([
+    get(ref(db, `rooms/${currentRoom}/deck`)),
+    get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))
+  ]);
+  
+  const deckCards = deck.val() || [];
+  if (deckCards.length === 0) {
+    showPopup("Deck vide !");
+    return;
+  }
+
+  const card = deckCards.shift();
+  const newHand = [...(hand.val() || []), card];
+
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/deck`), deckCards),
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), newHand),
+    update(ref(db, `rooms/${currentRoom}/state`), {
+      hasDrawnOrPicked: true,
+      drawCount: (state.drawCount || 0) + 1
+    })
+  ]);
+  
+  hasDrawnOrPicked = true;
+}
+
+async function discardCard(cardId) {
+  const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
+  if (turn !== playerId) {
+    showPopup("Ce n'est pas votre tour.");
+    return;
+  }
+
+  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+  if (!state.hasDrawnOrPicked) {
+    showPopup("Piochez d'abord.");
+    return;
+  }
+  if (state.hasDiscardedThisTurn) {
+    showPopup("Vous avez déjà défaussé.");
+    return;
+  }
+
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)).val() || [];
+  const cardIndex = hand.findIndex(c => c.id === cardId);
+  if (cardIndex === -1) return;
+
+  const [card] = hand.splice(cardIndex, 1);
+  const discard = (await get(ref(db, `rooms/${currentRoom}/discard/${playerId}`)).val() || [];
+  discard.push(card);
+
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
+    set(ref(db, `rooms/${currentRoom}/discard/${playerId}`), discard),
+    update(ref(db, `rooms/${currentRoom}/state`), {
+      hasDiscardedThisTurn: true,
+      lastDiscarder: playerId
+    })
+  ]);
+  
+  renderHand(hand);
+}
+
+async function endTurn() {
+  const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
+  if (turn !== playerId) return;
+
+  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+  if (!state.hasDrawnOrPicked || !state.hasDiscardedThisTurn) {
+    showPopup("Terminez votre tour (piocher + défausser).");
+    return;
+  }
+
+  const players = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {});
+  const nextIndex = (players.indexOf(playerId) + 1) % players.length;
+
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/turn`), players[nextIndex]),
+    update(ref(db, `rooms/${currentRoom}/state`), {
+      hasDrawnOrPicked: false,
+      hasDiscardedThisTurn: false,
+      drawCount: 0
+    })
+  ]);
+}
+
+// CHAT
+function enableChat() {
+  const chatContainer = document.getElementById('chat-container');
+  const chatHeader = chatContainer.querySelector('.chat-header');
+  
+  chatHeader.addEventListener('click', () => {
+    chatContainer.classList.toggle('collapsed');
+    const arrow = chatHeader.querySelector('span');
+    arrow.textContent = chatContainer.classList.contains('collapsed') ? '▲' : '▼';
+  });
+
+  document.getElementById('chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const message = document.getElementById('chat-input').value.trim();
+    if (!message) return;
+
+    await set(ref(db, `rooms/${currentRoom}/chat/${Date.now()}`), {
+      sender: playerId,
+      pseudo: myPseudo,
+      message,
+      timestamp: Date.now()
+    });
+    document.getElementById('chat-input').value = '';
+  });
+}
+
+function listenChat(room) {
+  onValue(ref(db, `rooms/${room}/chat`), (snapshot) => {
+    const messages = snapshot.val() || {};
+    const messagesArray = Object.entries(messages)
+      .map(([id, msg]) => ({ id, ...msg }))
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    const chatMessages = document.getElementById('chat-messages');
+    chatMessages.innerHTML = '';
+    messagesArray.forEach(msg => {
+      const div = document.createElement('div');
+      div.className = `message ${msg.sender === playerId ? 'me' : 'other'}`;
+      div.innerHTML = `<b>${msg.pseudo}:</b> ${msg.message}`;
+      chatMessages.appendChild(div);
+    });
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  });
+}
+
+// UTILITAIRES
+function setupHandDisplayOptions() {
+  const buttons = document.querySelectorAll('.hand-display-btn');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      buttons.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      
+      handDisplayType = this.dataset.display;
+      const hand = document.getElementById('hand');
+      hand.className = `player-hand ${handDisplayType}`;
+      
+      if (handDisplayType === 'semi-circle') {
+        arrangeCardsInSemiCircle();
+      } else {
+        // Reset position pour horizontal
+        const cards = hand.querySelectorAll('.card');
+        cards.forEach(card => {
+          card.style.position = '';
+          card.style.left = '';
+          card.style.bottom = '';
+          card.style.transform = '';
+          card.style.width = '';
+          card.style.height = '';
+        });
+      }
+    });
+  });
 }
 
 function enableDragDrop() {
@@ -572,828 +893,40 @@ function enableDragDrop() {
   });
 }
 
-function renderPlayers(players) {
-  const playersDiv = document.getElementById('players');
-  playersDiv.innerHTML = '';
-  players.forEach((p, index) => {
-    const badge = document.createElement('div');
-    badge.className = `player-info ${p.id === playerId ? 'active' : ''}`;
-    badge.innerHTML = `
-      <div class="player-name">${p.pseudo} ${p.id === playerId ? '(Vous)' : ''}</div>
-      <div class="player-hand-count" id="hand-count-${p.id}">${p.id === playerId ? '13' : '?'} cartes</div>
-    `;
-    playersDiv.appendChild(badge);
-  });
+function showPopup(content, isError = false) {
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content">
+      ${content}
+      <button class="modal-close">Fermer</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+  if (isError) modal.querySelector('.modal-content').style.background = '#ffe6e6';
 }
 
-function renderDiscardPiles(players, discards) {
-  const discardArea = document.getElementById('global-discard');
-  discardArea.innerHTML = '<div class="discard-label">Défausses des joueurs</div>';
-
-  Object.entries(discards).forEach(([ownerId, pile]) => {
-    if (!pile || pile.length === 0) return;
-
-    const playerDiscard = document.createElement('div');
-    playerDiscard.className = 'player-discard';
-    playerDiscard.id = `discard-${ownerId}`;
-
-    const playerName = document.createElement('div');
-    playerName.className = 'player-name';
-    playerName.textContent = players[ownerId]?.pseudo || `Joueur ${ownerId.substring(7)}`;
-
-    const cardContainer = document.createElement('div');
-    cardContainer.className = 'discard-cards';
-
-    const topCard = pile[pile.length - 1];
-    const cardEl = document.createElement('div');
-    cardEl.className = `card ${topCard.color}`;
-    cardEl.dataset.cardId = topCard.id;
-    cardEl.dataset.ownerId = ownerId;
-    cardEl.innerHTML = `
-      <div class="corner top"><span>${topCard.rank}</span><span>${topCard.symbol}</span></div>
-      <div class="suit main">${topCard.symbol}</div>
-      <div class="corner bottom"><span>${topCard.rank}</span><span>${topCard.symbol}</span></div>
-    `;
-
-    if (ownerId !== playerId) {
-      cardEl.style.cursor = 'pointer';
-      cardEl.addEventListener('dblclick', async () => {
-        const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-        if (turnSnap.val() === playerId) {
-          const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-          if (stateSnap.val()?.lastDiscarder === ownerId) {
-            await takeDiscardedCard(ownerId);
-          } else {
-            showPopup('Vous ne pouvez prendre qu’une carte de la défausse du joueur précédent.', true);
-          }
-        } else {
-          showPopup('Ce n’est pas votre tour.', true);
-        }
-      });
-    }
-
-    cardContainer.appendChild(cardEl);
-    playerDiscard.appendChild(playerName);
-    playerDiscard.appendChild(cardContainer);
-    discardArea.appendChild(playerDiscard);
-  });
+function showGlobalPopup(message, cards = null) {
+  const overlay = document.createElement('div');
+  overlay.className = 'global-popup-overlay';
+  overlay.innerHTML = `
+    <div class="global-popup-box">
+      <div class="notif-message">${message}</div>
+      ${cards ? '<div class="notif-cards">' + cards.map(c => `
+        <div class="card ${c.color}">
+          <div class="corner top"><span>${c.rank}</span><span>${c.symbol}</span></div>
+          <div class="suit main">${c.symbol}</div>
+        </div>
+      `).join('') + '</div>' : ''}
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 4000);
+  overlay.addEventListener('click', () => overlay.remove());
 }
 
-function listenHandCounts(room) {
-  onValue(ref(db, `rooms/${room}/hands`), snap => {
-    const hands = snap.val() || {};
-    Object.keys(hands).forEach(pid => {
-      const el = document.getElementById(`hand-count-${pid}`);
-      if (el) {
-        el.textContent = `${hands[pid]?.length || 0} cartes`;
-      }
-    });
-  });
-}
-
-function listenDiscard(room) {
-  onValue(ref(db, `rooms/${room}/discard`), async snap => {
-    const discards = snap.val() || {};
-    const playersSnap = await get(ref(db, `rooms/${room}/players`));
-    const players = playersSnap.val() || {};
-    renderDiscardPiles(players, discards);
-  });
-}
-
-function listenPlayers(room) {
-  onValue(ref(db, `rooms/${room}/players`), async snap => {
-    const players = Object.entries(snap.val() || {}).map(([id, o]) => ({
-      id,
-      pseudo: o.pseudo
-    }));
-    const stateSnap = await get(ref(db, `rooms/${room}/state`));
-    const gameStarted = stateSnap.val()?.started;
-    renderPlayers(players);
-
-    const creatorSnap = await get(ref(db, `rooms/${room}/creator`));
-    const creatorId = creatorSnap.val();
-    const startGameBtn = document.getElementById('startGameBtn');
-    if (startGameBtn) {
-      startGameBtn.style.display = creatorId === playerId && !gameStarted ? 'block' : 'none';
-    }
-  });
-}
-// ─── 1. Fonction de déclaration du 7 Naturel ───────────────────────────────────
-async function declare7Naturel() {
-  const playerRef = ref(db, `rooms/${currentRoom}/players/${playerId}`);
-  const playerSnap = await get(playerRef);
-  const playerData = playerSnap.val() || {};
-
-  // Si déjà déclaré ou si un autre l'a déjà fait, on n'autorise pas
-  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
-  const state = stateSnap.val() || {};
-  if (state.sevenDeclared) {
-    return sendNotification('7N', true);
-  }
-
-  // Extraction du combo naturel
-  const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
-  const hand = handSnap.val() || [];
-  const combo = extractSevenCombo(hand);
-  if (combo.length !== 7) {
-    return showPopup("Vous n'avez pas un 7‑naturel valide.", true);
-  }
-
-  // 1. On met à jour le joueur et son score
-  await update(playerRef, { hasDeclared7N: true });
-  const scoresRef = ref(db, `rooms/${currentRoom}/scores/${playerId}`);
-  const currentScore = (await get(scoresRef)).val() || 0;
-  await set(scoresRef, currentScore + 0.5);
-
-  // 2. On marque dans l'état qu'un 7N a été déclaré, par qui, et on conserve le combo
-  await update(ref(db, `rooms/${currentRoom}/state`), {
-    sevenDeclared: true,
-    sevenDeclarant: playerId,
-    sevenCombo: combo
-  });
-
-  // 3. On notifie tout le monde en ajoutant le combo à la payload
-  return sendNotification('7N');
-}
-
-
-// ─── 2. Écoute des scores et mise à jour de l'affichage ─────────────────────────
-function listenScores(room) {
-  onValue(ref(db, `rooms/${room}/scores`), snap => {
-    const scores = snap.val() || {};
-    Object.entries(scores).forEach(([id, score]) => {
-      const el = document.getElementById(`score-${id}`);
-      if (el) {
-        el.textContent = `Score: ${score}`;
-      }
-    });
-  });
-}
-
-async function createRoom() {
-  const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900);
-  currentRoom = roomCode;
-
-  const roomRef = ref(db, `rooms/${roomCode}`);
-  if ((await get(roomRef)).exists()) {
-    showPopup("La salle existe déjà, réessayez.", true);
-    return;
-  }
-
-  // 1️⃣ On initialise hasDeclared7N ici
-  await Promise.all([
-    set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-      pseudo: myPseudo,
-      hasDeclared7N: false
-    }),
-    set(ref(db, `rooms/${roomCode}/creator`), playerId),
-    set(ref(db, `rooms/${roomCode}/turn`), playerId)
-  ]);
-
-  // 2️⃣ On lance tous les listeners (sans setupPlayerHandDiscardListener())
-  listenPlayers(roomCode);
-  listenScores(roomCode);
-  listenDiscard(roomCode);
-  listenHand(roomCode);
-  listenTurn(roomCode);
-  listenJokerCard(roomCode);
-  listenNotifications(roomCode);
-  // Si vous voulez mettre à jour automatiquement le compteur de mains :
-  // listenHandCounts(roomCode);
-
-  document.getElementById('menu').style.display = 'none';
-  document.getElementById('game').style.display = 'flex';
-  showPopup(`
-    <h3>Salle créée</h3>
-    <p>Code de la salle : <b>${roomCode}</b></p>
-    <button id="copyRoomCode">Copier</button>
-  `);
-  document.getElementById('copyRoomCode').addEventListener('click', () => {
-    navigator.clipboard.writeText(roomCode);
-    showPopup('Code copié !');
-  });
-
-  enableChat();
-}
-
-async function joinRoom() {
-  const roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
-  if (!/^RAMI\d{3}$/.test(roomCode)) {
-    showPopup("Code de salle invalide. Il doit être au format RAMI123.", true);
-    return;
-  }
-
-  const roomRef = ref(db, `rooms/${roomCode}`);
-  const snapshot = await get(roomRef);
-  if (!snapshot.exists()) {
-    showPopup("Cette salle n'existe pas.", true);
-    return;
-  }
-
-  const stateSnap = await get(ref(db, `rooms/${roomCode}/state`));
-  const gameStarted = stateSnap.exists() && stateSnap.val().started;
-  const players = (await get(ref(db, `rooms/${roomCode}/players`))).val() || {};
-
-  if (Object.keys(players).length >= 5) {
-    showPopup("Cette salle est déjà complète (5 joueurs max).", true);
-    return;
-  }
-  if (players[playerId]) {
-    showPopup("Vous êtes déjà dans cette salle.", true);
-    return;
-  }
-
-  // 1️⃣ On initialise hasDeclared7N ici aussi
-  await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-    pseudo: myPseudo,
-    hasDeclared7N: false,
-    isSpectator: gameStarted
-  });
-  currentRoom = roomCode;
-
-  // 2️⃣ On relance les mêmes listeners
-  listenPlayers(roomCode);
-  listenScores(roomCode);
-  listenDiscard(roomCode);
-  listenHand(roomCode);
-  listenTurn(roomCode);
-  listenJokerCard(roomCode);
-  listenNotifications(roomCode);
-  // listenHandCounts(roomCode);
-
-  document.getElementById('menu').style.display = 'none';
-  document.getElementById('game').style.display = 'flex';
-  showPopup(`<p>Connecté à la salle <b>${roomCode}</b>${gameStarted ? ' en tant que spectateur' : ''}</p>`);
-
-  enableChat();
-}
-
-
-function arrangeCardsInSemiCircle() {
-  const cards = document.getElementById('hand').querySelectorAll('.card');
-  const cardCount = cards.length;
-  const radius = Math.min(150, window.innerWidth / 5);
-  const maxAngle = 60; // Degrés
-  const angleStep = maxAngle / (cardCount - 1);
-
-  cards.forEach((card, index) => {
-    const angle = (index * angleStep) - (maxAngle / 2);
-    const angleRad = angle * Math.PI / 180;
-    const x = Math.sin(angleRad) * radius;
-    const y = -Math.abs(Math.cos(angleRad)) * 20; // Léger décalage vertical
-    card.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
-    card.style.zIndex = index;
-  });
-}
-function listenHand(room) {
-  onValue(ref(db, `rooms/${room}/hands/${playerId}`), snap => {
-    const hand = snap.val() || [];
-    renderHand(hand);
-    updateActionButtons(hand);
-  });
-}
-
-function listenTurn(room) {
-  onValue(ref(db, `rooms/${room}/turn`), snap => {
-    const turn = snap.val();
-    const myTurn = turn === playerId;
-
-    // Réinitialisation des flags pour ce tour
-    hasDrawnOrPicked = false;
-    hasDiscardedThisTurn = false;
-
-    // Mise à jour du statut simple
-    const status = document.getElementById('status');
-    if (status) {
-      status.textContent = myTurn 
-        ? "⭐ C'est votre tour !" 
-        : "En attente…";
-    }
-
-    // Indicateur plus parlant dans le header
-    const turnIndicator = document.getElementById('turnIndicator');
-    if (turnIndicator) {
-      turnIndicator.textContent = myTurn 
-        ? "C'est à vous !" 
-        : `Tour de ${turn}`;
-    }
-
-    // Activation / désactivation de la pioche
-    const deckPile = document.getElementById('deck');
-    if (deckPile) {
-      deckPile.style.pointerEvents = myTurn ? 'auto' : 'none';
-      deckPile.style.opacity       = myTurn ? '1'    : '0.5';
-    }
-
-    // Activation / désactivation du bouton "Terminer le tour"
-    const endTurnBtn = document.getElementById('endTurnBtn');
-    if (endTurnBtn) {
-      endTurnBtn.disabled = !myTurn || !hasDrawnOrPicked || !hasDiscardedThisTurn;
-    }
-
-    // Réinitialise aussi l'état des boutons de déclaration
-    updateActionButtons([]);
-  });
-}
-
-
-function listenJokerCard(room) {
-  onValue(ref(db, `rooms/${room}/jokerCard`), snap => {
-    const card = snap.val();
-    showJoker(card);
-  });
-}
-
-function listenNotifications(room) {
-  const notifRef = ref(db, `rooms/${room}/notifications`);
-  onChildAdded(notifRef, async snap => {
-    const notif = snap.val();
-    if (!notif) return;
-
-    if (notif.type === '7N') {
-      // Récupère la combinaison de 7 cartes depuis l'état du jeu
-      const comboSnap = await get(ref(db, `rooms/${room}/state/sevenCombo`));
-      const combo = comboSnap.val() || notif.combo || [];
-
-      // Message selon création ou rappel
-      const msg = notif.reminder
-        ? `📌 ${notif.pseudo} ré-affiche son 7 Naturel :`
-        : `🎉 ${notif.pseudo} a déclaré un 7 Naturel !`;
-
-      // Affiche le popup avec les 7 cartes
-      showGlobalPopup(msg, combo);
-
-      // Désactive le bouton déclarer 7N pour tous
-      document.querySelectorAll('#declare7N').forEach(btn => {
-        btn.disabled = true;
-      });
-
-    } else if (notif.type === 'win') {
-      showGlobalPopup(`🏆 ${notif.pseudo} a déclaré la victoire !`);
-      terminateGame(notif.playerId);
-    }
-  });
-}
-
-
-async function sendNotification(type, isReminder = false) {
-  const notifRef = ref(db, `rooms/${currentRoom}/notifications`);
-  let payload = {
-    type,
-    playerId,
-    pseudo: myPseudo,
-    timestamp: Date.now(),
-    reminder: isReminder
-  };
-
-  if (type === '7N' && !isReminder) {
-    const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
-    const hand = handSnap.val() || [];
-    const sevenCombo = extractSevenCombo(hand);
-    if (sevenCombo.length === 7) {
-      payload.combo = sevenCombo;
-    }
-  }
-
-  return push(notifRef, payload);
-}
-
-async function updateActionButtons(hand) {
-  // Si un 7N est déjà déclaré, on reste tous désactivés
-  const stateSnap = await get(ref(db, `rooms/${currentRoom}/state/sevenDeclared`));
-  if (stateSnap.val()) {
-    document.getElementById('declare7N').disabled = true;
-  } else {
-    // Sinon, logique habituelle
-    document.getElementById('declare7N').disabled = !Rules.has7Naturel(hand);
-  }
-
-  // Gestion du bouton victoire inchangée
-  const jokerSnap = await get(ref(db, `rooms/${currentRoom}/jokerSet`));
-  const jokerSet = jokerSnap.val()?.jokerSet || [];
-  document.getElementById('declareWin').disabled = !Rules.validateWinHandWithJoker(hand, jokerSet);
-}
-
-
-async function terminateGame(winnerId) {
-  const winnerPseudoSnap = await get(ref(db, `rooms/${currentRoom}/players/${winnerId}/pseudo`));
-  const winnerPseudo = winnerPseudoSnap.val() || 'Joueur Inconnu';
-  const winnerHandSnap = await get(ref(db, `rooms/${currentRoom}/hands/${winnerId}`));
-  const winnerHand = winnerHandSnap.val() || [];
-  const jokerSetSnap = await get(ref(db, `rooms/${currentRoom}/jokerSet`));
-  const jokerSet = jokerSetSnap.val()?.jokerSet || [];
-  const winCombos = extractWinCombosJoker(winnerHand, jokerSet);
-  const has7 = Rules.has7Naturel(winnerHand);
-
-  await update(ref(db, `rooms/${currentRoom}/state`), {
-    roundOver: true,
-    winDeclared: true,
-    winnerId,
-    winnerPseudo,
-    winCombos,
-    has7Naturel: has7
-  });
-
-  showPopup(`<h3>Partie terminée !</h3><p>${winnerPseudo} a gagné !</p>`);
-}
-
-async function checkEndGame() {
-  const stateRef = ref(db, `rooms/${currentRoom}/state`);
-  const stateSnap = await get(stateRef);
-  const state = stateSnap.val() || {};
-
-  if (state.winDeclared) return;
-
-  const deckSnap = await get(ref(db, `rooms/${currentRoom}/deck`));
-  const deck = deckSnap.val() || [];
-  if (deck.length === 0) {
-    const handsSnap = await get(ref(db, `rooms/${currentRoom}/hands`));
-    const allHands = handsSnap.val() || {};
-    const someoneHas7 = Object.values(allHands).some(hand => Rules.has7Naturel(hand));
-
-    if (someoneHas7) {
-      await newRound('♻️ Deck vide – 7 Naturel détecté, nouvelle manche');
-    } else {
-      await update(stateRef, { roundOver: true, reason: 'deck_empty_no_7' });
-      showPopup('<h3>Partie terminée !</h3><p>Le deck est vide et aucun 7 Naturel n’a été trouvé.</p>');
-    }
-  }
-}
-
-async function newRound(message) {
-  const playerIds = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {});
-  await dealCards(currentRoom, playerIds);
-  await update(ref(db, `rooms/${currentRoom}/state`), {
-    roundOver: false,
-    started: true,
-    sevenPlayed: false,
-    winDeclared: false,
-    sevenCombo: null,
-    winCombos: null,
-    reason: null,
-    drawCount: 0,
-    lastDiscarder: null
-  });
-  showPopup(`🔄 ${message}`);
-}
-
-function renderHand(hand) {
-  const playerHandDiv = document.getElementById('hand');
-  playerHandDiv.innerHTML = '';
-  currentHand = hand;
-
-  hand.forEach(c => {
-    const div = document.createElement('div');
-    div.className = `card ${c.color} dealing`;
-    div.dataset.cardId = c.id;
-    div.dataset.rank = c.rank;
-    div.dataset.symbol = c.symbol;
-    div.dataset.color = c.color;
-    div.dataset.suit = c.suit;
-    div.dataset.value = c.value;
-    div.innerHTML = `
-      <div class="corner top"><span>${c.rank}</span><span>${c.symbol}</span></div>
-      <div class="suit main">${c.symbol}</div>
-      <div class="corner bottom"><span>${c.rank}</span><span>${c.symbol}</span></div>
-    `;
-    div.addEventListener('dblclick', () => discardCard(c.id));
-    playerHandDiv.appendChild(div);
-  });
-
-  playerHandDiv.className = `player-hand ${handDisplayType}`;
+window.addEventListener('resize', () => {
   if (handDisplayType === 'semi-circle') {
-    arrangeCardsInSemiCircle();
+    setTimeout(arrangeCardsInSemiCircle, 100);
   }
-  enableDragDrop();
-}
-
-
-function setupHandDisplayOptions() {
-  const buttons = Array.from(document.querySelectorAll('.hand-display-btn'));
-  const handContainer = document.getElementById('hand');
-
-  // Initialisation : active le bouton correspondant et applique la classe sur la main
-  buttons.forEach(btn => {
-    if (btn.dataset.display === handDisplayType) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
-  if (handContainer) {
-    handContainer.className = `player-hand ${handDisplayType}`;
-    if (handDisplayType === 'semi-circle') {
-      arrangeCardsInSemiCircle();
-    }
-  }
-
-  // Événements au clic
-  buttons.forEach(button => {
-    button.addEventListener('click', function() {
-      // Retire l’état actif de tous
-      buttons.forEach(b => b.classList.remove('active'));
-      // Définit l’actif sur celui cliqué
-      this.classList.add('active');
-
-      // Met à jour le type d’affichage et la classe du container
-      handDisplayType = this.dataset.display;
-      if (handContainer) {
-        handContainer.className = `player-hand ${handDisplayType}`;
-        if (handDisplayType === 'semi-circle') {
-          arrangeCardsInSemiCircle();
-        }
-      }
-    });
-  });
-}
-
-async function drawCard() {
-  if (!currentRoom) return;
-
-  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-  if (turnSnap.val() !== playerId) {
-    return showPopup("Ce n'est pas votre tour.", true);
-  }
-
-  const stateRef = ref(db, `rooms/${currentRoom}/state`);
-  let state = (await get(stateRef)).val() || { drawCount: 0, hasDrawnOrPicked: false };
-
-  if (state.drawCount >= 1 || state.hasDrawnOrPicked) {
-    return showPopup('Vous avez déjà pioché ou pris une carte ce tour.', true);
-  }
-
-  const [deckSnap, handSnap, jokerSetSnap] = await Promise.all([
-    get(ref(db, `rooms/${currentRoom}/deck`)),
-    get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)),
-    get(ref(db, `rooms/${currentRoom}/jokerSet`))
-  ]);
-  const deck = deckSnap.val() || [];
-  const hand = handSnap.val() || [];
-  const jokerSet = jokerSetSnap.val()?.jokerSet || [];
-
-  if (!deck.length) {
-    return showPopup('Deck vide.', true);
-  }
-
-  const card = deck.shift();
-  hand.push(card);
-
-  const playersCount = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {}).length;
-  if (deck.length < playersCount) {
-    const idx = hand.findIndex(c => jokerSet.includes(c.id));
-    if (idx !== -1) {
-      const [jok] = hand.splice(idx, 1);
-      const pileRef = ref(db, `rooms/${currentRoom}/discard/${playerId}`);
-      const pile = (await get(pileRef)).val() || [];
-      pile.push(jok);
-      await set(pileRef, pile);
-      showPopup('Joker défaussé automatiquement.');
-    }
-  }
-
-  state.drawCount++;
-  state.hasDrawnOrPicked = true;
-  hasDrawnOrPicked = true;
-
-  await Promise.all([
-    set(ref(db, `rooms/${currentRoom}/deck`), deck),
-    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
-    update(stateRef, { drawCount: state.drawCount, hasDrawnOrPicked: state.hasDrawnOrPicked, started: true })
-  ]);
-
-  await checkEndGame();
-}
-
-async function takeDiscardedCard(ownerId) {
-  const stateRef = ref(db, `rooms/${currentRoom}/state`);
-  const stateSnap = await get(stateRef);
-  const state = stateSnap.val() || {};
-
-  if (ownerId !== state.lastDiscarder) {
-    return showPopup("Vous ne pouvez prendre qu'une carte de la défausse du joueur précédent.", true);
-  }
-
-  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-  if (turnSnap.val() !== playerId) {
-    return showPopup("Ce n'est pas votre tour.", true);
-  }
-
-  if (state.drawCount >= 1) {
-    return showPopup('Vous avez déjà pioché ou pris une carte ce tour.', true);
-  }
-
-  const pileSnap = await get(ref(db, `rooms/${currentRoom}/discard/${ownerId}`));
-  const pile = pileSnap.val() || [];
-  if (pile.length === 0) {
-    return showPopup("La défausse est vide.", true);
-  }
-
-  const card = pile.pop();
-  const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
-  const hand = handSnap.val() || [];
-  hand.push(card);
-
-  state.hasDrawnOrPicked = true;
-  state.drawCount++;
-
-  await Promise.all([
-    set(ref(db, `rooms/${currentRoom}/discard/${ownerId}`), pile),
-    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), hand),
-    update(stateRef, { hasDrawnOrPicked: state.hasDrawnOrPicked, drawCount: state.drawCount })
-  ]);
-
-  await checkEndGame();
-}
-
-async function discardCard(cardId) {
-  // 1️⃣ Vérifier que c'est bien votre tour
-  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-  if (turnSnap.val() !== playerId) {
-    return showPopup("Ce n'est pas votre tour.", true);
-  }
-
-  // 2️⃣ Récupérer l'état
-  const stateRef = ref(db, `rooms/${currentRoom}/state`);
-  const stateSnap = await get(stateRef);
-  const state = stateSnap.val() || {};
-
-  // 3️⃣ Validations pioche + défausse unique
-  if (!state.hasDrawnOrPicked) {
-    return showPopup("Vous devez piocher ou prendre une carte avant de défausser.", true);
-  }
-  if (state.hasDiscardedThisTurn) {
-    return showPopup("Vous avez déjà défaussé une carte ce tour.", true);
-  }
-
-  // 4️⃣ Charger la main et la défausse
-  const handRef = ref(db, `rooms/${currentRoom}/hands/${playerId}`);
-  const handSnap = await get(handRef);
-  const hand = handSnap.val() || [];
-  const cardIndex = hand.findIndex(c => c.id === cardId);
-  if (cardIndex === -1) {
-    return showPopup("Erreur : Cette carte n'est pas dans votre main.", true);
-  }
-  const [cardToDiscard] = hand.splice(cardIndex, 1);
-  const discardPileRef = ref(db, `rooms/${currentRoom}/discard/${playerId}`);
-  const discardPileSnap = await get(discardPileRef);
-  const discardPile = discardPileSnap.val() || [];
-  discardPile.push(cardToDiscard);
-
-  // 5️⃣ Mettre à jour BDD en une seule Promise
-  await Promise.all([
-    set(handRef, hand),
-    set(discardPileRef, discardPile),
-    update(stateRef, { 
-      hasDiscardedThisTurn: true, 
-      lastDiscarder: playerId 
-    })
-  ]);
-
-  // 6️⃣ Réafficher la main
-  renderHand(hand);
-
-  // 7️⃣ Puis, AUTOMATIQUEMENT, terminer le tour
-  await endTurn();
-}
-
-
-async function endTurn() {
-  console.log('END TURN demandé par', playerId);
-
-  // Vérifier que c'est bien votre tour
-  const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
-  if (turnSnap.val() !== playerId) {
-    return showPopup("Ce n'est pas votre tour.", true);
-  }
-
-  // Récupérer l'état de la partie
-  const stateRef = ref(db, `rooms/${currentRoom}/state`);
-  const stateSnap = await get(stateRef);
-  const state = stateSnap.val() || {};
-
-  // Doit avoir pioché ou pris une carte
-  if (!state.hasDrawnOrPicked) {
-    return showPopup(
-      "Vous devez piocher une carte (ou en prendre une de la défausse) avant de terminer votre tour.",
-      true
-    );
-  }
-
-  // Vérifier que la main contient bien 13 cartes (défausse faite)
-  const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
-  const hand = handSnap.val() || [];
-  if (hand.length !== 13) {
-    return showPopup(
-      "Votre main doit contenir 13 cartes pour terminer le tour (vous devez défausser une carte).",
-      true
-    );
-  }
-
-  // Doit avoir défaussé une carte
-  if (!state.hasDiscardedThisTurn) {
-    return showPopup("Vous devez défausser une carte.", true);
-  }
-
-  // Déterminer le joueur suivant
-  const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
-  const players = Object.keys(playersSnap.val() || {});
-  const currentIndex = players.indexOf(playerId);
-  const nextPlayerId = players[(currentIndex + 1) % players.length];
-  console.log('Tour en cours avant mise à jour :', turnSnap.val());
-  console.log('Passage au joueur suivant :', nextPlayerId);
-
-  // Mettre à jour l'état et passer le tour
-  await Promise.all([
-    update(stateRef, {
-      hasDrawnOrPicked: false,
-      hasDiscardedThisTurn: false,
-      drawCount: 0,
-      lastDiscarder: state.lastDiscarder
-    }),
-    set(ref(db, `rooms/${currentRoom}/turn`), nextPlayerId)
-  ]);
-
-  // Facultatif : forcer le rafraîchissement des boutons d'action
-  updateActionButtons([]);
-
-  // Vérifier fin de manche ou fin de partie
-  await checkEndGame();
-}
-
-async function startGame() {
-  if (!currentRoom) return;
-
-  const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
-  const players = playersSnap.val() || {};
-  const playerIds = Object.keys(players);
-
-  await dealCards(currentRoom, playerIds);
-  await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
-  await update(ref(db, `rooms/${currentRoom}/state`), { started: true });
-
-  const startGameBtn = document.getElementById('startGameBtn');
-  if (startGameBtn) {
-    startGameBtn.style.display = 'none';
-  }
-
-  playerIds.forEach(id => {
-    update(ref(db, `rooms/${currentRoom}/players/${id}`), { isSpectator: false });
-  });
-}
-
-function enableChat() {
-  const toggleChatBtn = document.getElementById('toggleChat');
-  const chatContainer = document.getElementById('chat-container');
-  const chatToggleIcon = document.querySelector('.chat-header span');
-  
-  toggleChatBtn.addEventListener('click', () => {
-    chatContainer.classList.toggle('collapsed');
-    chatToggleIcon.textContent = chatContainer.classList.contains('collapsed') ? '▲' : '▼';
-  });
-
-  document.getElementById('chat-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const message = document.getElementById('chat-input').value.trim();
-    if (!message) return;
-
-    const messageData = {
-      sender: playerId,
-      pseudo: myPseudo,
-      message,
-      timestamp: Date.now()
-    };
-
-    await set(ref(db, `rooms/${currentRoom}/chat/${Date.now()}`), messageData);
-    document.getElementById('chat-input').value = '';
-  });
-
-  onValue(ref(db, `rooms/${currentRoom}/chat`), (snapshot) => {
-    const messages = snapshot.val() || {};
-    const messagesArray = Object.entries(messages)
-      .map(([id, msg]) => ({ id, ...msg }))
-      .sort((a, b) => a.timestamp - b.timestamp);
-
-    const chatMessages = document.getElementById('chat-messages');
-    chatMessages.innerHTML = '';
-
-    messagesArray.forEach(msg => {
-      const messageDiv = document.createElement('div');
-      messageDiv.className = `message ${msg.sender === playerId ? 'me' : 'other'}`;
-      messageDiv.innerHTML = `<b>${msg.pseudo}:</b> ${msg.message}`;
-      chatMessages.appendChild(messageDiv);
-    });
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  });
-}
-
-function setupPlayerHandDiscardListener() {
-  document.getElementById('hand').addEventListener('dblclick', async e => {
-    const cardEl = e.target.closest('.card');
-    if (!cardEl) return;
-    e.stopPropagation();
-
-    const cardId = cardEl.dataset.cardId;
-    await discardCard(cardId);
-    // plus besoin de endTurn() ici
-  });
-}
+});
