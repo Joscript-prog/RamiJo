@@ -377,11 +377,12 @@ async function createRoom() {
   }
 
   await Promise.all([
-    set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-      pseudo: myPseudo,
-      hasDeclared7N: false,
-      score: 0
-    }),
+await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+  pseudo: myPseudo,
+  hasDeclared7N: false,
+  score: 0,
+  isSpectator: false // Valeur explicite
+});
     set(ref(db, `rooms/${roomCode}/creator`), playerId),
     set(ref(db, `rooms/${roomCode}/turn`), playerId)
   ]);
@@ -460,13 +461,35 @@ async function startGame() {
   const players = playersSnap.val() || {};
   const playerIds = Object.keys(players);
 
+  if (playerIds.length < 2) {
+    showPopup("Minimum 2 joueurs requis.", true);
+    return;
+  }
+
   await dealCards(currentRoom, playerIds);
   await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
-  await update(ref(db, `rooms/${currentRoom}/state`), { started: true });
   
-  Object.keys(players).forEach(id => {
-    update(ref(db, `rooms/${currentRoom}/players/${id}`), { isSpectator: false });
+  // Correction: toutes les valeurs définies explicitement
+  await update(ref(db, `rooms/${currentRoom}/state`), { 
+    started: true,
+    sevenDeclared: false,
+    winDeclared: false,
+    roundOver: false
   });
+  
+  // Correction: utilisation de Promise.all et valeurs définies
+  await Promise.all(
+    playerIds.map(id => 
+      update(ref(db, `rooms/${currentRoom}/players/${id}`), { 
+        isSpectator: false,
+        hasDeclared7N: false,
+        score: 0
+      })
+    )
+  );
+
+  // Cacher le bouton après démarrage
+  document.getElementById('startGameBtn').style.display = 'none';
 }
 
 // GESTION DES DÉCLARATIONS
