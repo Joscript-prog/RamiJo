@@ -321,65 +321,26 @@
       margin-top: 20px;
     }
 
-    /* Zone de défausse */
-    #global-discard {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 1.5rem;
-      padding: 1rem;
-      max-width: 100%;
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: var(--radius);
-      position: relative;
-      z-index: 25;
-      width: 80%;
-    }
+#previous-discard {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
 
-    .player-discard {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-width: 140px;
-      position: relative;
-    }
+#previous-discard .card {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
 
-    .player-discard .player-name {
-      color: white;
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-      text-align: center;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-      background: rgba(0,0,0,0.3);
-      padding: 5px 10px;
-      border-radius: 20px;
-    }
-
-    .discard-cards {
-      position: relative;
-      min-height: var(--card-height);
-    }
-
-    .discard-cards .card {
-      position: absolute;
-      top: 0;
-      left: 0;
-      transform: none;
-      margin: 0;
-    }
-
-    .discard-label {
-      color: var(--text-white);
-      font-weight: 600;
-      font-size: 1.3rem;
-      text-align: center;
-      width: 100%;
-      margin-bottom: 1rem;
-      background: rgba(0,0,0,0.3);
-      padding: 5px 10px;
-      border-radius: 20px;
-    }
+#previous-discard .card:hover {
+  transform: scale(1.1);
+}
 
     /* Contrôles du jeu */
     .game-controls {
@@ -1111,6 +1072,7 @@
       <!-- Plateau central -->
       <div class="game-table-container">
         <div id="players-container" class="players-circle"></div>
+        <div id="previous-discard" class="discard-area"></div>
         <div id="joker" class="joker-display"></div>
 
         <div class="table-center">
