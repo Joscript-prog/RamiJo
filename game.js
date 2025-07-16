@@ -564,6 +564,42 @@ function renderHand(hand) {
     handDiv.appendChild(div);
   });
 }
+function getPreviousPlayerId(currentPlayerId, allPlayers) {
+  const index = allPlayers.indexOf(currentPlayerId);
+  const prevIndex = (index - 1 + allPlayers.length) % allPlayers.length;
+  return allPlayers[prevIndex];
+}
+function renderPreviousDiscard(discards, players, currentPlayerId) {
+  const prevPlayerId = getPreviousPlayerId(currentPlayerId, players);
+  const prevDiscard = discards[prevPlayerId] || [];
+  const lastCard = prevDiscard[prevDiscard.length - 1];
+
+  const container = document.getElementById('previous-discard');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (lastCard) {
+    const cardDiv = document.createElement('div');
+    cardDiv.className = `card ${lastCard.color} clickable`;
+    cardDiv.dataset.cardId = lastCard.id;
+    cardDiv.innerHTML = `
+      <div class="corner top">${lastCard.rank}${lastCard.symbol}</div>
+      <div class="suit main">${lastCard.symbol}</div>
+    `;
+
+    const label = document.createElement('div');
+    label.className = 'discard-label';
+    label.textContent = `Défausse de ${lastCard.discardBy || 'Joueur précédent'}`;
+
+    container.appendChild(label);
+    container.appendChild(cardDiv);
+
+    cardDiv.addEventListener('click', () => pickFromPreviousDiscard(lastCard, prevPlayerId));
+  } else {
+    container.innerHTML = '<div class="discard-label">Aucune carte à prendre</div>';
+  }
+}
 async function sortHandByFormation() {
   const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
   const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`))).val() || [];
@@ -595,19 +631,20 @@ async function listenPlayers(room) {
 }
 
 function renderPlayers(players) {
-  const playersDiv = document.getElementById('players-container');
-  if (!playersDiv) return; // Sécurité si l'élément n'existe pas
-  
-  playersDiv.innerHTML = '';
-  players.forEach(p => {
-    const badge = document.createElement('div');
-    badge.className = 'player-info';
-    badge.innerHTML = `
+  const container = document.getElementById('players-container');
+  container.innerHTML = '';
+
+  players.forEach((p, index) => {
+    const prevIndex = (index - 1 + players.length) % players.length;
+    const prevPlayer = players[prevIndex];
+
+    const playerDiv = document.createElement('div');
+    playerDiv.className = 'player-slot';
+    playerDiv.innerHTML = `
       <div class="player-name">${p.pseudo}</div>
-      <div class="player-score">${p.score}</div>
-      <div class="discard-slot" data-owner="${p.id}"></div>
+      <div class="discard-slot" data-owner="${prevPlayer.id}"></div>
     `;
-    playersDiv.appendChild(badge);
+    container.appendChild(playerDiv);
   });
 }
 
