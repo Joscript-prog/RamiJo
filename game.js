@@ -339,118 +339,72 @@ async function dealCards(roomId, playerIds) {
 
 // INITIALISATION
 document.addEventListener('DOMContentLoaded', () => {
-  askPseudo();
-  
-  document.getElementById('createRoom')?.addEventListener('click', createRoom);
-  document.getElementById('joinRoom')?.addEventListener('click', joinRoom);
-  document.getElementById('startGameBtn')?.addEventListener('click', startGame);
-  document.getElementById('endTurnBtn')?.addEventListener('click', endTurn);
-  document.getElementById('declare7N')?.addEventListener('click', declare7Naturel);
-  document.getElementById('declareWin')?.addEventListener('click', declareWin);
-  
-  setupHandDisplayOptions();
+  document.getElementById('createRoom').addEventListener('click', createRoom);
+  document.getElementById('joinRoom').addEventListener('click', joinRoom);
 });
 
 // FONCTIONS PRINCIPALES
-function askPseudo() {
-  showPopup(`
-    <h3>Entrez votre pseudo</h3>
-    <input id="pseudoInput" type="text" placeholder="Votre pseudo" maxlength="15" />
-    <button id="pseudoSubmit" class="btn btn-primary">Valider</button>
-  `);
-  document.getElementById('pseudoSubmit').addEventListener('click', () => {
-    const val = document.getElementById('pseudoInput').value.trim();
-    myPseudo = val || 'Joueur';
-    document.querySelector('.modal-close')?.click();
+async function askPseudo() {
+  return new Promise(resolve => {
+    showPopup(`
+      <h3>Entrez votre pseudo</h3>
+      <input id="pseudoInput" type="text" placeholder="Votre pseudo" maxlength="15" style="width: 100%; padding: 0.5rem; margin: 1rem 0;" />
+      <button id="pseudoSubmit" class="btn btn-primary">Valider</button>
+    `);
+    document.getElementById('pseudoSubmit').addEventListener('click', () => {
+      const val = document.getElementById('pseudoInput').value.trim();
+      myPseudo = val || 'Joueur';
+      document.querySelector('.modal-close')?.click();
+      resolve();
+    });
   });
 }
 
 async function createRoom() {
+  await askPseudo();
   const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900);
   currentRoom = roomCode;
   gameRounds = 0;
 
-  const roomRef = ref(db, `rooms/${roomCode}`);
-  if ((await get(roomRef)).exists()) {
-    showPopup("La salle existe déjà, réessayez.", true);
-    return;
-  }
-
-  // ✅ Toutes les valeurs définies explicitement
-  await Promise.all([
-    set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-      pseudo: myPseudo || 'Joueur',
-      hasDeclared7N: false,
-      score: 0,
-      isSpectator: false,
-      sevenNPoints: 0,
-      totalScore: 0
-    }),
-    set(ref(db, `rooms/${roomCode}/creator`), playerId),
-    set(ref(db, `rooms/${roomCode}/turn`), playerId)
-  ]);
+  await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+    pseudo: myPseudo,
+    hasDeclared7N: false,
+    score: 0,
+    isSpectator: false,
+    sevenNPoints: 0,
+    totalScore: 0
+  });
+  await set(ref(db, `rooms/${roomCode}/creator`), playerId);
 
   setupListeners(roomCode);
-  
   document.getElementById('menu').style.display = 'none';
   document.getElementById('game').style.display = 'flex';
-  showPopup(`
-    <h3>Salle créée</h3>
-    <p>Code : <b>${roomCode}</b></p>
-    <button id="copyRoomCode" class="btn btn-secondary">Copier</button>
-  `);
-  document.getElementById('copyRoomCode')?.addEventListener('click', () => {
-    navigator.clipboard.writeText(roomCode);
-    showPopup('Code copié !');
-  });
-  
-  enableChat();
 }
 
 async function joinRoom() {
   const roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
-  if (!/^RAMI\d{3}$/.test(roomCode)) {
-    showPopup("Code invalide (format: RAMI123)", true);
-    return;
-  }
+  if (!/^RAMI\d{3}$/.test(roomCode)) return showPopup("Code invalide (format: RAMI123)", true);
 
   const roomRef = ref(db, `rooms/${roomCode}`);
   const snapshot = await get(roomRef);
-  if (!snapshot.exists()) {
-    showPopup("Cette salle n'existe pas.", true);
-    return;
-  }
+  if (!snapshot.exists()) return showPopup("Salle introuvable", true);
 
-  const state = (await get(ref(db, `rooms/${roomCode}/state`))).val() || {};
-  const players = (await get(ref(db, `rooms/${roomCode}/players`))).val() || {};
-  
-  if (Object.keys(players).length >= 5) {
-    showPopup("Salle complète (5 max).", true);
-    return;
-  }
-  if (players[playerId]) {
-    showPopup("Vous êtes déjà dans cette salle.", true);
-    return;
-  }
-
-  // ✅ Correction ESSENTIELLE ici
+  await askPseudo();
   await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-    pseudo: myPseudo || 'Joueur',
+    pseudo: myPseudo,
     hasDeclared7N: false,
     score: 0,
-    isSpectator: Boolean(state.started), // ✅ Valeur définie
+    isSpectator: false,
     sevenNPoints: 0,
     totalScore: 0
   });
-  
+
   currentRoom = roomCode;
   setupListeners(roomCode);
-  
   document.getElementById('menu').style.display = 'none';
   document.getElementById('game').style.display = 'flex';
-  showPopup(`Connecté à ${roomCode}${state.started ? ' (spectateur)' : ''}`);
-  enableChat();
 }
+
 function setupListeners(roomCode) {
   listenPlayers(roomCode);
   listenHand(roomCode);
@@ -555,35 +509,19 @@ async function declareWin() {
 
 // AFFICHAGE DES CARTES
 function renderHand(hand) {
-  const playerHandDiv = document.getElementById('hand');
-  playerHandDiv.innerHTML = '';
-  currentHand = hand;
-
-  hand.forEach((c, index) => {
+  const handDiv = document.getElementById('hand');
+  handDiv.innerHTML = '';
+  hand.forEach(c => {
     const div = document.createElement('div');
     div.className = `card ${c.color}`;
     div.dataset.cardId = c.id;
-    div.dataset.rank = c.rank;
-    div.dataset.symbol = c.symbol;
-    div.dataset.color = c.color;
-    div.dataset.suit = c.suit;
-    div.dataset.value = c.value;
     div.innerHTML = `
-      <div class="corner top"><span>${c.rank}</span><span>${c.symbol}</span></div>
+      <div class="corner top">${c.rank}${c.symbol}</div>
       <div class="suit main">${c.symbol}</div>
-      <div class="corner bottom"><span>${c.rank}</span><span>${c.symbol}</span></div>
     `;
-    div.addEventListener('dblclick', () => discardCard(c.id));
-    playerHandDiv.appendChild(div);
+    handDiv.appendChild(div);
   });
-
-  playerHandDiv.className = `player-hand ${handDisplayType}`;
-  if (handDisplayType === 'semi-circle') {
-    setTimeout(arrangeCardsInSemiCircle, 100);
-  }
-  enableDragDrop();
 }
-
 function arrangeCardsInSemiCircle() {
   const hand = document.getElementById('hand');
   const cards = hand.querySelectorAll('.card');
@@ -625,19 +563,11 @@ function arrangeCardsInSemiCircle() {
 
 // LISTENERS
 function listenPlayers(room) {
-  onValue(ref(db, `rooms/${room}/players`), async snap => {
+  onValue(ref(db, `rooms/${room}/players`), snap => {
     const players = Object.entries(snap.val() || {}).map(([id, o]) => ({
-      id,
-      pseudo: o.pseudo,
-      score: o.totalScore || 0
+      id, pseudo: o.pseudo, score: o.totalScore || 0
     }));
-    
-    const state = (await get(ref(db, `rooms/${room}/state`))).val() || {};
-    renderPlayers(players, state.started);
-    
-    const creator = (await get(ref(db, `rooms/${room}/creator`))).val();
-    document.getElementById('startGameBtn').style.display = 
-      creator === playerId && !state.started ? 'block' : 'none';
+    renderPlayers(players);
   });
 }
 
@@ -656,42 +586,47 @@ function renderPlayers(players, gameStarted) {
   });
 }
 
+function renderPlayers(players) {
+  const playersDiv = document.getElementById('players-container');
+  playersDiv.innerHTML = '';
+  players.forEach(p => {
+    const badge = document.createElement('div');
+    badge.className = 'player-info';
+    badge.innerHTML = `<div class="player-name">${p.pseudo}</div><div class="player-score">${p.score}</div>`;
+    playersDiv.appendChild(badge);
+  });
+}
 function listenHand(room) {
   onValue(ref(db, `rooms/${room}/hands/${playerId}`), snap => {
     const hand = snap.val() || [];
     renderHand(hand);
-    updateActionButtons(hand);
   });
 }
-
 function listenTurn(room) {
   onValue(ref(db, `rooms/${room}/turn`), snap => {
     const turn = snap.val();
     const myTurn = turn === playerId;
-
     hasDrawnOrPicked = false;
     hasDiscardedThisTurn = false;
 
     document.getElementById('status').textContent = myTurn ? "Votre tour" : "En attente...";
-    document.getElementById('turnIndicator').textContent = myTurn ? "À vous !" : `Tour de ${turn}`;
     document.getElementById('endTurnBtn').disabled = !myTurn;
   });
 }
-
 function listenJokerCard(room) {
   onValue(ref(db, `rooms/${room}/jokerCard`), snap => {
     const card = snap.val();
     if (card) {
       document.getElementById('joker').innerHTML = `
         <div class="card ${card.color}">
-          <div class="corner top"><span>${card.rank}</span><span>${card.symbol}</span></div>
+          <div class="corner top">${card.rank}${card.symbol}</div>
           <div class="suit main">${card.symbol}</div>
-          <div class="corner bottom"><span>${card.rank}</span><span>${card.symbol}</span></div>
         </div>
       `;
     }
   });
 }
+
 
 function listenDiscard(room) {
   onValue(ref(db, `rooms/${room}/discard`), snap => {
@@ -702,23 +637,21 @@ function listenDiscard(room) {
 
 function renderDiscardPiles(discards) {
   const globalDiscard = document.getElementById('global-discard');
-  globalDiscard.innerHTML = '<div class="discard-label">Défausses</div>';
-  
+  globalDiscard.innerHTML = '';
   Object.entries(discards).forEach(([ownerId, pile]) => {
     if (!pile || pile.length === 0) return;
-    
     const div = document.createElement('div');
     div.className = 'player-discard';
     div.innerHTML = `
-      <div class="player-name">Joueur ${ownerId.substring(7)}</div>
-      <div class="card ${pile[pile.length-1].color}" style="position: static;">
-        <div class="corner top"><span>${pile[pile.length-1].rank}</span><span>${pile[pile.length-1].symbol}</span></div>
-        <div class="suit main">${pile[pile.length-1].symbol}</div>
+      <div class="player-name">${ownerId.substring(7)}</div>
+      <div class="card ${pile[pile.length-1].color}">
+        <div class="corner top">${pile[pile.length-1].rank}${pile[pile.length-1].symbol}</div>
       </div>
     `;
     globalDiscard.appendChild(div);
   });
 }
+
 
 async function updateActionButtons(hand) {
   const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`))).val() || [];
@@ -732,38 +665,21 @@ async function updateActionButtons(hand) {
 
 // ACTIONS DU JEU
 async function drawCard() {
-  if ((await get(ref(db, `rooms/${currentRoom}/turn`))).val() !== playerId) return;
-  
-  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
-  if (state.hasDrawnOrPicked) {
-    showPopup("Vous avez déjà pioché.");
-    return;
-  }
+  const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
+  if (turn !== playerId) return showPopup("Ce n'est pas votre tour");
 
   const [deck, hand] = await Promise.all([
     get(ref(db, `rooms/${currentRoom}/deck`)),
     get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))
   ]);
-  
   const deckCards = deck.val() || [];
-  if (deckCards.length === 0) {
-    showPopup("Deck vide !");
-    return;
-  }
-
+  if (deckCards.length === 0) return showPopup("Deck vide");
   const card = deckCards.shift();
   const newHand = [...(hand.val() || []), card];
-
   await Promise.all([
     set(ref(db, `rooms/${currentRoom}/deck`), deckCards),
-    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), newHand),
-    update(ref(db, `rooms/${currentRoom}/state`), {
-      hasDrawnOrPicked: true,
-      drawCount: (state.drawCount || 0) + 1
-    })
+    set(ref(db, `rooms/${currentRoom}/hands/${playerId}`), newHand)
   ]);
-  
-  hasDrawnOrPicked = true;
 }
 
 async function discardCard(cardId) {
@@ -922,14 +838,21 @@ function enableDragDrop() {
 function showPopup(content, isError = false) {
   const modal = document.createElement('div');
   modal.className = 'modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999;
+  `;
   modal.innerHTML = `
-    <div class="modal-content">
+    <div class="modal-content" style="background: white; padding: 2rem; border-radius: 12px; max-width: 400px; text-align: center;">
       ${content}
-      <button class="modal-close">Fermer</button>
-    </div>`;
+      <button class="modal-close" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 6px;">OK</button>
+    </div>
+  `;
   document.body.appendChild(modal);
   modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
-  if (isError) modal.querySelector('.modal-content').style.background = '#ffe6e6';
 }
 
 function showGlobalPopup(message, cards = null) {
