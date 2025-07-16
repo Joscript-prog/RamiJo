@@ -362,14 +362,22 @@ function askPseudo() {
 
 async function createRoom() {
   await askPseudo();
+
   const roomCode = 'RAMI' + Math.floor(100 + Math.random() * 900);
   currentRoom = roomCode;
   gameRounds = 0;
-  <h3>Salle créée</h3>
-  <p>Code : <b style="font-size: 1.5rem;">${roomCode}</b></p>
-  <button onclick="navigator.clipboard.writeText('${roomCode}')" class="btn btn-secondary">📋 Copier</button>
-  <button class="modal-close btn btn-primary" style="margin-top: 1rem;">Continuer</button>
-`);
+
+  // 🔧 Affichage du code de la partie
+  showPopup(`
+    <h3>🎉 Salle créée</h3>
+    <p>Partage ce code :</p>
+    <b style="font-size: 1.5rem; color: #e74c3c;">${roomCode}</b>
+    <br><br>
+    <button onclick="navigator.clipboard.writeText('${roomCode}')" class="btn btn-secondary">📋 Copier</button>
+    <br><br>
+    <button class="btn btn-primary modal-close">Continuer</button>
+  `);
+
   await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
     pseudo: myPseudo,
     hasDeclared7N: false,
