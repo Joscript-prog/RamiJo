@@ -1097,247 +1097,230 @@
     let gameRounds = 0;
     let jokerSet = [];
 
-    // NOUVELLE LOGIQUE DE RÈGLES
-    const Rules = {
-      // Validation principale de victoire
-      validateWinHand(hand, jokerCards, has7Naturel) {
-        const naturalCards = hand.filter(c => !jokerCards.includes(c.id));
-        const jokers = hand.filter(c => jokerCards.includes(c.id));
-        
-        // Extraire toutes les formations possibles
-        const formations = this.extractAllFormations(naturalCards, jokers);
-        
-        // Si 7N, les 2 formations de 3 peuvent être tri avec 1 joker max
-        if (has7Naturel) {
-          return this.validateWith7N(formations, naturalCards, jokers);
-        }
-        
-        // Sinon, besoin d'au moins 1 escalier et 1 tri, jokers autorisés
-        return this.validateWithout7N(formations, naturalCards, jokers);
-      },
-      
-      extractAllFormations(naturalCards, jokers) {
-        const formations = {
-          quadri: [],
-          escalier4: [],
-          escalier3: [],
-          tri: []
-        };
-        
-        // Formations naturelles
-        this.extractNaturalFormations(formations, naturalCards);
-        
-        // Formations avec jokers (1 max par formation)
-        this.extractJokerFormations(formations, naturalCards, jokers);
-        
-        return formations;
-      },
-      
-      extractNaturalFormations(formations, cards) {
-        // Par valeur pour quadri et tri
-        const byValue = cards.reduce((acc, c) => {
-          acc[c.value] = acc[c.value] || [];
-          acc[c.value].push(c);
-          return acc;
-        }, {});
-        
-        Object.entries(byValue).forEach(([value, cards]) => {
-          if (cards.length >= 4) {
-            formations.quadri.push({cards: cards.slice(0, 4), type: 'natural'});
-          }
-          if (cards.length === 3) {
-            formations.tri.push({cards, type: 'natural'});
-          }
-        });
-        
-        // Par couleur pour escaliers
-        const bySuit = cards.reduce((acc, c) => {
-          acc[c.suit] = acc[c.suit] || [];
-          acc[c.suit].push(c);
-          return acc;
-        }, {});
-        
-        Object.entries(bySuit).forEach(([suit, cards]) => {
-          const sorted = cards.sort((a, b) => a.value - b.value);
-          
-          // Escalier de 4
-          for (let i = 0; i <= sorted.length - 4; i++) {
-            if (sorted[i+3].value === sorted[i].value + 3) {
-              formations.escalier4.push({cards: sorted.slice(i, i+4), type: 'natural'});
-            }
-          }
-          
-          // Escalier de 3
-          for (let i = 0; i <= sorted.length - 3; i++) {
-            if (sorted[i+2].value === sorted[i].value + 2) {
-              formations.escalier3.push({cards: sorted.slice(i, i+3), type: 'natural'});
-            }
-          }
-        });
-      },
-      
-      extractJokerFormations(formations, naturalCards, jokers) {
-        jokers.forEach(joker => {
-          // Escalier de 3 avec 1 joker
-          const bySuit = naturalCards.reduce((acc, c) => {
-            acc[c.suit] = acc[c.suit] || [];
-            acc[c.suit].push(c);
-            return acc;
-          }, {});
-          
-          Object.entries(bySuit).forEach(([suit, cards]) => {
-            const sorted = cards.sort((a, b) => a.value - b.value);
-            
-            // Trouver les séquences manquantes
-            for (let i = 0; i < sorted.length - 1; i++) {
-              const gap = sorted[i+1].value - sorted[i].value;
-              if (gap === 2) {
-                const neededValue = sorted[i].value + 1;
-                formations.escalier3.push({
-                  cards: [sorted[i], {...joker, value: neededValue, suit}, sorted[i+1]],
-                  type: 'joker',
-                  jokerUsed: 1
-                });
-              }
-            }
-          });
-          
-          // Tri avec 1 joker
-          Object.entries(naturalCards.reduce((acc, c) => {
-            acc[c.value] = acc[c.value] || [];
-            acc[c.value].push(c);
-            return acc;
-          }, {})).forEach(([value, cards]) => {
-            if (cards.length === 2) {
-              formations.tri.push({
-                cards: [...cards, {...joker, value}],
-                type: 'joker',
-                jokerUsed: 1
-              });
-            }
-          });
-        });
-      },
-      
-      validateWithout7N(formations, naturalCards, jokers) {
-        // Besoin d'au moins 1 escalier et 1 tri
-        const escaliers = [...formations.escalier4, ...formations.escalier3];
-        const tris = formations.tri;
-        
-        if (escaliers.length === 0 || tris.length === 0) return false;
-        
-        // Chercher 4 formations disjointes totalisant 13 cartes
-        return this.findDisjointFormations([...escaliers, ...formations.quadri, ...tris]);
-      },
-      
-      validateWith7N(formations, naturalCards, jokers) {
-        // Le 7N compte pour 2 formations (4+3 cartes)
-        // Il reste 2 formations de 3 cartes chacune, avec 1 joker max par formation
-        const remainingCards = this.getRemainingCards(naturalCards, jokers, formations);
-        return this.canFormTwoTriWithJokers(remainingCards);
-      },
-      
-      findDisjointFormations(allFormations) {
-        // Logique de recherche de 4 formations disjointes
-        // Implémentation simplifiée pour l'instant
-        let totalCards = 0;
-        const usedCards = new Set();
-        
-        allFormations.forEach(formation => {
-          formation.cards.forEach(card => {
-            if (!usedCards.has(card.id)) {
-              usedCards.add(card.id);
-              totalCards++;
-            }
-          });
-        });
-        
-        return totalCards >= 13;
-      },
-      
-      // Vérifie le 7 naturel (sans joker)
-      has7Naturel(hand, jokerCards) {
-        const naturalCards = hand.filter(c => !jokerCards.includes(c.id));
-        
-        // Quadri + escalier3
-        const quadri = this.findNaturalQuadri(naturalCards);
-        const escalier3 = this.findNaturalEscalier3(naturalCards);
-        
-        if (quadri && escalier3) {
-          const cards = [...quadri, ...escalier3];
-          if (cards.length === 7) return true;
-        }
-        
-        // Escalier4 + tri
-        const escalier4 = this.findNaturalEscalier4(naturalCards);
-        const tri = this.findNaturalTri(naturalCards);
-        
-        if (escalier4 && tri) {
-          const cards = [...escalier4, ...tri];
-          if (cards.length === 7) return true;
-        }
-        
-        return false;
-      },
-      
-      findNaturalQuadri(cards) {
-        const byValue = cards.reduce((acc, c) => {
-          acc[c.value] = acc[c.value] || [];
-          acc[c.value].push(c);
-          return acc;
-        }, {});
-        
-        const quadri = Object.values(byValue).find(vals => vals.length >= 4);
-        return quadri ? quadri.slice(0, 4) : null;
-      },
-      
-      findNaturalEscalier3(cards) {
-        const bySuit = cards.reduce((acc, c) => {
-          acc[c.suit] = acc[c.suit] || [];
-          acc[c.suit].push(c);
-          return acc;
-        }, {});
-        
-        for (const suitCards of Object.values(bySuit)) {
-          const sorted = suitCards.sort((a, b) => a.value - b.value);
-          for (let i = 0; i <= sorted.length - 3; i++) {
-            if (sorted[i+2].value === sorted[i].value + 2) {
-              return sorted.slice(i, i+3);
-            }
-          }
-        }
-        return null;
-      },
-      
-      findNaturalEscalier4(cards) {
-        const bySuit = cards.reduce((acc, c) => {
-          acc[c.suit] = acc[c.suit] || [];
-          acc[c.suit].push(c);
-          return acc;
-        }, {});
-        
-        for (const suitCards of Object.values(bySuit)) {
-          const sorted = suitCards.sort((a, b) => a.value - b.value);
-          for (let i = 0; i <= sorted.length - 4; i++) {
-            if (sorted[i+3].value === sorted[i].value + 3) {
-              return sorted.slice(i, i+4);
-            }
-          }
-        }
-        return null;
-      },
-      
-      findNaturalTri(cards) {
-        const byValue = cards.reduce((acc, c) => {
-          acc[c.value] = acc[c.value] || [];
-          acc[c.value].push(c);
-          return acc;
-        }, {});
-        
-        const tri = Object.values(byValue).find(vals => vals.length === 3);
-        return tri || null;
-      }
+   const Rules = {
+  // Validation principale de victoire
+  validateWinHand(hand, jokerCards, has7Naturel) {
+    const naturalCards = hand.filter(c => !jokerCards.includes(c.id));
+    const jokers = hand.filter(c => jokerCards.includes(c.id));
+
+    console.log("🃏 Jokers :", jokers);
+    console.log("🟢 Cartes naturelles :", naturalCards);
+
+    const formations = this.extractAllFormations(naturalCards, jokers);
+
+    if (has7Naturel) {
+      return this.validateWith7N(formations, naturalCards, jokers);
+    }
+
+    // ✅ Sinon, besoin d'au moins 1 escalier, 1 tri, et au moins 1 joker utilisé
+    return this.validateWithout7N(formations, naturalCards, jokers);
+  },
+
+  extractAllFormations(naturalCards, jokers) {
+    const formations = {
+      quadri: [],
+      escalier4: [],
+      escalier3: [],
+      tri: []
     };
+
+    this.extractNaturalFormations(formations, naturalCards);
+    this.extractJokerFormations(formations, naturalCards, jokers);
+    return formations;
+  },
+
+  extractNaturalFormations(formations, cards) {
+    const byValue = cards.reduce((acc, c) => {
+      acc[c.value] = acc[c.value] || [];
+      acc[c.value].push(c);
+      return acc;
+    }, {});
+
+    Object.entries(byValue).forEach(([value, cards]) => {
+      if (cards.length >= 4) {
+        formations.quadri.push({ cards: cards.slice(0, 4), type: 'natural' });
+      }
+      if (cards.length === 3) {
+        formations.tri.push({ cards, type: 'natural' });
+      }
+    });
+
+    const bySuit = cards.reduce((acc, c) => {
+      acc[c.suit] = acc[c.suit] || [];
+      acc[c.suit].push(c);
+      return acc;
+    }, {});
+
+    Object.entries(bySuit).forEach(([suit, cards]) => {
+      const sorted = cards.sort((a, b) => a.value - b.value);
+
+      for (let i = 0; i <= sorted.length - 4; i++) {
+        if (sorted[i + 3].value === sorted[i].value + 3) {
+          formations.escalier4.push({ cards: sorted.slice(i, i + 4), type: 'natural' });
+        }
+      }
+
+      for (let i = 0; i <= sorted.length - 3; i++) {
+        if (sorted[i + 2].value === sorted[i].value + 2) {
+          formations.escalier3.push({ cards: sorted.slice(i, i + 3), type: 'natural' });
+        }
+      }
+    });
+  },
+
+  extractJokerFormations(formations, naturalCards, jokers) {
+    jokers.forEach(joker => {
+      const bySuit = naturalCards.reduce((acc, c) => {
+        acc[c.suit] = acc[c.suit] || [];
+        acc[c.suit].push(c);
+        return acc;
+      }, {});
+
+      Object.entries(bySuit).forEach(([suit, cards]) => {
+        const sorted = cards.sort((a, b) => a.value - b.value);
+
+        for (let i = 0; i < sorted.length - 1; i++) {
+          const gap = sorted[i + 1].value - sorted[i].value;
+          if (gap === 2) {
+            const neededValue = sorted[i].value + 1;
+            formations.escalier3.push({
+              cards: [sorted[i], { ...joker, value: neededValue, suit }, sorted[i + 1]],
+              type: 'joker',
+              jokerUsed: 1
+            });
+          }
+        }
+      });
+
+      const byValue = naturalCards.reduce((acc, c) => {
+        acc[c.value] = acc[c.value] || [];
+        acc[c.value].push(c);
+        return acc;
+      }, {});
+
+      Object.entries(byValue).forEach(([value, cards]) => {
+        if (cards.length === 2) {
+          formations.tri.push({
+            cards: [...cards, { ...joker, value }],
+            type: 'joker',
+            jokerUsed: 1
+          });
+        }
+      });
+    });
+  },
+
+  validateWithout7N(formations, naturalCards, jokers) {
+    const escaliers = [...formations.escalier4, ...formations.escalier3];
+    const tris = formations.tri;
+
+    if (escaliers.length === 0 || tris.length === 0) return false;
+
+    // ✅ Vérifie qu'au moins 1 joker est utilisé dans les formations
+    const jokerUsed = [...escaliers, ...tris, ...formations.quadri].some(f => f.type === 'joker');
+    if (!jokerUsed) return false;
+
+    return this.findDisjointFormations([...escaliers, ...formations.quadri, ...tris]);
+  },
+
+  validateWith7N(formations, naturalCards, jokers) {
+    const remainingCards = this.getRemainingCards(naturalCards, jokers, formations);
+    return this.canFormTwoTriWithJokers(remainingCards);
+  },
+
+  findDisjointFormations(allFormations, targetCount = 4) {
+    const used = new Set();
+    let selected = [];
+
+    const sorted = allFormations.sort((a, b) => b.cards.length - a.cards.length);
+
+    for (const f of sorted) {
+      const ids = f.cards.map(c => c.id);
+      if (ids.some(id => used.has(id))) continue;
+
+      selected.push(f);
+      ids.forEach(id => used.add(id));
+
+      if (selected.length >= targetCount && used.size >= 13) return true;
+    }
+
+    return selected.length >= 4 && used.size >= 13;
+  },
+
+  has7Naturel(hand, jokerCards) {
+    const naturalCards = hand.filter(c => !jokerCards.includes(c.id));
+
+    const quadri = this.findNaturalQuadri(naturalCards);
+    const escalier3 = this.findNaturalEscalier3(naturalCards);
+    if (quadri && escalier3) {
+      const cards = [...quadri, ...escalier3];
+      if (cards.length === 7) return true;
+    }
+
+    const escalier4 = this.findNaturalEscalier4(naturalCards);
+    const tri = this.findNaturalTri(naturalCards);
+    if (escalier4 && tri) {
+      const cards = [...escalier4, ...tri];
+      if (cards.length === 7) return true;
+    }
+
+    return false;
+  },
+
+  findNaturalQuadri(cards) {
+    const byValue = cards.reduce((acc, c) => {
+      acc[c.value] = acc[c.value] || [];
+      acc[c.value].push(c);
+      return acc;
+    }, {});
+    const quadri = Object.values(byValue).find(vals => vals.length >= 4);
+    return quadri ? quadri.slice(0, 4) : null;
+  },
+
+  findNaturalEscalier3(cards) {
+    const bySuit = cards.reduce((acc, c) => {
+      acc[c.suit] = acc[c.suit] || [];
+      acc[c.suit].push(c);
+      return acc;
+    }, {});
+    for (const suitCards of Object.values(bySuit)) {
+      const sorted = suitCards.sort((a, b) => a.value - b.value);
+      for (let i = 0; i <= sorted.length - 3; i++) {
+        if (sorted[i + 2].value === sorted[i].value + 2) {
+          return sorted.slice(i, i + 3);
+        }
+      }
+    }
+    return null;
+  },
+
+  findNaturalEscalier4(cards) {
+    const bySuit = cards.reduce((acc, c) => {
+      acc[c.suit] = acc[c.suit] || [];
+      acc[c.suit].push(c);
+      return acc;
+    }, {});
+    for (const suitCards of Object.values(bySuit)) {
+      const sorted = suitCards.sort((a, b) => a.value - b.value);
+      for (let i = 0; i <= sorted.length - 4; i++) {
+        if (sorted[i + 3].value === sorted[i].value + 3) {
+          return sorted.slice(i, i + 4);
+        }
+      }
+    }
+    return null;
+  },
+
+  findNaturalTri(cards) {
+    const byValue = cards.reduce((acc, c) => {
+      acc[c.value] = acc[c.value] || [];
+      acc[c.value].push(c);
+      return acc;
+    }, {});
+    const tri = Object.values(byValue).find(vals => vals.length === 3);
+    return tri || null;
+  }
+};
 
     // FONCTIONS UTILITAIRES
     function getCardValue(rank) {
