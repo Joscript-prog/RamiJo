@@ -1646,6 +1646,12 @@ async function startNewGame() {
   document.getElementById('roundIndicator')?.textContent = `Manche 1`;
 }
 
+// Écouteur pour le bouton "Nouvelle Partie"
+document.getElementById('newGameBtn')?.addEventListener('click', () => {
+  if (!currentRoom) return showPopup("Aucune partie en cours.", true);
+  startNewGame();
+});
+
     // AFFICHAGE DES CARTES
     function renderHand(hand) {
       const handDiv = document.getElementById('hand');
