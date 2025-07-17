@@ -1003,7 +1003,7 @@ if (endTurnBtn) {
       }
     }
 
-    async function discardCard(cardId) {
+async function discardCard(cardId) {
   // Récupère le tour en cours
   const turnSnap = await get(ref(db, `rooms/${currentRoom}/turn`));
   const turn = turnSnap.val();
@@ -1027,9 +1027,9 @@ if (endTurnBtn) {
   const handSnap = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
   const hand = handSnap.val() || [];
   const cardIndex = hand.findIndex(c => c.id === cardId);
-  if (cardIndex === -1) return;  // carte introuvable
+  if (cardIndex === -1) return; // Carte introuvable
 
-  // On retire la carte de la main
+  // Retire la carte de la main
   const [card] = hand.splice(cardIndex, 1);
 
   // Récupère la pile de défausse du joueur
@@ -1046,19 +1046,25 @@ if (endTurnBtn) {
       lastDiscardPlayer: playerId,
       lastDiscardCard: card
     })
-          const players = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {});
-      const nextIndex = (players.indexOf(playerId) + 1) % players.length;
-      await Promise.all([
-        set(ref(db, `rooms/${currentRoom}/turn`), players[nextIndex]),
-        update(ref(db, `rooms/${currentRoom}/state`), {
-          hasDrawnOrPicked: false,
-          hasDiscardedThisTurn: false,
-          drawCount: 0
-  })
-]);
-      }
+  ]);
 
-    document.getElementById('deck').addEventListener('click', drawCard);
+  // Passe au joueur suivant
+  const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
+  const players = Object.keys(playersSnap.val() || {});
+  const nextIndex = (players.indexOf(playerId) + 1) % players.length;
+
+  await Promise.all([
+    set(ref(db, `rooms/${currentRoom}/turn`), players[nextIndex]),
+    update(ref(db, `rooms/${currentRoom}/state`), {
+      hasDrawnOrPicked: false,
+      hasDiscardedThisTurn: false,
+      drawCount: 0
+    })
+  ]);
+}
+
+// Événement pour piocher une carte
+document.getElementById('deck').addEventListener('click', drawCard);
   </script>
 </body>
 </html>
