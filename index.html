@@ -1525,6 +1525,9 @@ function setupListeners(roomCode) {
 // =======================
 // DÉCLARATION DE VICTOIRE
 // =======================
+// =======================
+// DÉCLARATION DE VICTOIRE
+// =======================
 async function declareWin() {
   const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
   const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
@@ -1555,9 +1558,8 @@ async function declareWin() {
 
   showGlobalPopup(`🏆 ${myPseudo} gagne ! (+${result.pointsEarned} pts)`, []);
 
+  // --- Seconde manche (rematch) ---
   if (result.triggerRematch) {
-    showPopup("⚠️ Une deuxième manche commence pour le 7N !");
-      if (result.triggerRematch) {
     showPopup("⚠️ Deuxième manche pour le 7N commence !");
 
     // 1️⃣ Incrémenter le numéro de manche
@@ -1580,21 +1582,22 @@ async function declareWin() {
     // 4️⃣ Réinitialiser pour chaque joueur ses flags 7N
     const resetPlayers = {};
     playerIds.forEach(pid => {
-      resetPlayers[`${pid}/hasDeclared7N`]   = false;
-      resetPlayers[`${pid}/sevenNPoints`]   = 0;
+      resetPlayers[`${pid}/hasDeclared7N`] = false;
+      resetPlayers[`${pid}/sevenNPoints`] = 0;
     });
     await update(ref(db, `rooms/${currentRoom}/players`), resetPlayers);
 
-    // 5️⃣ Redistribuer complètement de nouvelles cartes : deuxième « mini–partie »
+    // 5️⃣ Redistribuer complètement de nouvelles cartes : deuxième mini-partie
     await dealCards(currentRoom, playerIds);
 
     // 6️⃣ Repasser le tour au 1er joueur
     await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
 
-    // 7️⃣ Mettre à jour l’UI (ex. indicateur de manche)
+    // 7️⃣ Mettre à jour l’UI (indicateur de manche)
     document.getElementById('roundIndicator')?.textContent = `Manche ${gameRounds + 1}`;
   }
 }
+
     /**
  * Lance une nouvelle partie complète dans la même salle
  */
