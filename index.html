@@ -902,7 +902,7 @@
       const deckEl = document.getElementById('deck');
       deckEl.classList.add('no-click');
       try {
-        const turn = (await get(ref(db, `rooms/${currentRoom}/turn`)).val();
+        const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
         if (turn !== playerId) throw "Ce n'est pas votre tour.";
         const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
         if (state.hasDrawnOrPicked) throw "Vous avez déjà pioché.";
