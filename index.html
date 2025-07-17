@@ -1526,6 +1526,9 @@ function setupListeners(roomCode) {
 // =======================
 // DÉCLARATION DE VICTOIRE
 // =======================
+// =======================
+// DÉCLARATION DE VICTOIRE
+// =======================
 async function declareWin() {
   // 1️⃣ Récupérer main, état et pioche
   const handSnap    = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
@@ -1566,14 +1569,14 @@ async function declareWin() {
   if (result.triggerRematch) {
     showPopup("⚠️ Deuxième manche pour le 7N commence !");
 
-    // -- Incrémenter la manche --
+    // Incrémenter la manche
     gameRounds += 1;
 
-    // -- Récupérer les joueurs --
+    // Récupérer les joueurs
     const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
     const playerIds   = Object.keys(playersSnap.val() || {});
 
-    // -- Réinitialiser l’état global de la salle --
+    // Réinitialiser l’état global de la salle
     await update(ref(db, `rooms/${currentRoom}/state`), {
       sevenDeclared: false,
       winDeclared:   false,
@@ -1583,7 +1586,7 @@ async function declareWin() {
       hasDiscardedThisTurn: false
     });
 
-    // -- Réinitialiser le flag 7N de chaque joueur --
+    // Réinitialiser le flag 7N de chaque joueur
     const resetPlayers = {};
     playerIds.forEach(pid => {
       resetPlayers[`${pid}/hasDeclared7N`] = false;
@@ -1591,20 +1594,17 @@ async function declareWin() {
     });
     await update(ref(db, `rooms/${currentRoom}/players`), resetPlayers);
 
-    // -- Redistribuer un nouveau jeu de cartes --
+    // Redistribuer un nouveau jeu de cartes
     await dealCards(currentRoom, playerIds);
 
-    // -- Donner le tour au premier joueur --
+    // Donner le tour au premier joueur
     await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
 
-    // -- Mettre à jour l’affichage de la manche --
-  const roundIndicator = document.getElementById('roundIndicator');
-if (roundIndicator) {
-  roundIndicator.textContent = `Manche ${gameRounds + 1}`;
-} else {
-  console.error("L'élément #roundIndicator n'existe pas");
+    // Mettre à jour l’affichage de la manche
+    document.getElementById('roundIndicator')?.textContent = `Manche ${gameRounds + 1}`;
+  }
 }
-}
+
 // Lance une nouvelle partie complète dans la même salle
 async function startNewGame() {
   // 1️⃣ Remettre les manches à zéro
