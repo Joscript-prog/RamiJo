@@ -1598,8 +1598,12 @@ async function declareWin() {
     await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
 
     // -- Mettre à jour l’affichage de la manche --
-    document.getElementById('roundIndicator')?.textContent = `Manche ${gameRounds + 1}`;
-  }
+  const roundIndicator = document.getElementById('roundIndicator');
+if (roundIndicator) {
+  roundIndicator.textContent = `Manche ${gameRounds + 1}`;
+} else {
+  console.error("L'élément #roundIndicator n'existe pas");
+}
 }
 // Lance une nouvelle partie complète dans la même salle
 async function startNewGame() {
