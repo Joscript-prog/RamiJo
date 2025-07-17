@@ -1269,32 +1269,35 @@ body {
       }
     }
 
-    function createDeck() {
-      const suits = [
-        { suit: 'Coeurs', symbol: '♥', color: 'red' },
-        { suit: 'Carreaux', symbol: '♦', color: 'red' },
-        { suit: 'Trèfles', symbol: '♣', color: 'black' },
-        { suit: 'Piques', symbol: '♠', color: 'black' }
-      ];
-      const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-      const deck = [];
-      for (let d = 0; d < 2; d++) {
-        suits.forEach(suitObj => {
-          ranks.forEach(rank => {
-            deck.push({
-              suit: suitObj.suit,
-              symbol: suitObj.symbol,
-              color: suitObj.color,
-              rank,
-              value: getCardValue(rank),
-              id: `${rank}${suitObj.symbol}${d}`,
-              isJoker: false
-            });
-          });
+ function createDeck() {
+  const suits = [
+    { suit: 'Coeurs', symbol: '♥', color: 'red' },
+    { suit: 'Carreaux', symbol: '♦', color: 'red' },
+    { suit: 'Trèfles', symbol: '♣', color: 'black' },
+    { suit: 'Piques', symbol: '♠', color: 'black' }
+  ];
+  const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const deck = [];
+  let uniqueId = 0;
+
+  for (let d = 0; d < 2; d++) { // 2 jeux
+    suits.forEach(suitObj => {
+      ranks.forEach(rank => {
+        deck.push({
+          suit: suitObj.suit,
+          symbol: suitObj.symbol,
+          color: suitObj.color,
+          rank,
+          value: getCardValue(rank),
+          id: `card-${rank}-${suitObj.suit}-${d}-${uniqueId++}`,
+          isJoker: false
         });
-      }
-      return deck;
-    }
+      });
+    });
+  }
+  return deck;
+}
+
 
     function shuffle(array) {
       let currentIndex = array.length, randomIndex;
@@ -1305,39 +1308,53 @@ body {
       }
       return array;
     }
+    function shuffleRealistic(array, passes = 3) {
+  for (let i = 0; i < passes; i++) {
+    array = shuffle(array); // ton shuffle de base
+  }
+  return array;
+}
 
-    async function dealCards(roomId, playerIds) {
-      let deck = shuffle(createDeck());
-      const hands = {};
-      playerIds.forEach(pid => {
-        hands[pid] = deck.splice(0, 13);
-      });
-      const revealed = deck.shift();
-      jokerSet = deck.filter(c => c.value === revealed.value && c.color !== revealed.color).map(c => c.id);
-      playerIds.forEach(pid => {
-        hands[pid] = markJokersOnCards(hands[pid], jokerSet);
-      });
-      deck = markJokersOnCards(deck, jokerSet);
-      await Promise.all([
-        set(ref(db, `rooms/${roomId}/deck`), deck),
-        set(ref(db, `rooms/${roomId}/jokerCard`), revealed),
-        set(ref(db, `rooms/${roomId}/jokerSet`), jokerSet),
-        set(ref(db, `rooms/${roomId}/hands`), hands),
-        set(ref(db, `rooms/${roomId}/discard`), {}),
-        set(ref(db, `rooms/${roomId}/scores`), {}),
-        set(ref(db, `rooms/${roomId}/state`), {
-          started: false,
-          drawCount: 0,
-          hasDrawnOrPicked: false,
-          hasDiscardedThisTurn: false,
-          sevenDeclared: false,
-          winDeclared: false,
-          roundOver: false,
-          gameRound: gameRounds
-        }),
-        set(ref(db, `rooms/${roomId}/chat`), {})
-      ]);
-    }
+
+   async function dealCards(roomId, playerIds) {
+  let deck = shuffleRealistic(createDeck()); // mélange réaliste
+
+  const hands = {};
+  playerIds.forEach(pid => {
+    hands[pid] = deck.splice(0, 13);
+  });
+
+  const revealed = deck.shift();
+  jokerSet = deck
+    .filter(c => c.value === revealed.value && c.color !== revealed.color)
+    .map(c => c.id);
+
+  playerIds.forEach(pid => {
+    hands[pid] = markJokersOnCards(hands[pid], jokerSet);
+  });
+
+  deck = markJokersOnCards(deck, jokerSet);
+
+  await Promise.all([
+    set(ref(db, `rooms/${roomId}/deck`), deck),
+    set(ref(db, `rooms/${roomId}/jokerCard`), revealed),
+    set(ref(db, `rooms/${roomId}/jokerSet`), jokerSet),
+    set(ref(db, `rooms/${roomId}/hands`), hands),
+    set(ref(db, `rooms/${roomId}/discard`), {}),
+    set(ref(db, `rooms/${roomId}/scores`), {}),
+    set(ref(db, `rooms/${roomId}/state`), {
+      started: false,
+      drawCount: 0,
+      hasDrawnOrPicked: false,
+      hasDiscardedThisTurn: false,
+      sevenDeclared: false,
+      winDeclared: false,
+      roundOver: false,
+      gameRound: gameRounds
+    }),
+    set(ref(db, `rooms/${roomId}/chat`), {})
+  ]);
+}
 
     async function askPseudo() {
       return new Promise(resolve => {
