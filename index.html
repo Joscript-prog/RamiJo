@@ -727,7 +727,12 @@
         hasDrawnOrPicked = false;
         hasDiscardedThisTurn = false;
         document.getElementById('status').textContent = myTurn ? "Votre tour" : "En attente...";
-        document.getElementById('endTurnBtn').disabled = !myTurn;
+        const endTurnBtn = document.getElementById('endTurnBtn');
+if (endTurnBtn) {
+    endTurnBtn.textContent = myTurn ? "Votre tour" : "En attente...";
+    endTurnBtn.disabled = true; // Toujours désactivé car le tour passe automatiquement
+    endTurnBtn.classList.toggle('active-turn', myTurn); // Ajoute une classe pour le style si c'est le tour
+}
         const btn7N = document.getElementById('declare7N');
         const btnWin = document.getElementById('declareWin');
         if (btn7N) btn7N.disabled = !myTurn;
@@ -1031,8 +1036,17 @@
       lastDiscardPlayer: playerId,
       lastDiscardCard: card
     })
-  ]);
-}
+          const players = Object.keys((await get(ref(db, `rooms/${currentRoom}/players`))).val() || {});
+      const nextIndex = (players.indexOf(playerId) + 1) % players.length;
+      await Promise.all([
+        set(ref(db, `rooms/${currentRoom}/turn`), players[nextIndex]),
+        update(ref(db, `rooms/${currentRoom}/state`), {
+          hasDrawnOrPicked: false,
+          hasDiscardedThisTurn: false,
+          drawCount: 0
+  })
+]);
+      }
 
     document.getElementById('deck').addEventListener('click', drawCard);
   </script>
