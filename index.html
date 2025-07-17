@@ -1525,27 +1525,33 @@ function setupListeners(roomCode) {
 // =======================
 // DÉCLARATION DE VICTOIRE
 // =======================
+
 // =======================
 // DÉCLARATION DE VICTOIRE
 // =======================
 async function declareWin() {
-  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+  // 1️⃣ Récupérer main, état et pioche
+  const handSnap    = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
+  const stateSnap   = await get(ref(db, `rooms/${currentRoom}/state`));
+  const deckSnap    = await get(ref(db, `rooms/${currentRoom}/deck`));
+
+  const hand          = handSnap.val()    || [];
+  const state         = stateSnap.val()   || {};
+  const deckCards     = deckSnap.val()    || [];
   const hasDeclared7N = state.sevenDeclared;
-  const deckCards = (await get(ref(db, `rooms/${currentRoom}/deck`))).val() || [];
-  const deckEmpty = deckCards.length === 0;
+  const deckEmpty     = deckCards.length === 0;
 
+  // 2️⃣ Valider la victoire
   const result = Rules.validateWinHand(hand, hasDeclared7N, deckEmpty);
-
   if (!result.isWin) {
     showPopup("Main non valide pour la victoire.", true);
     return;
   }
 
+  // 3️⃣ Calculer et stocker les points
   const sevenNPoints = (await get(ref(db, `rooms/${currentRoom}/players/${playerId}/sevenNPoints`))).val() || 0;
-  const totalScore = sevenNPoints + result.pointsEarned;
+  const totalScore   = sevenNPoints + result.pointsEarned;
 
-  // Mise à jour des scores et de l’état
   await update(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
     totalScore,
     winBonus: result.pointsEarned
@@ -1556,30 +1562,31 @@ async function declareWin() {
     winnerName: myPseudo
   });
 
+  // 4️⃣ Afficher le popup de victoire
   showGlobalPopup(`🏆 ${myPseudo} gagne ! (+${result.pointsEarned} pts)`, []);
 
-  // --- Seconde manche (rematch) ---
+  // 5️⃣ Si rematch, relancer une nouvelle manche
   if (result.triggerRematch) {
     showPopup("⚠️ Deuxième manche pour le 7N commence !");
 
-    // 1️⃣ Incrémenter le numéro de manche
+    // -- Incrémenter la manche --
     gameRounds += 1;
 
-    // 2️⃣ Récupérer la liste des joueurs
+    // -- Récupérer les joueurs --
     const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
-    const playerIds = Object.keys(playersSnap.val() || {});
+    const playerIds   = Object.keys(playersSnap.val() || {});
 
-    // 3️⃣ Réinitialiser l’état de la partie (pioche et déclarations)
+    // -- Réinitialiser l’état global de la salle --
     await update(ref(db, `rooms/${currentRoom}/state`), {
       sevenDeclared: false,
-      winDeclared: false,
-      gameRound: gameRounds,
-      drawCount: 0,
-      hasDrawnOrPicked: false,
+      winDeclared:   false,
+      gameRound:     gameRounds,
+      drawCount:     0,
+      hasDrawnOrPicked:      false,
       hasDiscardedThisTurn: false
     });
 
-    // 4️⃣ Réinitialiser pour chaque joueur ses flags 7N
+    // -- Réinitialiser le flag 7N de chaque joueur --
     const resetPlayers = {};
     playerIds.forEach(pid => {
       resetPlayers[`${pid}/hasDeclared7N`] = false;
@@ -1587,20 +1594,17 @@ async function declareWin() {
     });
     await update(ref(db, `rooms/${currentRoom}/players`), resetPlayers);
 
-    // 5️⃣ Redistribuer complètement de nouvelles cartes : deuxième mini-partie
+    // -- Redistribuer un nouveau jeu de cartes --
     await dealCards(currentRoom, playerIds);
 
-    // 6️⃣ Repasser le tour au 1er joueur
+    // -- Donner le tour au premier joueur --
     await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
 
-    // 7️⃣ Mettre à jour l’UI (indicateur de manche)
+    // -- Mettre à jour l’affichage de la manche --
     document.getElementById('roundIndicator')?.textContent = `Manche ${gameRounds + 1}`;
   }
 }
-
-    /**
- * Lance une nouvelle partie complète dans la même salle
- */
+// Lance une nouvelle partie complète dans la même salle
 async function startNewGame() {
   // 1️⃣ Remettre les manches à zéro
   gameRounds = 0;
