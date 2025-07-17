@@ -1601,7 +1601,10 @@ async function declareWin() {
     await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
 
     // Mettre à jour l’affichage de la manche
-    document.getElementById('roundIndicator')?.textContent = `Manche ${gameRounds + 1}`;
+    const roundEl = document.getElementById('roundIndicator');
+if (roundEl) {
+  roundEl.textContent = `Manche ${gameRounds + 1}`;
+}
   }
 }
 
@@ -1643,7 +1646,10 @@ async function startNewGame() {
   await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
 
   // 7️⃣ Mettre à jour l’UI
-  document.getElementById('roundIndicator')?.textContent = `Manche 1`;
+ const roundEl = document.getElementById('roundIndicator');
+if (roundEl) {
+  roundEl.textContent = `Manche 1`;
+}
 }
 
 // Écouteur pour le bouton "Nouvelle Partie"
