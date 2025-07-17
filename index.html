@@ -1028,6 +1028,8 @@
         <button id="declareWin" class="btn-special" disabled>
           Déclarer Victoire
         </button>
+        <button id="newGameBtn" class="btn btn-warning">🔄 Nouvelle Partie</button>
+      <span id="roundIndicator">Manche 1</span>
       </aside>
 
       <!-- Joker en haut à gauche -->
@@ -1085,334 +1087,266 @@
     import { db, ref, push, onChildAdded, set, update, get, onValue } from './firebase.js';
     import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/modular/sortable.esm.js';
 
-    let myPseudo = '';
-    const playerId = 'player_' + Math.floor(Math.random() * 10000);
-    const playersMap = {};
-    let currentRoom = '';
-    let isDrawing = false;
-    let hasDrawnOrPicked = false;
-    let hasDiscardedThisTurn = false;
-    let handDisplayType = 'horizontal';
-    let currentHand = [];
-    let gameRounds = 0;
-    let jokerSet = [];
+let myPseudo = '';
+const playerId = 'player_' + Math.floor(Math.random() * 10000);
+const playersMap = {};
+let currentRoom = '';
+let isDrawing = false;
+let hasDrawnOrPicked = false;
+let hasDiscardedThisTurn = false;
+let handDisplayType = 'horizontal';
+let currentHand = [];
+let gameRounds = 0;
+let jokerSet = [];
 
-   const Rules = {
-  // Validation principale de victoire
-  validateWinHand(hand, jokerCards, has7Naturel) {
-    const naturalCards = hand.filter(c => !jokerCards.includes(c.id));
-    const jokers = hand.filter(c => jokerCards.includes(c.id));
-
-    console.log("🃏 Jokers :", jokers);
-    console.log("🟢 Cartes naturelles :", naturalCards);
-
-    const formations = this.extractAllFormations(naturalCards, jokers);
-
-    if (has7Naturel) {
-      return this.validateWith7N(formations, naturalCards, jokers);
-    }
-
-    // ✅ Sinon, besoin d'au moins 1 escalier, 1 tri, et au moins 1 joker utilisé
-    return this.validateWithout7N(formations, naturalCards, jokers);
+const Rules = {
+  /**
+   * Vérifie si une formation est un brelan (3 ou 4 cartes même valeur)
+   */
+  isThreeOfKind(combo) {
+    if (combo.length < 3 || combo.length > 4) return false;
+    const vals = combo.map(c => c.value);
+    return vals.every(v => v === vals[0]);
   },
 
-  extractAllFormations(naturalCards, jokers) {
-    const formations = {
-      quadri: [],
-      escalier4: [],
-      escalier3: [],
-      tri: []
-    };
+  /**
+   * Vérifie si une formation est une suite (3 ou 4 cartes consécutives même couleur)
+   */
+  isSequence(combo) {
+    if (combo.length < 3 || combo.length > 4) return false;
+    const suits = new Set(combo.map(c => c.suit));
+    if (suits.size !== 1) return false;
+    const sorted = combo.map(c => c.value).sort((a, b) => a - b);
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] !== sorted[i - 1] + 1) return false;
+    }
+    return true;
+  },
 
-    this.extractNaturalFormations(formations, naturalCards);
-    this.extractJokerFormations(formations, naturalCards, jokers);
+  /**
+   * Génère toutes les combinaisons de taille k dans un tableau
+   */
+  combinations(arr, k) {
+    const result = [];
+    function backtrack(start, comb) {
+      if (comb.length === k) {
+        result.push(comb.slice());
+        return;
+      }
+      for (let i = start; i < arr.length; i++) {
+        comb.push(arr[i]);
+        backtrack(i + 1, comb);
+        comb.pop();
+      }
+    }
+    backtrack(0, []);
+    return result;
+  },
+
+  /**
+   * Extrait toutes les formations naturelles (sans jokers)
+   */
+  getNaturalFormations(hand) {
+    const nonJokers = hand.filter(c => !c.isJoker);
+    const formations = [];
+    [2, 3, 4].forEach(size => {
+      this.combinations(nonJokers, size).forEach(combo => {
+        if (combo.length >= 2) formations.push(combo);
+      });
+    });
     return formations;
   },
 
-  extractNaturalFormations(formations, cards) {
-    const byValue = cards.reduce((acc, c) => {
-      acc[c.value] = acc[c.value] || [];
-      acc[c.value].push(c);
-      return acc;
-    }, {});
-
-    Object.entries(byValue).forEach(([value, cards]) => {
-      if (cards.length >= 4) {
-        formations.quadri.push({ cards: cards.slice(0, 4), type: 'natural' });
+  /**
+   * Répartit les jokers dans les formations (1 max par formation)
+   */
+  assignJokers(formations, jokers) {
+    const results = [];
+    function backtrack(idx, current) {
+      if (idx === jokers.length) {
+        results.push(current.map(f => f.slice()));
+        return;
       }
-      if (cards.length === 3) {
-        formations.tri.push({ cards, type: 'natural' });
-      }
-    });
-
-    const bySuit = cards.reduce((acc, c) => {
-      acc[c.suit] = acc[c.suit] || [];
-      acc[c.suit].push(c);
-      return acc;
-    }, {});
-
-    Object.entries(bySuit).forEach(([suit, cards]) => {
-      const sorted = cards.sort((a, b) => a.value - b.value);
-
-      for (let i = 0; i <= sorted.length - 4; i++) {
-        if (sorted[i + 3].value === sorted[i].value + 3) {
-          formations.escalier4.push({ cards: sorted.slice(i, i + 4), type: 'natural' });
+      formations.forEach((_, i) => {
+        if (current[i].length < 4) {
+          current[i].push(jokers[idx]);
+          backtrack(idx + 1, current);
+          current[i].pop();
         }
-      }
-
-      for (let i = 0; i <= sorted.length - 3; i++) {
-        if (sorted[i + 2].value === sorted[i].value + 2) {
-          formations.escalier3.push({ cards: sorted.slice(i, i + 3), type: 'natural' });
-        }
-      }
-    });
+      });
+    }
+    backtrack(0, formations.map(f => f.slice()));
+    return results;
   },
 
-  extractJokerFormations(formations, naturalCards, jokers) {
-    jokers.forEach(joker => {
-      const bySuit = naturalCards.reduce((acc, c) => {
-        acc[c.suit] = acc[c.suit] || [];
-        acc[c.suit].push(c);
-        return acc;
-      }, {});
+  /**
+   * Vérifie présence d’au moins 1 suite et 1 brelan
+   */
+  hasSequenceAndKind(forms) {
+    let seq = false, kind = false;
+    forms.forEach(f => {
+      if (this.isSequence(f)) seq = true;
+      if (this.isThreeOfKind(f)) kind = true;
+    });
+    return seq && kind;
+  },
 
-      Object.entries(bySuit).forEach(([suit, cards]) => {
-        const sorted = cards.sort((a, b) => a.value - b.value);
+  /**
+   * Détecte 7Naturel (suite + brelan sans joker)
+   */
+  detectSevenNatural(forms) {
+    const pure = forms.filter(f => f.every(c => !c.isJoker));
+    const hasSeq = pure.some(f => this.isSequence(f));
+    const hasKind = pure.some(f => this.isThreeOfKind(f));
+    return hasSeq && hasKind;
+  },
 
-        for (let i = 0; i < sorted.length - 1; i++) {
-          const gap = sorted[i + 1].value - sorted[i].value;
-          if (gap === 2) {
-            const neededValue = sorted[i].value + 1;
-            formations.escalier3.push({
-              cards: [sorted[i], { ...joker, value: neededValue, suit }, sorted[i + 1]],
-              type: 'joker',
-              jokerUsed: 1
-            });
+  /**
+   * Valide une main complète selon vos règles
+   * @param {Array} hand - tableau de cartes, chaque carte a value, suit, id, isJoker…
+   * @param {boolean} hasDeclared7N - true si 7N déjà pris cette partie
+   * @param {boolean} deckEmpty - true si la pioche est vide
+   * @returns {Object} { isWin, winType, pointsEarned, triggerRematch }
+   */
+  validateWinHand(hand, hasDeclared7N, deckEmpty) {
+    const jokers = hand.filter(c => c.isJoker);
+    const naturalForms = this.getNaturalFormations(hand);
+    const assignments = this.assignJokers(naturalForms, jokers);
+    let bestResult = { isWin: false, pointsEarned: 0 };
+
+    assignments.forEach(forms => {
+      this.combinations(forms, 4).forEach(group => {
+        const lengths = group.map(f => f.length).sort((a, b) => b - a);
+        // Structure 4+3+3+3 uniquement
+        if (lengths[0] === 4 && lengths[1] === 3 && lengths[2] === 3 && lengths[3] === 3) {
+          if (!this.hasSequenceAndKind(group)) return;
+          const is7N = this.detectSevenNatural(group);
+          let winType, pts, rematch;
+          if (is7N && !hasDeclared7N) {
+            winType = 'large+small'; pts = 1.5; rematch = false;
+          } else if (is7N && hasDeclared7N) {
+            winType = 'large'; pts = 1; rematch = false;
+          } else {
+            // Pas de 7N
+            winType = 'large';
+            pts = deckEmpty ? 2 : 1;
+            rematch = !hasDeclared7N;
+          }
+          if (pts > bestResult.pointsEarned) {
+            bestResult = { isWin: true, winType, pointsEarned: pts, triggerRematch: rematch };
           }
         }
       });
-
-      const byValue = naturalCards.reduce((acc, c) => {
-        acc[c.value] = acc[c.value] || [];
-        acc[c.value].push(c);
-        return acc;
-      }, {});
-
-      Object.entries(byValue).forEach(([value, cards]) => {
-        if (cards.length === 2) {
-          formations.tri.push({
-            cards: [...cards, { ...joker, value }],
-            type: 'joker',
-            jokerUsed: 1
-          });
-        }
-      });
     });
-  },
 
-  validateWithout7N(formations, naturalCards, jokers) {
-    const escaliers = [...formations.escalier4, ...formations.escalier3];
-    const tris = formations.tri;
-
-    if (escaliers.length === 0 || tris.length === 0) return false;
-
-    // ✅ Vérifie qu'au moins 1 joker est utilisé dans les formations
-    const jokerUsed = [...escaliers, ...tris, ...formations.quadri].some(f => f.type === 'joker');
-    if (!jokerUsed) return false;
-
-    return this.findDisjointFormations([...escaliers, ...formations.quadri, ...tris]);
-  },
-
-  validateWith7N(formations, naturalCards, jokers) {
-    const remainingCards = this.getRemainingCards(naturalCards, jokers, formations);
-    return this.canFormTwoTriWithJokers(remainingCards);
-  },
-
-  findDisjointFormations(allFormations, targetCount = 4) {
-    const used = new Set();
-    let selected = [];
-
-    const sorted = allFormations.sort((a, b) => b.cards.length - a.cards.length);
-
-    for (const f of sorted) {
-      const ids = f.cards.map(c => c.id);
-      if (ids.some(id => used.has(id))) continue;
-
-      selected.push(f);
-      ids.forEach(id => used.add(id));
-
-      if (selected.length >= targetCount && used.size >= 13) return true;
-    }
-
-    return selected.length >= 4 && used.size >= 13;
-  },
-
-  has7Naturel(hand, jokerCards) {
-    const naturalCards = hand.filter(c => !jokerCards.includes(c.id));
-
-    const quadri = this.findNaturalQuadri(naturalCards);
-    const escalier3 = this.findNaturalEscalier3(naturalCards);
-    if (quadri && escalier3) {
-      const cards = [...quadri, ...escalier3];
-      if (cards.length === 7) return true;
-    }
-
-    const escalier4 = this.findNaturalEscalier4(naturalCards);
-    const tri = this.findNaturalTri(naturalCards);
-    if (escalier4 && tri) {
-      const cards = [...escalier4, ...tri];
-      if (cards.length === 7) return true;
-    }
-
-    return false;
-  },
-
-  findNaturalQuadri(cards) {
-    const byValue = cards.reduce((acc, c) => {
-      acc[c.value] = acc[c.value] || [];
-      acc[c.value].push(c);
-      return acc;
-    }, {});
-    const quadri = Object.values(byValue).find(vals => vals.length >= 4);
-    return quadri ? quadri.slice(0, 4) : null;
-  },
-
-  findNaturalEscalier3(cards) {
-    const bySuit = cards.reduce((acc, c) => {
-      acc[c.suit] = acc[c.suit] || [];
-      acc[c.suit].push(c);
-      return acc;
-    }, {});
-    for (const suitCards of Object.values(bySuit)) {
-      const sorted = suitCards.sort((a, b) => a.value - b.value);
-      for (let i = 0; i <= sorted.length - 3; i++) {
-        if (sorted[i + 2].value === sorted[i].value + 2) {
-          return sorted.slice(i, i + 3);
-        }
-      }
-    }
-    return null;
-  },
-
-  findNaturalEscalier4(cards) {
-    const bySuit = cards.reduce((acc, c) => {
-      acc[c.suit] = acc[c.suit] || [];
-      acc[c.suit].push(c);
-      return acc;
-    }, {});
-    for (const suitCards of Object.values(bySuit)) {
-      const sorted = suitCards.sort((a, b) => a.value - b.value);
-      for (let i = 0; i <= sorted.length - 4; i++) {
-        if (sorted[i + 3].value === sorted[i].value + 3) {
-          return sorted.slice(i, i + 4);
-        }
-      }
-    }
-    return null;
-  },
-
-  findNaturalTri(cards) {
-    const byValue = cards.reduce((acc, c) => {
-      acc[c.value] = acc[c.value] || [];
-      acc[c.value].push(c);
-      return acc;
-    }, {});
-    const tri = Object.values(byValue).find(vals => vals.length === 3);
-    return tri || null;
+    return bestResult;
   }
 };
 
+
     // FONCTIONS UTILITAIRES
-    function getCardValue(rank) {
-      switch (rank) {
-        case 'A': return 1;
-        case 'J': return 11;
-        case 'Q': return 12;
-        case 'K': return 13;
-        default: return parseInt(rank, 10);
-      }
-    }
+function getCardValue(rank) {
+  switch (rank) {
+    case 'A': return 1;
+    case 'J': return 11;
+    case 'Q': return 12;
+    case 'K': return 13;
+    default: return parseInt(rank, 10);
+  }
+}
 
-    function createDeck() {
-      const suits = [
-        { suit: 'Coeurs', symbol: '♥', color: 'red' },
-        { suit: 'Carreaux', symbol: '♦', color: 'red' },
-        { suit: 'Trèfles', symbol: '♣', color: 'black' },
-        { suit: 'Piques', symbol: '♠', color: 'black' }
-      ];
-      const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-      let deck = [];
+function createDeck() {
+  const suits = [
+    { suit: 'Coeurs', symbol: '♥', color: 'red' },
+    { suit: 'Carreaux', symbol: '♦', color: 'red' },
+    { suit: 'Trèfles', symbol: '♣', color: 'black' },
+    { suit: 'Piques', symbol: '♠', color: 'black' }
+  ];
+  const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const deck = [];
 
-      for (let d = 0; d < 2; d++) {
-        suits.forEach(suitObj => {
-          ranks.forEach(rank => {
-            const value = getCardValue(rank);
-            deck.push({
-              suit: suitObj.suit,
-              symbol: suitObj.symbol,
-              color: suitObj.color,
-              rank,
-              value,
-              id: `${rank}${suitObj.symbol}${d}`
-            });
-          });
+  for (let d = 0; d < 2; d++) {
+    suits.forEach(suitObj => {
+      ranks.forEach(rank => {
+        deck.push({
+          suit: suitObj.suit,
+          symbol: suitObj.symbol,
+          color: suitObj.color,
+          rank,
+          value: getCardValue(rank),
+          id: `${rank}${suitObj.symbol}${d}`,
+          isJoker: false        // <-- ajouté ici
         });
-      }
-      return deck;
-    }
-
-    function shuffle(array) {
-      let currentIndex = array.length, randomIndex;
-      while (currentIndex !== 0) {
-        randomIndex = Math.floor(Math.random() * currentIndex);
-        currentIndex--;
-        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
-      }
-      return array;
-    }
-
-    async function dealCards(roomId, playerIds) {
-      let deck = shuffle(createDeck());
-      const hands = {};
-      playerIds.forEach(pid => {
-        hands[pid] = deck.splice(0, 13);
       });
-      const revealedJokerCard = deck.shift();
-      
-      // Déterminer les jokers (même valeur, couleur opposée)
-      jokerSet = deck
-        .filter(c => c.value === revealedJokerCard.value && c.color !== revealedJokerCard.color)
-        .map(c => c.id);
+    });
+  }
 
-      await Promise.all([
-        set(ref(db, `rooms/${roomId}/deck`), deck),
-        set(ref(db, `rooms/${roomId}/jokerCard`), revealedJokerCard),
-        set(ref(db, `rooms/${roomId}/jokerSet`), jokerSet),
-        set(ref(db, `rooms/${roomId}/hands`), hands),
-        set(ref(db, `rooms/${roomId}/discard`), {}),
-        set(ref(db, `rooms/${roomId}/scores`), {}),
-        set(ref(db, `rooms/${roomId}/state`), {
-          started: false,
-          drawCount: 0,
-          lastDiscarder: null,
-          hasDrawnOrPicked: false,
-          hasDiscardedThisTurn: false,
-          sevenDeclared: false,
-          winDeclared: false,
-          roundOver: false,
-          lastDiscardPlayer: null,
-          lastDiscardCard: null,
-          gameRound: gameRounds
-        }),
-        set(ref(db, `rooms/${roomId}/chat`), {})
-      ]);
-    }
+  return deck;
+}
+
+function shuffle(array) {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+  }
+  return array;
+}
+
+async function dealCards(roomId, playerIds) {
+  let deck = shuffle(createDeck());
+  const hands = {};
+
+  // Distribue 13 cartes à chaque joueur
+  playerIds.forEach(pid => {
+    hands[pid] = deck.splice(0, 13);
+  });
+
+  // Tire la carte joker révélée
+  const revealed = deck.shift();
+
+  // Détermine le jeu de jokers (même valeur, couleur opposée)
+  jokerSet = deck
+    .filter(c => c.value === revealed.value && c.color !== revealed.color)
+    .map(c => c.id);
+
+  // Marquer isJoker sur les cartes en main
+  playerIds.forEach(pid => {
+    hands[pid] = hands[pid].map(c => ({
+      ...c,
+      isJoker: jokerSet.includes(c.id)
+    }));
+  });
+
+  // Enregistre tout dans la base
+  await Promise.all([
+    set(ref(db, `rooms/${roomId}/deck`), deck),
+    set(ref(db, `rooms/${roomId}/jokerCard`), revealed),
+    set(ref(db, `rooms/${roomId}/jokerSet`), jokerSet),
+    set(ref(db, `rooms/${roomId}/hands`), hands),
+    set(ref(db, `rooms/${roomId}/discard`), {}),
+    set(ref(db, `rooms/${roomId}/scores`), {}),
+    set(ref(db, `rooms/${roomId}/state`), {
+      started: false,
+      drawCount: 0,
+      hasDrawnOrPicked: false,
+      hasDiscardedThisTurn: false,
+      sevenDeclared: false,
+      winDeclared: false,
+      roundOver: false,
+      gameRound: gameRounds
+    }),
+    set(ref(db, `rooms/${roomId}/chat`), {})
+  ]);
+}
+
 
     // INITIALISATION DES BOUTONS
-    const btnCreate = document.getElementById('createRoom');
-    const btnJoin   = document.getElementById('joinRoom');
-    if (btnCreate) btnCreate.addEventListener('click', createRoom);
-    if (btnJoin)   btnJoin.addEventListener('click', joinRoom);
+const btnCreate = document.getElementById('createRoom');
+const btnJoin   = document.getElementById('joinRoom');
+if (btnCreate) btnCreate.addEventListener('click', createRoom);
+if (btnJoin)   btnJoin.addEventListener('click', joinRoom);
 
     // FONCTIONS PRINCIPALES
     function askPseudo() {
@@ -1588,33 +1522,123 @@ function setupListeners(roomCode) {
 
       showGlobalPopup(`🎉 ${myPseudo} déclare 7N (+${points} pts)`, []);
     }
+// =======================
+// DÉCLARATION DE VICTOIRE
+// =======================
+async function declareWin() {
+  const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
+  const state = (await get(ref(db, `rooms/${currentRoom}/state`))).val() || {};
+  const hasDeclared7N = state.sevenDeclared;
+  const deckCards = (await get(ref(db, `rooms/${currentRoom}/deck`))).val() || [];
+  const deckEmpty = deckCards.length === 0;
 
-    async function declareWin() {
-      const hand = (await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`))).val() || [];
-      const jokerCards = (await get(ref(db, `rooms/${currentRoom}/jokerSet`))).val() || [];
-      
-      if (!Rules.validateWinHand(hand, jokerCards, false)) {
-        showPopup("Main non valide pour la victoire.", true);
-        return;
-      }
+  const result = Rules.validateWinHand(hand, hasDeclared7N, deckEmpty);
 
-      const winBonus = gameRounds + 1;
-      const sevenNPoints = (await get(ref(db, `rooms/${currentRoom}/players/${playerId}/sevenNPoints`))).val() || 0;
-      const totalScore = sevenNPoints + winBonus;
+  if (!result.isWin) {
+    showPopup("Main non valide pour la victoire.", true);
+    return;
+  }
 
-      await update(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
-        totalScore,
-        winBonus
-      });
+  const sevenNPoints = (await get(ref(db, `rooms/${currentRoom}/players/${playerId}/sevenNPoints`))).val() || 0;
+  const totalScore = sevenNPoints + result.pointsEarned;
 
-      await update(ref(db, `rooms/${currentRoom}/state`), {
-        winDeclared: true,
-        winner: playerId,
-        winnerName: myPseudo
-      });
+  // Mise à jour des scores et de l’état
+  await update(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
+    totalScore,
+    winBonus: result.pointsEarned
+  });
+  await update(ref(db, `rooms/${currentRoom}/state`), {
+    winDeclared: true,
+    winner: playerId,
+    winnerName: myPseudo
+  });
 
-      showGlobalPopup(`🏆 ${myPseudo} gagne ! (+${winBonus} pts)`, []);
-    }
+  showGlobalPopup(`🏆 ${myPseudo} gagne ! (+${result.pointsEarned} pts)`, []);
+
+  if (result.triggerRematch) {
+    showPopup("⚠️ Une deuxième manche commence pour le 7N !");
+      if (result.triggerRematch) {
+    showPopup("⚠️ Deuxième manche pour le 7N commence !");
+
+    // 1️⃣ Incrémenter le numéro de manche
+    gameRounds += 1;
+
+    // 2️⃣ Récupérer la liste des joueurs
+    const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
+    const playerIds = Object.keys(playersSnap.val() || {});
+
+    // 3️⃣ Réinitialiser l’état de la partie (pioche et déclarations)
+    await update(ref(db, `rooms/${currentRoom}/state`), {
+      sevenDeclared: false,
+      winDeclared: false,
+      gameRound: gameRounds,
+      drawCount: 0,
+      hasDrawnOrPicked: false,
+      hasDiscardedThisTurn: false
+    });
+
+    // 4️⃣ Réinitialiser pour chaque joueur ses flags 7N
+    const resetPlayers = {};
+    playerIds.forEach(pid => {
+      resetPlayers[`${pid}/hasDeclared7N`]   = false;
+      resetPlayers[`${pid}/sevenNPoints`]   = 0;
+    });
+    await update(ref(db, `rooms/${currentRoom}/players`), resetPlayers);
+
+    // 5️⃣ Redistribuer complètement de nouvelles cartes : deuxième « mini–partie »
+    await dealCards(currentRoom, playerIds);
+
+    // 6️⃣ Repasser le tour au 1er joueur
+    await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
+
+    // 7️⃣ Mettre à jour l’UI (ex. indicateur de manche)
+    document.getElementById('roundIndicator')?.textContent = `Manche ${gameRounds + 1}`;
+  }
+
+  }
+}
+    /**
+ * Lance une nouvelle partie complète dans la même salle
+ */
+async function startNewGame() {
+  // 1️⃣ Remettre les manches à zéro
+  gameRounds = 0;
+
+  // 2️⃣ Récupérer tous les joueurs
+  const playersSnap = await get(ref(db, `rooms/${currentRoom}/players`));
+  const playerIds = Object.keys(playersSnap.val() || {});
+
+  // 3️⃣ Redistribuer un jeu neuf de cartes
+  await dealCards(currentRoom, playerIds);
+
+  // 4️⃣ Réinitialiser l’état global
+  await set(ref(db, `rooms/${currentRoom}/state`), {
+    started: true,
+    drawCount: 0,
+    hasDrawnOrPicked: false,
+    hasDiscardedThisTurn: false,
+    sevenDeclared: false,
+    winDeclared: false,
+    roundOver: false,
+    gameRound: 0
+  });
+
+  // 5️⃣ Réinitialiser chaque joueur (scores facultatif)
+  const resetPlayers = {};
+  playerIds.forEach(pid => {
+    resetPlayers[`${pid}/hasDeclared7N`]   = false;
+    resetPlayers[`${pid}/sevenNPoints`]   = 0;
+    resetPlayers[`${pid}/score`]          = 0;    // si tu veux remettre les scores à zéro
+    resetPlayers[`${pid}/totalScore`]     = 0;
+  });
+  await update(ref(db, `rooms/${currentRoom}/players`), resetPlayers);
+
+  // 6️⃣ Donner le tour au premier joueur
+  await set(ref(db, `rooms/${currentRoom}/turn`), playerIds[0]);
+
+  // 7️⃣ Mettre à jour l’UI
+  document.getElementById('roundIndicator')?.textContent = `Manche 1`;
+}
 
     // AFFICHAGE DES CARTES
     function renderHand(hand) {
@@ -2248,9 +2272,16 @@ async function handlePickFromPreviousDiscard(ownerId) {
     // Gestion du bouton "Terminer le tour"
     document.getElementById('endTurnBtn')?.addEventListener('click', endTurn);
 
+    
+    
     // Gestion des déclarations
     document.getElementById('declare7N')?.addEventListener('click', declare7Naturel);
     document.getElementById('declareWin')?.addEventListener('click', declareWin);
+
+    document.getElementById('newGameBtn')?.addEventListener('click', () => {
+  if (!currentRoom) return showPopup("Aucune partie en cours.", true);
+  startNewGame();
+});
   </script>
 </body>
 </html>
