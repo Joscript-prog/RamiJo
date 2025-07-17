@@ -1438,6 +1438,18 @@ function setupListeners(roomCode) {
   enableChat();
   enableDragDrop();
 
+    // Nouvel écouteur : popups globales
+  onChildAdded(ref(db, `rooms/${roomCode}/popups`), snap => {
+    const data = snap.val();
+    const pseudo = playersMap[data.player]?.pseudo || data.player;
+    const msg = data.type === 'win'
+      ? `🏆 ${pseudo} gagne !`
+      : `🎉 ${pseudo} déclare 7N !`;
+    // afficher sur 10 s
+    showGlobalPopup(msg, data.formations.flat());
+  });
+
+  
   // Nouvel écouteur pour la défausse centrale
   document.getElementById('discard')?.addEventListener('click', () => {
     if (!currentRoom) return;
@@ -1493,7 +1505,8 @@ function setupListeners(roomCode) {
       document.getElementById('startGameBtn').style.display = 'none';
     }
 
-    async function declare7Naturel() {
+ // 1) Déclaration du 7 Naturel
+async function declare7Naturel() {
   // 1️⃣ Vérifier qu’on n’a pas déjà un 7N
   const stateSnap = await get(ref(db, `rooms/${currentRoom}/state`));
   const state     = stateSnap.val() || {};
@@ -1503,16 +1516,15 @@ function setupListeners(roomCode) {
   }
 
   // 2️⃣ Récupérer la main et le jeu de jokers
-  const handSnap    = await get(ref(db, `rooms/${currentRoom}/hands/${playerId}`));
-  const jokerSnap   = await get(ref(db, `rooms/${currentRoom}/jokerSet`));
-  const hand        = handSnap.val()  || [];
-  const jokerCards  = jokerSnap.val() || [];
+  const [handSnap, jokerSnap] = await Promise.all([
+    get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)),
+    get(ref(db, `rooms/${currentRoom}/jokerSet`))
+  ]);
+  const hand       = handSnap.val()   || [];
+  const jokerCards = jokerSnap.val()  || [];
 
   // 3️⃣ Annoter chaque carte en isJoker
-  const cards = hand.map(c => ({
-    ...c,
-    isJoker: jokerCards.includes(c.id)
-  }));
+  const cards = hand.map(c => ({ ...c, isJoker: jokerCards.includes(c.id) }));
 
   // 4️⃣ Détecter un 7Naturel pur (suite + brelan sans jokers)
   const naturalForms = Rules.getNaturalFormations(cards);
@@ -1526,40 +1538,46 @@ function setupListeners(roomCode) {
   await Promise.all([
     update(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
       hasDeclared7N: true,
-      sevenNPoints: points
+      sevenNPoints:  points
     }),
     update(ref(db, `rooms/${currentRoom}/state`), {
-      sevenDeclared: true,
+      sevenDeclared:  true,
       sevenDeclarant: playerId
     })
   ]);
 
-  // 6️⃣ Message global
-  showGlobalPopup(`🎉 ${myPseudo} déclare 7N (+${points} pts)`, []);
+  // 6️⃣ Afficher le popup local
+  showGlobalPopup(`🎉 ${myPseudo} déclare 7N (+${points} pts)`, naturalForms.flat());
+
+  // 7️⃣ Pousser l’événement à tous
+  await push(ref(db, `rooms/${currentRoom}/popups`), {
+    type:       '7N',
+    player:     playerId,
+    formations: naturalForms,   // tableau de 2 formations de 3+4 cartes
+    timestamp:  Date.now()
+  });
 }
-// =======================
-// DÉCLARATION DE VICTOIRE
-// =======================
+
 // =======================
 // DÉCLARATION DE VICTOIRE
 // =======================
 async function declareWin() {
   // 1️⃣ Récupérer main, état et pioche
-  const [ handSnap, stateSnap, deckSnap ] = await Promise.all([
+  const [handSnap, stateSnap, deckSnap, jokerSnap] = await Promise.all([
     get(ref(db, `rooms/${currentRoom}/hands/${playerId}`)),
     get(ref(db, `rooms/${currentRoom}/state`)),
-    get(ref(db, `rooms/${currentRoom}/deck`))
+    get(ref(db, `rooms/${currentRoom}/deck`)),
+    get(ref(db, `rooms/${currentRoom}/jokerSet`))
   ]);
-
-  const hand          = handSnap.val()  || [];
-  const state         = stateSnap.val() || {};
-  const deckCards     = deckSnap.val()  || [];
+  const hand          = handSnap.val()    || [];
+  const state         = stateSnap.val()   || {};
+  const deckCards     = deckSnap.val()    || [];
+  const jokerCards    = jokerSnap.val()   || [];
   const hasDeclared7N = state.sevenDeclared;
   const deckEmpty     = deckCards.length === 0;
 
   // 2️⃣ Annoter chaque carte pour savoir si c'est un joker
-  const jokerCards    = (await get(ref(db, `rooms/${currentRoom}/jokerSet`))).val() || [];
-  const cards         = hand.map(c => ({ ...c, isJoker: jokerCards.includes(c.id) }));
+  const cards = hand.map(c => ({ ...c, isJoker: jokerCards.includes(c.id) }));
 
   // 3️⃣ Valider la victoire (4 formations, suite + brelan, jokers autorisés)
   const result = Rules.validateWinHand(cards, hasDeclared7N, deckEmpty);
@@ -1571,7 +1589,6 @@ async function declareWin() {
   // 4️⃣ Calculer et stocker les points
   const sevenNPoints = (await get(ref(db, `rooms/${currentRoom}/players/${playerId}/sevenNPoints`))).val() || 0;
   const totalScore   = sevenNPoints + result.pointsEarned;
-
   await Promise.all([
     update(ref(db, `rooms/${currentRoom}/players/${playerId}`), {
       totalScore,
@@ -1584,9 +1601,16 @@ async function declareWin() {
     })
   ]);
 
-  // 5️⃣ Afficher le popup de victoire
-  showGlobalPopup(`🏆 ${myPseudo} gagne ! (+${result.pointsEarned} pts)`, []);
+  // 5️⃣ Afficher le popup local
+  showGlobalPopup(`🏆 ${myPseudo} gagne ! (+${result.pointsEarned} pts)`, result.bestGroup?.flat() || cards);
 
+  // 6️⃣ Pousser l’événement à tous
+  await push(ref(db, `rooms/${currentRoom}/popups`), {
+    type:       'win',
+    player:     playerId,
+    formations: result.bestGroup || [],  // tableau de 4 formations
+    timestamp:  Date.now()
+  });
   // 6️⃣ Si rematch, relancer la seconde manche
   if (result.triggerRematch) {
     showPopup("⚠️ Deuxième manche pour le 7N commence !");
@@ -2299,7 +2323,7 @@ async function handlePickFromPreviousDiscard(ownerId) {
         </div>
       `;
       document.body.appendChild(overlay);
-      setTimeout(() => overlay.remove(), 4000);
+      setTimeout(() => overlay.remove(), 10000);
       overlay.addEventListener('click', () => overlay.remove());
     }
 
