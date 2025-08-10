@@ -352,15 +352,24 @@ function askPseudo() {
   return new Promise(resolve => {
     showPopup(`
       <h3>Entrez votre pseudo</h3>
-      <input id="pseudoInput" type="text" placeholder="Votre pseudo" maxlength="15" style="width: 100%; padding: 0.5rem; margin: 1rem 0;" />
+      <input id="pseudoInput" type="text" placeholder="Votre pseudo" maxlength="15"
+             style="width:100%;padding:0.5rem;margin:1rem 0;border:1px solid #ccc;border-radius:6px;" />
       <button id="pseudoSubmit" class="btn btn-primary">Valider</button>
     `);
-    document.getElementById('pseudoSubmit').addEventListener('click', () => {
-      const val = document.getElementById('pseudoInput').value.trim();
+
+    const input = document.getElementById('pseudoInput');
+    const submit = document.getElementById('pseudoSubmit');
+
+    const finish = () => {
+      const val = (input?.value || '').trim();
       myPseudo = val || 'Joueur';
       document.querySelector('.modal')?.remove();
       resolve();
-    });
+    };
+
+    submit?.addEventListener('click', finish);
+    input?.addEventListener('keydown', (e) => { if (e.key === 'Enter') finish(); });
+    input?.focus();
   });
 }
 
@@ -1077,20 +1086,26 @@ function showPopup(content, isError = false) {
   modal.className = 'modal';
   modal.style.cssText = `
     position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     background: rgba(0,0,0,0.7);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
   `;
   modal.innerHTML = `
-    <div class="modal-content" style="background: white; padding: 2rem; border-radius: 12px; max-width: 400px; text-align: center;">
+    <div class="modal-content" style="background:#fff;padding:1.5rem;border-radius:12px;max-width:400px;width:90%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+      ${isError ? `<div style="color:#e74c3c;margin-bottom:0.5rem;font-weight:600;">Erreur</div>` : ``}
       ${content}
-      <button class="modal-close" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 6px;">OK</button>
+      <button class="modal-close" style="margin-top:1rem;padding:0.6rem 1rem;background:#3498db;color:#fff;border:none;border-radius:6px;cursor:pointer;">OK</button>
     </div>
   `;
   document.body.appendChild(modal);
-  modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+  modal.querySelector('.modal-close')?.addEventListener('click', () => modal.remove());
 }
+
 
 function showGlobalPopup(message, cards = null) {
   const overlay = document.createElement('div');
@@ -1123,3 +1138,4 @@ document.getElementById('endTurnBtn')?.addEventListener('click', endTurn);
 // Gestion des déclarations
 document.getElementById('declare7N')?.addEventListener('click', declare7Naturel);
 document.getElementById('declareWin')?.addEventListener('click', declareWin);
+
