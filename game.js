@@ -617,7 +617,7 @@ async function pickFromPreviousDiscard(cardId, prevPlayerId) {
   if (isDrawing) return;
   isDrawing = true;
   const prevSlot = document.querySelector(`.discard-slot[data-owner="${prevPlayerId}"]`);
-  prevSlot?.classList.add('no-click');
+  if (prevSlot) prevSlot.classList.add('no-click');
 
   try {
     const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
@@ -895,7 +895,7 @@ async function pickFromDiscard() {
   if (isDrawing) return;
   isDrawing = true;
   const discardEl = document.getElementById('discard');
-  discardEl.classList.add('no-click');
+  if (discardEl) discardEl.classList.add('no-click');
 
   try {
     const turn = (await get(ref(db, `rooms/${currentRoom}/turn`))).val();
@@ -947,7 +947,7 @@ async function pickFromDiscard() {
     console.error(err);
   } finally {
     isDrawing = false;
-    discardEl.classList.remove('no-click');
+    discardEl && discardEl.classList.remove('no-click');
   }
 }
 async function endTurn() {
